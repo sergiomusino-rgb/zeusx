@@ -1,0 +1,28 @@
+# Chiavi e segreti
+.env
+.env.local
+key
+*.txt
+*.bat
+
+# Dipendenze e build
+node_modules
+.next
+dist
+build
+.git# Dipendenze
+node_modules
+.next
+.DS_Store
+
+# Variabili d'ambiente (LE PIÙ IMPORTANTI)
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# Log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
