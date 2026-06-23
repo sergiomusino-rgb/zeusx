@@ -2,14 +2,10 @@
   "experimentalServices": {
     "frontend": {
       "root": "frontend",
-      "framework": "nextjs",
-      "buildCommand": "npm run build",
-      "outputDirectory": ".next"
+      "framework": "nextjs"
     },
     "backend": {
-      "root": "backend",
-      "buildCommand": "npm install",
-      "outputDirectory": "."
+      "root": "backend"
     }
   }
 }
