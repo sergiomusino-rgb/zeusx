@@ -1,6 +1,14 @@
 'use client';
 
 import { useState } from 'react';
+import { useRouter } from 'next/navigation';
+import { supabase } from '../../../src/lib/supabase';
+
+const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:5005';
+
+const getErrorMessage = (error: unknown) => {
+  return error instanceof Error ? error.message : "Si è verificato un errore imprevisto.";
+};
 
 export default function VisionPage() {
   const [file, setFile] = useState<File | null>(null);
@@ -9,6 +17,7 @@ export default function VisionPage() {
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState('');
   const [error, setError] = useState<string | null>(null);
+  const router = useRouter();
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
@@ -31,13 +40,23 @@ export default function VisionPage() {
     
     reader.onloadend = async () => {
       const image = reader.result as string;
+      const { data: { session } } = await supabase.auth.getSession();
+
+      if (!session) {
+        setLoading(false);
+        router.push('/login');
+        return;
+      }
 
       // Funzione ricorsiva di retry
-      const fetchWithRetry = async (retries = 3): Promise<any> => {
+      const fetchWithRetry = async (retries = 3): Promise<{ reply: string }> => {
         try {
-          const response = await fetch('http://localhost:5005/api/vision/analyze', {
+          const response = await fetch(`${BACKEND_URL}/api/vision/analyze`, {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${session.access_token}`,
+            },
             body: JSON.stringify({ image, prompt }),
           });
 
@@ -56,7 +75,7 @@ export default function VisionPage() {
             throw new Error(json.error || "Errore dal server durante l'analisi.");
           }
           return json;
-        } catch (err: any) {
+        } catch (err: unknown) {
           // Se l'errore è di rete o un 503 non intercettato dallo status
           if (retries > 0) {
             await new Promise(res => setTimeout(res, 3000));
@@ -69,9 +88,9 @@ export default function VisionPage() {
       try {
         const json = await fetchWithRetry();
         setResult(json.reply);
-      } catch (err: any) {
+      } catch (err: unknown) {
         console.error("Errore finale:", err);
-        setError(err.message || "Si è verificato un errore imprevisto.");
+        setError(getErrorMessage(err));
       } finally {
         setLoading(false);
       }

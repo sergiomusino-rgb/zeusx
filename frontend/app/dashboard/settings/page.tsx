@@ -60,7 +60,7 @@ export default function SettingsPage() {
           <h3 className="text-base font-bold text-slate-200 border-b border-slate-800/60 pb-2">Integrazione di Sistema</h3>
           <div className="space-y-2">
             <p className="text-xs text-slate-400">
-              L'autenticazione, la sicurezza dei dati e la persistenza dei progetti di questa dashboard sono pronte per essere agganciate a **Supabase**.
+              L&apos;autenticazione, la sicurezza dei dati e la persistenza dei progetti di questa dashboard sono pronte per essere agganciate a **Supabase**.
             </p>
             <div className="p-3 bg-slate-950 border border-slate-800/80 rounded-xl font-mono text-[11px] text-slate-500 space-y-1">
               <div>DB_STATUS: <span className="text-amber-500">READY_FOR_SETUP</span></div>

@@ -13,6 +13,12 @@ export default function LoginPage() {
   const [loading, setLoading] = useState(false);
   const router = useRouter();
 
+  const getErrorMessage = (error: unknown) => {
+    return error instanceof Error
+      ? error.message
+      : 'Si è verificato un errore durante l\'autenticazione.';
+  };
+
   const handleAuth = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
@@ -32,8 +38,8 @@ export default function LoginPage() {
         // Reindirizza alla dashboard dopo il login
         router.push('/dashboard');
       }
-    } catch (err: any) {
-      setError(err.message || 'Si è verificato un errore durante l\'autenticazione.');
+    } catch (err: unknown) {
+      setError(getErrorMessage(err));
     } finally {
       setLoading(false);
     }

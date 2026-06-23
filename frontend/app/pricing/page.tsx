@@ -1,25 +1,40 @@
 'use client';
 
+import { useRouter } from 'next/navigation';
+import { supabase } from '../../src/lib/supabase';
+
+const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:5005';
+
 export default function PricingPage() {
   const plans = [
     { name: 'FREE', price: '0', desc: 'Con pubblicità', id: null },
     { name: 'PRO', price: '29,99', desc: 'Crediti limitati', id: 'price_1TkomdRZR2YaFu2sAgrK3et9' },
     { name: 'VIP', price: '99,99', desc: 'Crediti illimitati', id: 'price_1TkonxRZR2YaFu2shjm0yOjd' },
   ];
+  const router = useRouter();
 
   const handleUpgrade = async (priceId: string | null) => {
     if (!priceId) return alert("Sei già nel piano Free!");
 
     try {
-      // Usiamo la query string per evitare problemi di parsing del body
-      const res = await fetch(`http://localhost:5005/api/create-checkout-session?priceId=${priceId}`, {
+      const { data: { session } } = await supabase.auth.getSession();
+
+      if (!session) {
+        router.push('/login');
+        return;
+      }
+
+      const res = await fetch(`${BACKEND_URL}/api/create-checkout-session?priceId=${priceId}`, {
         method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${session.access_token}`,
+        },
       });
 
       const data = await res.json();
 
       if (res.ok && data.url) {
-        window.location.href = data.url;
+        window.location.assign(data.url);
       } else {
         alert("Errore: " + (data.error || "Sessione non creata"));
       }

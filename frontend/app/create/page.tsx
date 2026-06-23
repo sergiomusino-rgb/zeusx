@@ -1,12 +1,6 @@
 'use client';
 import { useState } from 'react';
-import { createClient } from '@supabase/supabase-js';
-
-// Inizializza Supabase
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-);
+import { supabase } from '../../src/lib/supabase';
 
 export default function CreateAppPage() {
   const [prompt, setPrompt] = useState('');
@@ -17,8 +11,7 @@ export default function CreateAppPage() {
     setLoading(true);
 
     try {
-      // 1. Chiamata corretta al tuo server Node.js sulla porta 5005
-      const res = await fetch('http://localhost:5005/generate-app', {
+      const res = await fetch('/api/generate-app', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ prompt, lang: 'it' }),
@@ -28,11 +21,9 @@ export default function CreateAppPage() {
       
       const config = await res.json();
 
-      // 2. Ottieni l'utente corrente
       const { data: { user } } = await supabase.auth.getUser();
 
-      // 3. Salva la configurazione in Supabase
-      const { data, error } = await supabase
+      const { error } = await supabase
         .from('app_definitions')
         .insert([
           { 
@@ -46,10 +37,10 @@ export default function CreateAppPage() {
       if (error) throw error;
 
       alert(`App "${config.appName}" creata e salvata con successo!`);
-      setPrompt(''); // Pulisce il campo dopo il successo
+      setPrompt('');
     } catch (error) {
       console.error("Errore:", error);
-      alert("Si è verificato un errore. Assicurati che il server sulla porta 5005 sia attivo.");
+      alert("Si è verificato un errore durante la generazione dell'app.");
     } finally {
       setLoading(false);
     }

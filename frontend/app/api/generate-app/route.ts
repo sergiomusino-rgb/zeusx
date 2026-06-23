@@ -18,5 +18,18 @@ export async function POST(req: Request) {
 
     const result = await model.generateContent(systemInstruction);
     const text = result.response.text();
-    
-    // PULIZIA: Rimuove eventuali blocchi markdown ```json ...
+
+    // PULIZIA: Rimuove eventuali blocchi markdown ```json ...```
+    const cleaned = text.replace(/```json\s*/g, '').replace(/```/g, '').trim();
+    const parsed = JSON.parse(cleaned);
+
+    return NextResponse.json(parsed);
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : "Errore nella generazione dell'app";
+    console.error("Errore generate-app:", error);
+    return NextResponse.json(
+      { error: message },
+      { status: 500 }
+    );
+  }
+}

@@ -77,7 +77,7 @@ export default function DashboardHome() {
             <span className="text-xs text-slate-500">Oggi, 11:45</span>
           </div>
           <div className="py-3 flex justify-between items-center">
-            <span className="text-slate-300">Analisi layout d'interfaccia SaaS</span>
+            <span className="text-slate-300">Analisi layout d&apos;interfaccia SaaS</span>
             <span className="text-xs text-slate-500">Ieri, 18:20</span>
           </div>
         </div>

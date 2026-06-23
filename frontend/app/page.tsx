@@ -19,7 +19,7 @@ export default function Home() {
         <section className="px-6 max-w-5xl w-full text-center flex flex-col items-center gap-6">
           
           <h2 className="text-4xl md:text-7xl font-black tracking-tight max-w-4xl leading-tight">
-            L'Automazione AI di Ultima Generazione
+            L&apos;Automazione AI di Ultima Generazione
           </h2>
           
           <p className="text-lg md:text-xl text-slate-400 max-w-2xl font-light leading-relaxed">

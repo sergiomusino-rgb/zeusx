@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from 'react';
+import { useEffect } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation'; // Aggiunto useRouter
 import Link from 'next/link';
 
@@ -8,19 +8,16 @@ export default function SuccessPage() {
   const searchParams = useSearchParams();
   const router = useRouter(); // Inizializzato il router
   const sessionId = searchParams.get('session_id');
-  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     if (sessionId) {
       console.log("Pagamento completato con sessione:", sessionId);
-      setLoading(false);
 
-      // Reindirizzamento automatico dopo 3 secondi
       const timer = setTimeout(() => {
         router.push('/dashboard');
       }, 3000);
 
-      return () => clearTimeout(timer); // Pulizia del timer
+      return () => clearTimeout(timer);
     }
   }, [sessionId, router]);
 

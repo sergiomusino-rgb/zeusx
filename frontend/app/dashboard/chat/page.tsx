@@ -1,7 +1,13 @@
 'use client';
-import { useState, useRef, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { supabase } from '../../../src/lib/supabase';
+
+const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:5005';
+
+const getErrorMessage = (error: unknown) => {
+  return error instanceof Error ? error.message : 'Errore dal server';
+};
 
 interface Message {
   id: string; role: 'user' | 'assistant'; content: string; timestamp: string; provider?: string;
@@ -12,6 +18,7 @@ export default function ChatPage() {
   const [input, setInput] = useState('');
   const [provider, setProvider] = useState('groq');
   const [userId, setUserId] = useState<string | null>(null);
+  const [accessToken, setAccessToken] = useState<string | null>(null);
   const [isSending, setIsSending] = useState(false);
   const router = useRouter();
 
@@ -20,8 +27,11 @@ export default function ChatPage() {
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) { router.push('/login'); return; }
       setUserId(session.user.id);
+      setAccessToken(session.access_token);
       try {
-        const res = await fetch(`http://127.0.0.1:5005/api/chat/history?userId=${session.user.id}`);
+        const res = await fetch(`${BACKEND_URL}/api/chat/history`, {
+          headers: { 'Authorization': `Bearer ${session.access_token}` },
+        });
         if (res.ok) setMessages(await res.json());
       } catch (err) { console.error("Errore storico:", err); }
     };
@@ -29,10 +39,13 @@ export default function ChatPage() {
   }, [router]);
 
   // Logica di Retry con Backoff Esponenziale
-  const fetchWithRetry = async (url: string, options: RequestInit, retries = 5): Promise<any> => {
+  const fetchWithRetry = async (
+    url: string,
+    options: RequestInit,
+    retries = 5
+  ): Promise<{ reply: string; provider?: string }> => {
     const response = await fetch(url, options);
     
-    // Se 503, attendi (2s, 4s, 6s, 8s, 10s)
     if (response.status === 503 && retries > 0) {
       const waitTime = (6 - retries) * 2000;
       console.warn(`Server occupato (503). Riprovo tra ${waitTime/1000}s...`);
@@ -47,7 +60,7 @@ export default function ChatPage() {
 
   const handleSendMessage = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!input.trim() || !userId || isSending) return;
+    if (!input.trim() || !userId || !accessToken || isSending) return;
 
     const userMsg: Message = { id: Date.now().toString(), role: 'user', content: input, timestamp: new Date().toLocaleTimeString() };
     setMessages(prev => [...prev, userMsg]);
@@ -55,10 +68,13 @@ export default function ChatPage() {
     setIsSending(true);
 
     try {
-      const data = await fetchWithRetry('http://127.0.0.1:5005/api/chat', {
+      const data = await fetchWithRetry(`${BACKEND_URL}/api/chat`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ message: userMsg.content, provider, userId }),
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${accessToken}`,
+        },
+        body: JSON.stringify({ message: userMsg.content, provider }),
       });
       
       setMessages(prev => [...prev, { 
@@ -68,8 +84,8 @@ export default function ChatPage() {
         timestamp: new Date().toLocaleTimeString(), 
         provider: data.provider 
       }]);
-    } catch (err: any) { 
-      console.error("DEBUG INVIO MESSAGGIO:", err.message);
+    } catch (err: unknown) { 
+      console.error("DEBUG INVIO MESSAGGIO:", getErrorMessage(err));
       alert("Il servizio AI è sovraccarico dopo diversi tentativi. Riprova più tardi.");
     } finally {
       setIsSending(false);
