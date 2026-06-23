@@ -1,88 +1,46 @@
-'use client';
-
+"use client";
 import Link from 'next/link';
 
-export default function DashboardHome() {
+export default function DashboardPage() {
+  const features = [
+    { title: "Vision & AI Edit", desc: "Analisi avanzata e modifica immagini", link: "/dashboard/vision", color: "bg-blue-600" },
+    { title: "Statistiche", desc: "Monitoraggio dei tuoi processi", link: "/dashboard/stats", color: "bg-purple-600" },
+    { title: "Impostazioni", desc: "Gestione API e profilo", link: "/dashboard/settings", color: "bg-gray-600" },
+  ];
+
   return (
-    <div className="max-w-6xl mx-auto space-y-8">
-      
-      {/* BENVENUTO CON BOTTONE ACQUISTA */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+    <div className="min-h-screen bg-gray-950 text-white p-8">
+      {/* Header */}
+      <header className="max-w-6xl mx-auto mb-12 flex justify-between items-center">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">Pannello di Controllo</h1>
-          <p className="text-slate-400 mt-1">Bentornato su ZEUSX. Seleziona uno strumento AI per iniziare a lavorare.</p>
+          <h1 className="text-4xl font-extrabold text-white">ZeusX Dashboard</h1>
+          <p className="text-gray-400">Bentornato, Sergio. Cosa vuoi fare oggi?</p>
         </div>
-        
-        <Link 
-          href="/checkout" 
-          className="inline-flex items-center justify-center bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2.5 px-6 rounded-xl transition shadow-lg shadow-blue-900/20"
-        >
-          <span className="mr-2">💳</span> Acquista Crediti
+        <Link href="/" className="px-6 py-2 bg-gray-800 rounded-full hover:bg-gray-700 transition">
+          Torna alla Home
         </Link>
-      </div>
+      </header>
 
-      {/* GRIGLIA CARDS DELLE FUNZIONALITÀ */}
-      <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-        
-        {/* CARD CHAT */}
-        <div className="bg-slate-900 border border-slate-800 p-6 rounded-2xl hover:border-blue-500/40 transition group flex flex-col justify-between">
-          <div>
-            <div className="text-2xl mb-4">💬</div>
-            <h3 className="text-lg font-bold group-hover:text-blue-400 transition">Chat AI Avanzata</h3>
-            <p className="text-sm text-slate-400 mt-2 leading-relaxed">
-              Interagisci con i modelli più veloci del mondo (Groq/OpenAI) con supporto per lo streaming in tempo reale.
-            </p>
-          </div>
-          <Link href="/dashboard/chat" className="mt-6 block text-center bg-slate-950 border border-slate-800 hover:bg-slate-800 text-xs font-medium py-2.5 rounded-xl transition">
-            Apri Chat →
+      {/* Grid delle Pagine */}
+      <main className="max-w-6xl mx-auto grid grid-cols-1 md:grid-cols-3 gap-6">
+        {features.map((item, index) => (
+          <Link href={item.link} key={index} className="group">
+            <div className={`p-8 rounded-2xl border border-gray-800 bg-gray-900 transition-all hover:border-gray-500 hover:scale-105`}>
+              <div className={`w-12 h-12 ${item.color} rounded-xl mb-6 flex items-center justify-center`}>
+                <span className="text-2xl">⚡</span>
+              </div>
+              <h2 className="text-xl font-bold mb-2">{item.title}</h2>
+              <p className="text-gray-400 mb-6">{item.desc}</p>
+              <span className="text-blue-400 font-semibold group-hover:underline">Accedi →</span>
+            </div>
           </Link>
-        </div>
+        ))}
+      </main>
 
-        {/* CARD VISION */}
-        <div className="bg-slate-900 border border-slate-800 p-6 rounded-2xl hover:border-indigo-500/40 transition group flex flex-col justify-between">
-          <div>
-            <div className="text-2xl mb-4">👁️</div>
-            <h3 className="text-lg font-bold group-hover:text-indigo-400 transition">Vision & Documenti</h3>
-            <p className="text-sm text-slate-400 mt-2 leading-relaxed">
-              Invia immagini per estrarre dati, analizzare schemi elettrici o elaborare interi documenti PDF complessi.
-            </p>
-          </div>
-          <Link href="/dashboard/vision" className="mt-6 block text-center bg-slate-950 border border-slate-800 hover:bg-slate-800 text-xs font-medium py-2.5 rounded-xl transition">
-            Analizza File →
-          </Link>
-        </div>
-
-        {/* CARD PROGETTI */}
-        <div className="bg-slate-900 border border-slate-800 p-6 rounded-2xl hover:border-purple-500/40 transition group flex flex-col justify-between">
-          <div>
-            <div className="text-2xl mb-4">📁</div>
-            <h3 className="text-lg font-bold group-hover:text-purple-400 transition">I tuoi Progetti</h3>
-            <p className="text-sm text-slate-400 mt-2 leading-relaxed">
-              Accedi alla cronologia completa dei tuoi lavori, delle chat salvate e dei dati elaborati dal motore AI.
-            </p>
-          </div>
-          <Link href="/dashboard/projects" className="mt-6 block text-center bg-slate-950 border border-slate-800 hover:bg-slate-800 text-xs font-medium py-2.5 rounded-xl transition">
-            Vedi Archivio →
-          </Link>
-        </div>
-
-      </div>
-
-      {/* SEZIONE ATTIVITÀ RECENTI */}
-      <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6">
-        <h3 className="text-base font-bold mb-4">Ultime operazioni effettuate</h3>
-        <div className="divide-y divide-slate-800/60 text-sm">
-          <div className="py-3 flex justify-between items-center">
-            <span className="text-slate-300">Generazione script automazione business</span>
-            <span className="text-xs text-slate-500">Oggi, 11:45</span>
-          </div>
-          <div className="py-3 flex justify-between items-center">
-            <span className="text-slate-300">Analisi layout d'interfaccia SaaS</span>
-            <span className="text-xs text-slate-500">Ieri, 18:20</span>
-          </div>
-        </div>
-      </div>
-
+      {/* Footer di sistema */}
+      <footer className="max-w-6xl mx-auto mt-20 pt-8 border-t border-gray-900 text-center text-gray-600">
+        <p>ZeusX System Control v1.0.0</p>
+      </footer>
     </div>
   );
 }
