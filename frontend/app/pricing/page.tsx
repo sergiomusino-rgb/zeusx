@@ -13,10 +13,17 @@ export default function PricingPage() {
     if (!priceId) return alert("Sei già nel piano Free!");
 
     try {
-      const res = await fetch('/api/create-checkout-session', {
+      const { data: { session } } = await supabase.auth.getSession();
+      const token = session?.access_token;
+
+      console.log('[Pricing] token presente:', !!token, 'lunghezza:', token?.length);
+
+      const res = await fetch('https://zeusx-backend.onrender.com/api/create-checkout-session?priceId=' + priceId, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ priceId }),
+        headers: {
+          'Authorization': token ? `Bearer ${token}` : '',
+          'Content-Type': 'application/json',
+        },
       });
 
       const data = await res.json();
