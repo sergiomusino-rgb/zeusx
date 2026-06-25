@@ -1,8 +1,25 @@
 'use client';
 
+import { useEffect, useState } from 'react';
 import { supabase } from '@/src/lib/supabase';
 
 export default function PricingPage() {
+  const [userId, setUserId] = useState<string | null>(null);
+
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      console.log('[Pricing] useEffect session:', !!session);
+      setUserId(session?.user?.id || null);
+    });
+
+    const { data: listener } = supabase.auth.onAuthStateChange((_event, session) => {
+      console.log('[Pricing] auth state change:', _event, !!session);
+      setUserId(session?.user?.id || null);
+    });
+
+    return () => listener.subscription.unsubscribe();
+  }, []);
+
   const plans = [
     { name: 'FREE', price: '0', desc: 'Con pubblicità', id: null },
     { name: 'PRO', price: '29,99', desc: 'Crediti limitati', id: 'price_1TkomdRZR2YaFu2sAgrK3et9' },
@@ -12,31 +29,20 @@ export default function PricingPage() {
   const handleUpgrade = async (priceId: string | null) => {
     if (!priceId) return alert("Sei già nel piano Free!");
 
+    const { data: { session }, error } = await supabase.auth.getSession();
+    console.log('[Pricing] getSession error:', error?.message, 'session:', !!session, 'userId state:', userId);
+
+    if (!session?.access_token) {
+      console.log('[Pricing] Nessun token valido');
+      alert('Sessione non valida. Riprova il login.');
+      return;
+    }
+
     try {
-      const { data: { session }, error } = await supabase.auth.getSession();
-      console.log('[Pricing] getSession error:', error?.message);
-      console.log('[Pricing] cookies visibili:', document.cookie.split(';').map(c => c.split('=')[0].trim()));
-
-      let token = session?.access_token;
-
-      if (!token) {
-        console.log('[Pricing] tentativo refresh sessione...');
-        const { data: refreshData, error: refreshError } = await supabase.auth.refreshSession();
-        console.log('[Pricing] refresh error:', refreshError?.message);
-        token = refreshData.session?.access_token;
-      }
-
-      console.log('[Pricing] token presente:', !!token, 'lunghezza:', token?.length);
-
-      if (!token) {
-        alert('Sessione scaduta. Effettua di nuovo il login.');
-        return;
-      }
-
       const res = await fetch('https://zeusx-backend.onrender.com/api/create-checkout-session?priceId=' + priceId, {
         method: 'POST',
         headers: {
-          'Authorization': `Bearer ${token}`,
+          'Authorization': `Bearer ${session.access_token}`,
           'Content-Type': 'application/json',
         },
       });
