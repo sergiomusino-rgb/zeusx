@@ -20,11 +20,15 @@ function getStripe() {
 
 async function getUser(req) {
   const authHeader = req.headers.authorization;
+  console.log('[getUser] Authorization header:', authHeader);
   const token = authHeader?.startsWith('Bearer ') ? authHeader.slice(7) : null;
   if (!token) return null;
   const supabase = getSupabase();
   const { data: { user }, error } = await supabase.auth.getUser(token);
-  if (error || !user) return null;
+  if (error || !user) {
+    console.log('[getUser] getUser error:', error?.message || 'no user');
+    return null;
+  }
   return user;
 }
 

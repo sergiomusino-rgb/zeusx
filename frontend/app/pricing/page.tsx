@@ -15,6 +15,7 @@ export default function PricingPage() {
     try {
       const { data: { session } } = await supabase.auth.getSession();
       const token = session?.access_token;
+      console.log('[Pricing] token presente:', !!token, 'lunghezza:', token?.length);
 
       const res = await fetch(`https://zeusx-backend.onrender.com/api/create-checkout-session?priceId=${priceId}`, {
         method: 'POST',
