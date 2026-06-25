@@ -13,15 +13,30 @@ export default function PricingPage() {
     if (!priceId) return alert("Sei già nel piano Free!");
 
     try {
-      const { data: { session } } = await supabase.auth.getSession();
-      const token = session?.access_token;
+      const { data: { session }, error } = await supabase.auth.getSession();
+      console.log('[Pricing] getSession error:', error?.message);
+      console.log('[Pricing] cookies visibili:', document.cookie.split(';').map(c => c.split('=')[0].trim()));
+
+      let token = session?.access_token;
+
+      if (!token) {
+        console.log('[Pricing] tentativo refresh sessione...');
+        const { data: refreshData, error: refreshError } = await supabase.auth.refreshSession();
+        console.log('[Pricing] refresh error:', refreshError?.message);
+        token = refreshData.session?.access_token;
+      }
 
       console.log('[Pricing] token presente:', !!token, 'lunghezza:', token?.length);
+
+      if (!token) {
+        alert('Sessione scaduta. Effettua di nuovo il login.');
+        return;
+      }
 
       const res = await fetch('https://zeusx-backend.onrender.com/api/create-checkout-session?priceId=' + priceId, {
         method: 'POST',
         headers: {
-          'Authorization': token ? `Bearer ${token}` : '',
+          'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json',
         },
       });
