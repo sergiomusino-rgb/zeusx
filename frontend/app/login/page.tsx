@@ -27,10 +27,11 @@ export default function LoginPage() {
         setIsRegistering(false);
       } else {
         // Accesso utente esistente
-        const { error } = await supabase.auth.signInWithPassword({ email, password });
+        const { error, data } = await supabase.auth.signInWithPassword({ email, password });
         if (error) throw error;
-        // Reindirizza alla dashboard dopo il login
-        router.push('/dashboard');
+        console.log('[Login] signIn success, session:', !!data.session);
+        // Reindirizza alla dashboard dopo il login con redirect completo
+        window.location.href = '/dashboard';
       }
     } catch (err: any) {
       setError(err.message || 'Si è verificato un errore durante l\'autenticazione.');
