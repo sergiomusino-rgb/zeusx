@@ -30,8 +30,11 @@ export default function LoginPage() {
         const { error, data } = await supabase.auth.signInWithPassword({ email, password });
         console.log('[Login] signIn result:', { error: error?.message, session: !!data.session, user: data.user?.id });
         if (error) throw error;
-        // Reindirizza alla dashboard dopo il login con redirect completo
-        window.location.href = '/dashboard';
+        // Aspetta che la sessione venga salvata prima del redirect
+        setTimeout(() => {
+          console.log('[Login] redirect to dashboard');
+          window.location.href = '/dashboard';
+        }, 1000);
       }
     } catch (err: any) {
       setError(err.message || 'Si è verificato un errore durante l\'autenticazione.');
