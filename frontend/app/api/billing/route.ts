@@ -1,7 +1,7 @@
 import { createClient } from "@supabase/supabase-js";
 import { NextResponse } from "next/server";
 import Stripe from "stripe";
-import { ensureTenantAccess } from "@/src/lib/tenant";
+import { ensureTenantAccess } from "../../../src/lib/tenant";
 
 const STRIPE_API_VERSION = "2026-06-24.dahlia";
 
