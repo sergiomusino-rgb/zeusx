@@ -20,8 +20,7 @@ export async function POST(req: Request) {
     const text = result.response.text();
     
     // PULIZIA: Rimuove eventuali blocchi markdown ```json e ```
-    const cleanedText = text.replace(/```json\n?|\n?
-```/g, '').trim();
+    const cleanedText = text.replace(/```json\s*|\s*```/g, '').trim();
     
     return NextResponse.json(JSON.parse(cleanedText));
   } catch (error) {

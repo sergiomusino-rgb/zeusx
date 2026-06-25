@@ -19,11 +19,11 @@ export default function Home() {
         <section className="px-6 max-w-5xl w-full text-center flex flex-col items-center gap-6">
           
           <h2 className="text-4xl md:text-7xl font-black tracking-tight max-w-4xl leading-tight">
-            L'Automazione AI di Ultima Generazione
+            Lautomazione e gestione della tua azienda
           </h2>
           
           <p className="text-lg md:text-xl text-slate-400 max-w-2xl font-light leading-relaxed">
-            Generazione contenuti, analisi, elaborazione dati e flussi di lavoro intelligenti tutti uniti in un unico ecosistema.
+            Generazione di gestionali AI completamente personalizzabili per il tuo busness.
           </p>
 
           <div className="mt-2 px-4 py-2 rounded-full border border-slate-800 bg-slate-900/50 backdrop-blur">
