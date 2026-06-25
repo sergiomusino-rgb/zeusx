@@ -9,7 +9,9 @@ function getCookie(name: string): string | null {
 function setCookie(name: string, value: string, days = 7) {
   if (typeof document === 'undefined') return;
   const expires = new Date(Date.now() + days * 24 * 60 * 60 * 1000).toUTCString();
-  document.cookie = `${name}=${encodeURIComponent(value)}; expires=${expires}; path=/; SameSite=Lax; Secure`;
+  const encoded = encodeURIComponent(value);
+  console.log(`[setCookie] name=${name} length=${encoded.length}`);
+  document.cookie = `${name}=${encoded}; expires=${expires}; path=/; SameSite=Lax; Secure`;
 }
 
 function removeCookie(name: string) {
@@ -19,12 +21,16 @@ function removeCookie(name: string) {
 
 const cookieStorage = {
   getItem(key: string): string | null {
-    return getCookie(key);
+    const val = getCookie(key);
+    console.log(`[cookieStorage getItem] key=${key} found=${!!val}`);
+    return val;
   },
   setItem(key: string, value: string) {
+    console.log(`[cookieStorage setItem] key=${key}`);
     setCookie(key, value);
   },
   removeItem(key: string) {
+    console.log(`[cookieStorage removeItem] key=${key}`);
     removeCookie(key);
   },
 };

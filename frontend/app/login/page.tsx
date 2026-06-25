@@ -28,8 +28,8 @@ export default function LoginPage() {
       } else {
         // Accesso utente esistente
         const { error, data } = await supabase.auth.signInWithPassword({ email, password });
+        console.log('[Login] signIn result:', { error: error?.message, session: !!data.session, user: data.user?.id });
         if (error) throw error;
-        console.log('[Login] signIn success, session:', !!data.session);
         // Reindirizza alla dashboard dopo il login con redirect completo
         window.location.href = '/dashboard';
       }
