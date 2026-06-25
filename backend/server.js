@@ -31,9 +31,13 @@ app.use(helmet());
 
 // Stripe webhook raw body handler DEVE essere prima di express.json()
 const stripeWebhookSecret = process.env.STRIPE_WEBHOOK_SECRET || '';
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY || '', {
-  apiVersion: '2026-06-24.dahlia',
-});
+const stripeSecretKey = process.env.STRIPE_SECRET_KEY || '';
+const stripe = stripeSecretKey ? new Stripe(stripeSecretKey, { apiVersion: '2026-06-24.dahlia' }) : null;
+
+function getStripe() {
+  if (!stripe) throw new Error('Stripe non configurato');
+  return stripe;
+}
 
 function getSupabase() {
   return createClient(
@@ -81,6 +85,11 @@ async function getTenantIdBySubscriptionId(supabase, subscriptionId) {
 }
 
 app.post('/api/webhooks/stripe', express.raw({ type: 'application/json' }), async (req, res) => {
+  if (!stripe) {
+    console.error('[Stripe Webhook] STRIPE_SECRET_KEY non configurata');
+    return res.status(503).json({ error: 'Stripe non configurato' });
+  }
+
   const payload = req.body;
   const signature = req.headers['stripe-signature'] || '';
 
