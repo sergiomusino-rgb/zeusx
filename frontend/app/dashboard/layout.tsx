@@ -17,6 +17,7 @@ export default function DashboardLayout({
     { name: '💬 Chat AI', href: '/dashboard/chat' },
     { name: '👁️ Vision AI', href: '/dashboard/vision' },
     { name: '📁 I tuoi Progetti', href: '/dashboard/projects' },
+    { name: '💎 Piani e Abbonamento', href: '/pricing' },
     { name: '⚙️ Impostazioni', href: '/dashboard/settings' },
   ];
 
