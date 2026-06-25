@@ -1,39 +1,33 @@
-import { createClient } from "@supabase/supabase-js";
 import { NextResponse } from "next/server";
-
-function getSupabase() {
-  return createClient(
-    process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL || "",
-    process.env.SUPABASE_SERVICE_ROLE_KEY || ""
-  );
-}
-
-async function getUser(req: Request) {
-  const authHeader = req.headers.get("authorization");
-  const token = authHeader?.startsWith("Bearer ") ? authHeader.slice(7) : null;
-  if (!token) return null;
-  const supabase = getSupabase();
-  const { data: { user }, error } = await supabase.auth.getUser(token);
-  if (error || !user) return null;
-  return user;
-}
+import { createServerSupabase } from "../../../src/lib/supabase-server";
 
 export async function POST(req: Request) {
-  const user = await getUser(req);
-  if (!user) return NextResponse.json({ error: "Non autorizzato" }, { status: 401 });
-
   try {
+    const supabase = await createServerSupabase();
+    const { data: { user }, error: userError } = await supabase.auth.getUser();
+
+    if (userError || !user) {
+      return NextResponse.json({ error: "Non autorizzato" }, { status: 401 });
+    }
+
     const body = await req.json();
-    const { priceId, tenantId: requestedTenantId } = body;
+    const { priceId } = body;
 
     if (!priceId) return NextResponse.json({ error: "priceId mancante" }, { status: 400 });
 
     const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || "https://zeusx-backend.onrender.com";
 
-    const res = await fetch(`${backendUrl}/api/create-checkout-session?priceId=${encodeURIComponent(priceId)}&tenantId=${encodeURIComponent(requestedTenantId || "")}`, {
+    const sessionRes = await supabase.auth.getSession();
+    const token = sessionRes.data.session?.access_token;
+
+    if (!token) {
+      return NextResponse.json({ error: "Token non disponibile" }, { status: 401 });
+    }
+
+    const res = await fetch(`${backendUrl}/api/create-checkout-session?priceId=${encodeURIComponent(priceId)}`, {
       method: "POST",
       headers: {
-        "Authorization": `Bearer ${process.env.BACKEND_SERVICE_TOKEN || ""}`,
+        "Authorization": `Bearer ${token}`,
         "Content-Type": "application/json",
       },
     });
