@@ -26,7 +26,7 @@ export const DashboardCardSchema = z.object({
   table: z.string(),
   label: z.string(),
   field: z.string().optional(),
-  filter: z.record(z.any()).optional(),
+  filter: z.record(z.string(), z.any()).optional(),
 });
 
 export const UIConfigSchema = z.object({

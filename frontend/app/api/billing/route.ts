@@ -44,7 +44,7 @@ export async function POST(req: Request) {
     }
 
     const stripe = new Stripe(process.env.STRIPE_SECRET_KEY || "", {
-      apiVersion: STRIPE_API_VERSION,
+      apiVersion: "2025-02-24.acacia" as any,
     });
 
     const portalSession = await stripe.billingPortal.sessions.create({

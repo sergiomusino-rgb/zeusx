@@ -5,7 +5,7 @@ import Stripe from "stripe";
 const STRIPE_API_VERSION = "2026-06-24.dahlia";
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY || "", {
-  apiVersion: STRIPE_API_VERSION,
+  apiVersion: "2025-02-24.acacia" as any,
 });
 
 const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET || "";
