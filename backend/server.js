@@ -213,6 +213,9 @@ Rispondi SOLO con il JSON valido, senza testo aggiuntivo.`;
   }
 });
 
+// --- STRIPE ROUTES ---
+app.use('/api', require('./routes/stripe'));
+
 // --- ERROR HANDLER ---
 app.use((err, _req, res, _next) => {
   console.error('Unhandled error:', err);
