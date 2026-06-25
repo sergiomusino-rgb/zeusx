@@ -5,7 +5,7 @@ export default function CheckoutPage() {
 
   const handleUpgrade = async () => {
     try {
-      const res = await fetch(`http://localhost:5005/api/create-checkout-session?priceId=${priceId}`, {
+      const res = await fetch(`https://zeusx-backend.onrender.com/api/create-checkout-session?priceId=${priceId}`, {
         method: 'POST',
       });
 

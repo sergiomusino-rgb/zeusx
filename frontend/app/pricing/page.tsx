@@ -12,7 +12,7 @@ export default function PricingPage() {
 
     try {
       // Usiamo la query string per evitare problemi di parsing del body
-      const res = await fetch(`http://localhost:5005/api/create-checkout-session?priceId=${priceId}`, {
+      const res = await fetch(`https://zeusx-backend.onrender.com/api/create-checkout-session?priceId=${priceId}`, {
         method: 'POST',
       });
 

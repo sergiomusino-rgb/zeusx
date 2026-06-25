@@ -14,10 +14,10 @@ export default function ChatPage() {
     setInput('');
 
     try {
-      const response = await fetch('https://vigilant-adventure-p7jq5j65p97w3gvw-5005.app.github.dev/api/vision/analyze', {
+      const response = await fetch('https://zeusx-backend.onrender.com/api/chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ prompt: userMessage, image: null })
+        body: JSON.stringify({ messages: [{ role: 'user', content: userMessage }], provider: 'groq' })
       });
 
       const data = await response.json();

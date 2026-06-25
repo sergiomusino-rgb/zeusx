@@ -10,7 +10,7 @@ export default function VisionPage() {
   const fileInput = useRef<HTMLInputElement>(null);
 
   // INSERISCI QUI IL TUO URL PUBBLICO (ES: https://xxxxx-5005.app.github.dev)
-  const BACKEND_URL =  "https://vigilant-adventure-p7jq5j65p97w3gvw-5005.app.github.dev";
+  const BACKEND_URL = "https://zeusx-backend.onrender.com";
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
