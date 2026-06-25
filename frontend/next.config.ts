@@ -1,13 +1,13 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  // Ignora errori di build TypeScript per evitare blocchi inutili
   typescript: { ignoreBuildErrors: true },
+  turbopack: false,
   async rewrites() {
     return [
       {
         source: "/api/:path*",
-        destination: "http://127.0.0.1:5005/api/:path*",
+        destination: `${process.env.NEXT_PUBLIC_BACKEND_URL || "https://zeusx-backend.onrender.com"}/api/:path*`,
       },
     ];
   },

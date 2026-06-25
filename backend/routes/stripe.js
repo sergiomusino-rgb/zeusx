@@ -22,14 +22,18 @@ async function getUser(req) {
   const authHeader = req.headers.authorization;
   const serviceToken = process.env.BACKEND_SERVICE_TOKEN;
 
+  console.log('[getUser] authHeader:', authHeader);
+  console.log('[getUser] serviceToken presente:', !!serviceToken);
+  console.log('[getUser] match:', serviceToken ? authHeader === `Bearer ${serviceToken}` : false);
+
   if (serviceToken && authHeader === `Bearer ${serviceToken}`) {
     const userId = req.headers['x-user-id'];
     const userEmail = req.headers['x-user-email'];
+    console.log('[getUser] service auth - userId:', userId, 'email:', userEmail);
     if (!userId) return null;
     return { id: userId, email: userEmail };
   }
 
-  console.log('[getUser] Authorization header:', authHeader);
   const token = authHeader?.startsWith('Bearer ') ? authHeader.slice(7) : null;
   if (!token) return null;
   const supabase = getSupabase();
