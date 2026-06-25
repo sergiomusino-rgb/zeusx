@@ -27,7 +27,9 @@ export async function POST(req: Request) {
     const res = await fetch(`${backendUrl}/api/create-checkout-session?priceId=${encodeURIComponent(priceId)}`, {
       method: "POST",
       headers: {
-        "Authorization": `Bearer ${token}`,
+        "Authorization": `Bearer ${process.env.BACKEND_SERVICE_TOKEN || token}`,
+        "X-User-Id": user.id,
+        "X-User-Email": user.email || '',
         "Content-Type": "application/json",
       },
     });
