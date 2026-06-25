@@ -4,6 +4,7 @@ const express = require('express');
 const cors = require('cors');
 const helmet = require('helmet');
 const { createClient } = require('@supabase/supabase-js');
+const Stripe = require('stripe');
 const Groq = require('groq-sdk');
 const { GoogleGenerativeAI } = require('@google/generative-ai');
 const OpenAI = require('openai');
@@ -12,7 +13,7 @@ const Anthropic = require('@anthropic-ai/sdk');
 const app = express();
 const PORT = process.env.PORT || 5005;
 
-// Configurazione CORS: in produzione limitare ai domini consentiti
+// Configurazione CORS
 const allowedOrigins = (process.env.ALLOWED_ORIGINS || '*').split(',').map(s => s.trim());
 app.use(cors({
   origin: (origin, callback) => {
@@ -28,8 +29,215 @@ app.use(cors({
 
 app.use(helmet());
 
-// Webhook Stripe DEVE usare raw body, quindi lo registriamo prima di express.json()
-app.use('/api/webhooks/stripe', express.raw({ type: 'application/json' }), require('./routes/stripe'));
+// Stripe webhook raw body handler DEVE essere prima di express.json()
+const stripeWebhookSecret = process.env.STRIPE_WEBHOOK_SECRET || '';
+const stripe = new Stripe(process.env.STRIPE_SECRET_KEY || '', {
+  apiVersion: '2026-06-24.dahlia',
+});
+
+function getSupabase() {
+  return createClient(
+    process.env.SUPABASE_URL || '',
+    process.env.SUPABASE_SERVICE_ROLE_KEY || ''
+  );
+}
+
+function getPeriodISO(sub, field) {
+  const val = sub[field];
+  return new Date(val * 1000).toISOString();
+}
+
+async function upsertSubscription(supabase, tenantId, data) {
+  const { error } = await supabase
+    .from('subscriptions')
+    .upsert(
+      {
+        tenant_id: tenantId,
+        stripe_customer_id: data.stripe_customer_id,
+        stripe_subscription_id: data.stripe_subscription_id,
+        status: data.status,
+        current_period_start: data.current_period_start,
+        current_period_end: data.current_period_end,
+        updated_at: new Date().toISOString(),
+      },
+      { onConflict: 'tenant_id' }
+    );
+
+  if (error) {
+    console.error('upsertSubscription error:', error);
+    throw error;
+  }
+}
+
+async function getTenantIdBySubscriptionId(supabase, subscriptionId) {
+  const { data, error } = await supabase
+    .from('subscriptions')
+    .select('tenant_id')
+    .eq('stripe_subscription_id', subscriptionId)
+    .single();
+
+  if (error || !data) return null;
+  return data.tenant_id;
+}
+
+app.post('/api/webhooks/stripe', express.raw({ type: 'application/json' }), async (req, res) => {
+  const payload = req.body;
+  const signature = req.headers['stripe-signature'] || '';
+
+  let event;
+  try {
+    event = stripe.webhooks.constructEvent(payload, signature, stripeWebhookSecret);
+  } catch (err) {
+    console.error(`Webhook signature verification failed: ${err.message}`);
+    return res.status(400).json({ error: `Webhook Error: ${err.message}` });
+  }
+
+  const supabase = getSupabase();
+
+  try {
+    switch (event.type) {
+      case 'checkout.session.completed': {
+        const session = event.data.object;
+        const tenantId = session.client_reference_id || session.metadata?.tenant_id;
+        const customerEmail = session.customer_email || session.customer_details?.email;
+
+        console.log(`[Stripe Webhook] checkout.session.completed - sessionId: ${session.id}, tenantId: ${tenantId}, email: ${customerEmail}`);
+
+        if (!tenantId) {
+          console.error('[Stripe Webhook] tenant_id mancante');
+          break;
+        }
+
+        const { data: tenant, error: tenantError } = await supabase
+          .from('tenants')
+          .select('id, name, owner_id')
+          .eq('id', tenantId)
+          .single();
+
+        if (tenantError || !tenant) {
+          console.error(`[Stripe Webhook] tenant ${tenantId} non trovato`, tenantError);
+          break;
+        }
+
+        const { error: updateTenantError } = await supabase
+          .from('tenants')
+          .update({ plan: 'pro', updated_at: new Date().toISOString() })
+          .eq('id', tenantId);
+
+        if (updateTenantError) {
+          console.error(`[Stripe Webhook] errore aggiornamento tenant ${tenantId}`, updateTenantError);
+          throw updateTenantError;
+        }
+
+        const subscriptionId = session.subscription;
+        if (!subscriptionId) {
+          console.error('[Stripe Webhook] subscription id mancante');
+          break;
+        }
+
+        const subscription = await stripe.subscriptions.retrieve(subscriptionId);
+
+        await upsertSubscription(supabase, tenantId, {
+          stripe_customer_id: session.customer,
+          stripe_subscription_id: subscriptionId,
+          status: subscription.status,
+          current_period_start: getPeriodISO(subscription, 'current_period_start'),
+          current_period_end: getPeriodISO(subscription, 'current_period_end'),
+        });
+
+        console.log(`[Stripe Webhook] Subscription attivata per tenant ${tenantId}`);
+        break;
+      }
+
+      case 'invoice.payment_succeeded': {
+        const invoice = event.data.object;
+        const subscriptionId = invoice.subscription;
+        if (!subscriptionId) break;
+
+        const subscription = await stripe.subscriptions.retrieve(subscriptionId);
+        const tenantId = await getTenantIdBySubscriptionId(supabase, subscriptionId);
+
+        if (!tenantId) {
+          console.error(`invoice.payment_succeeded: tenant non trovato per ${subscriptionId}`);
+          break;
+        }
+
+        await upsertSubscription(supabase, tenantId, {
+          stripe_customer_id: invoice.customer,
+          stripe_subscription_id: subscriptionId,
+          status: subscription.status,
+          current_period_start: getPeriodISO(subscription, 'current_period_start'),
+          current_period_end: getPeriodISO(subscription, 'current_period_end'),
+        });
+
+        console.log(`Rinnovo pagato per tenant ${tenantId}`);
+        break;
+      }
+
+      case 'invoice.payment_failed': {
+        const invoice = event.data.object;
+        const subscriptionId = invoice.subscription;
+        if (!subscriptionId) break;
+
+        const tenantId = await getTenantIdBySubscriptionId(supabase, subscriptionId);
+        if (!tenantId) break;
+
+        await supabase
+          .from('subscriptions')
+          .update({ status: 'past_due', updated_at: new Date().toISOString() })
+          .eq('tenant_id', tenantId)
+          .eq('stripe_subscription_id', subscriptionId);
+
+        console.log(`Pagamento fallito per tenant ${tenantId}`);
+        break;
+      }
+
+      case 'customer.subscription.deleted': {
+        const subscription = event.data.object;
+        const subscriptionId = subscription.id;
+
+        const tenantId = await getTenantIdBySubscriptionId(supabase, subscriptionId);
+        if (!tenantId) break;
+
+        await supabase
+          .from('subscriptions')
+          .update({ status: 'canceled', updated_at: new Date().toISOString() })
+          .eq('tenant_id', tenantId)
+          .eq('stripe_subscription_id', subscriptionId);
+
+        console.log(`Subscription cancellata per tenant ${tenantId}`);
+        break;
+      }
+
+      case 'customer.subscription.updated': {
+        const subscription = event.data.object;
+        const subscriptionId = subscription.id;
+
+        const tenantId = await getTenantIdBySubscriptionId(supabase, subscriptionId);
+        if (!tenantId) break;
+
+        await upsertSubscription(supabase, tenantId, {
+          stripe_customer_id: subscription.customer,
+          stripe_subscription_id: subscriptionId,
+          status: subscription.status,
+          current_period_start: getPeriodISO(subscription, 'current_period_start'),
+          current_period_end: getPeriodISO(subscription, 'current_period_end'),
+        });
+
+        console.log(`Subscription aggiornata per tenant ${tenantId}`);
+        break;
+      }
+
+      default:
+        console.log(`Unhandled event type: ${event.type}`);
+    }
+
+    return res.json({ received: true });
+  } catch (err) {
+    console.error('Errore webhook Stripe:', err);
+    res.status(500).json({ error: err.message || 'Errore webhook' });
+  }
+});
 
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ extended: true, limit: '50mb' }));
@@ -40,7 +248,6 @@ const genAI = process.env.GEMINI_API_KEY ? new GoogleGenerativeAI(process.env.GE
 const openai = process.env.OPENAI_API_KEY ? new OpenAI({ apiKey: process.env.OPENAI_API_KEY }) : null;
 const anthropic = process.env.ANTHROPIC_API_KEY ? new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY }) : null;
 
-// Helper: risposta con modello non inizializzato
 function clientMissing(res, provider) {
   return res.status(503).json({ error: `${provider} non configurato. Aggiungi la chiave API.` });
 }
@@ -212,7 +419,7 @@ Rispondi SOLO con il JSON valido, senza testo aggiuntivo.`;
   }
 });
 
-// --- STRIPE ROUTES (escluso webhook già montato sopra) ---
+// --- STRIPE ROUTES (checkout e billing) ---
 app.use('/api', require('./routes/stripe'));
 
 // --- ERROR HANDLER ---
