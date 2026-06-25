@@ -1,5 +1,12 @@
 'use client';
 
+import { createClient } from '@supabase/supabase-js';
+
+const supabase = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL || '',
+  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || ''
+);
+
 export default function PricingPage() {
   const plans = [
     { name: 'FREE', price: '0', desc: 'Con pubblicità', id: null },
@@ -11,9 +18,14 @@ export default function PricingPage() {
     if (!priceId) return alert("Sei già nel piano Free!");
 
     try {
-      // Usiamo la query string per evitare problemi di parsing del body
+      const { data: { session } } = await supabase.auth.getSession();
+      const token = session?.access_token;
+
       const res = await fetch(`https://zeusx-backend.onrender.com/api/create-checkout-session?priceId=${priceId}`, {
         method: 'POST',
+        headers: {
+          'Authorization': token ? `Bearer ${token}` : '',
+        },
       });
 
       const data = await res.json();
