@@ -27,6 +27,10 @@ app.use(cors({
 }));
 
 app.use(helmet());
+
+// Webhook Stripe DEVE usare raw body, quindi lo registriamo prima di express.json()
+app.use('/api/webhooks/stripe', express.raw({ type: 'application/json' }), require('./routes/stripe'));
+
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ extended: true, limit: '50mb' }));
 
@@ -35,11 +39,6 @@ const groq = process.env.GROQ_API_KEY ? new Groq({ apiKey: process.env.GROQ_API_
 const genAI = process.env.GEMINI_API_KEY ? new GoogleGenerativeAI(process.env.GEMINI_API_KEY) : null;
 const openai = process.env.OPENAI_API_KEY ? new OpenAI({ apiKey: process.env.OPENAI_API_KEY }) : null;
 const anthropic = process.env.ANTHROPIC_API_KEY ? new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY }) : null;
-
-// Supabase service role per API interne (non esporre al frontend)
-const supabase = (process.env.SUPABASE_URL && process.env.SUPABASE_SERVICE_ROLE_KEY)
-  ? createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY)
-  : null;
 
 // Helper: risposta con modello non inizializzato
 function clientMissing(res, provider) {
@@ -213,7 +212,7 @@ Rispondi SOLO con il JSON valido, senza testo aggiuntivo.`;
   }
 });
 
-// --- STRIPE ROUTES ---
+// --- STRIPE ROUTES (escluso webhook già montato sopra) ---
 app.use('/api', require('./routes/stripe'));
 
 // --- ERROR HANDLER ---

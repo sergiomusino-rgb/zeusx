@@ -34,7 +34,7 @@ router.post('/create-checkout-session', async (req, res) => {
   if (!user) return res.status(401).json({ error: 'Non autorizzato' });
 
   try {
-    const { priceId, tenantId: requestedTenantId } = req.body || {};
+    const { priceId, tenantId: requestedTenantId } = req.query;
     if (!priceId) return res.status(400).json({ error: 'priceId mancante' });
 
     // Placeholder: per ora usa il primo tenant dell'utente
@@ -161,7 +161,7 @@ async function getTenantIdBySubscriptionId(supabase, subscriptionId) {
 }
 
 // POST /api/webhooks/stripe
-router.post('/webhooks/stripe', express.raw({ type: 'application/json' }), async (req, res) => {
+router.post('/webhooks/stripe', async (req, res) => {
   const stripe = getStripe();
   const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET || '';
   const payload = req.body;
