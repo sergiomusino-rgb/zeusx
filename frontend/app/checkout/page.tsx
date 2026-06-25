@@ -1,11 +1,6 @@
 'use client';
 
-import { createClient } from '@supabase/supabase-js';
-
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL || '',
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || ''
-);
+import { supabase } from '@/src/lib/supabase';
 
 export default function CheckoutPage() {
   const priceId = 'price_1TkomdRZR2YaFu2sAgrK3et9'; // Sostituisci con l'ID dinamico se necessario
