@@ -34,7 +34,7 @@ export default function Home() {
 
           <div className="flex flex-col sm:flex-row gap-4 mt-6 w-full sm:w-auto">
             <Link href="/login" className="bg-blue-600 hover:bg-blue-700 text-white font-semibold px-8 py-4 rounded-xl text-center shadow-lg transition">
-              Inizia Ora Gratis
+              Inizia
             </Link>
             <Link href="/pricing" className="bg-slate-800 hover:bg-slate-700 text-white font-semibold px-8 py-4 rounded-xl text-center transition">
               Vedi i Piani
