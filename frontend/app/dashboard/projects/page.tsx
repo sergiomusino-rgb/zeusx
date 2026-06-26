@@ -77,6 +77,20 @@ export default function ProjectsPage() {
     return new Date(iso) < new Date();
   };
 
+  const daysUntilTrialEnds = (iso: string) => {
+    if (!iso) return null;
+    const end = new Date(iso);
+    const diff = end.getTime() - new Date().getTime();
+    return Math.ceil(diff / (1000 * 60 * 60 * 24));
+  };
+
+  const nearestTrialDays = apps.length > 0
+    ? Math.min(...apps.map((a) => daysUntilTrialEnds(a.trial_ends_at) ?? Infinity))
+    : null;
+
+  const showTrialWarning = nearestTrialDays !== null && nearestTrialDays >= 0 && nearestTrialDays <= 3;
+  const hasExpiredApp = apps.some((a) => isTrialExpired(a.trial_ends_at));
+
   return (
     <div className="max-w-6xl mx-auto space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
@@ -91,6 +105,26 @@ export default function ProjectsPage() {
           + Nuova App
         </Link>
       </div>
+
+      {hasExpiredApp && (
+        <div className="p-4 rounded-xl bg-red-500/10 border border-red-500/30 text-red-300 text-sm flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+          <span>⚠️ Hai app con il trial scaduto. Rinnova il piano per continuare ad usarle.</span>
+          <Link href="/pricing" className="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg text-xs font-medium transition text-center">
+            Vai ai Piani
+          </Link>
+        </div>
+      )}
+
+      {showTrialWarning && !hasExpiredApp && nearestTrialDays !== null && (
+        <div className="p-4 rounded-xl bg-amber-500/10 border border-amber-500/30 text-amber-300 text-sm flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+          <span>
+            ⏳ Il trial della tua app più vicina scade tra {nearestTrialDays} {nearestTrialDays === 1 ? 'giorno' : 'giorni'}. Rinnova per non perdere l'accesso.
+          </span>
+          <Link href="/pricing" className="bg-amber-600 hover:bg-amber-700 text-white px-4 py-2 rounded-lg text-xs font-medium transition text-center">
+            Rinnova Ora
+          </Link>
+        </div>
+      )}
 
       {error && (
         <div className="p-4 rounded-xl bg-red-500/10 border border-red-500/30 text-red-300 text-sm">
