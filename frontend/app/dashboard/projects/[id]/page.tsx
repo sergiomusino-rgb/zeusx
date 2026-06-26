@@ -22,6 +22,7 @@ export default function AppDetailPage() {
   const appId = params.id as string;
 
   const [app, setApp] = useState<App | null>(null);
+  const [user, setUser] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [deleting, setDeleting] = useState(false);
@@ -29,6 +30,9 @@ export default function AppDetailPage() {
   useEffect(() => {
     async function loadApp() {
       if (!appId) return;
+
+      const { data: { user: currentUser } } = await supabase.auth.getUser();
+      setUser(currentUser);
 
       const { data, error } = await supabase
         .from('apps')
@@ -73,6 +77,34 @@ export default function AppDetailPage() {
       setError(`Errore eliminazione: ${deleteError.message}`);
       setDeleting(false);
       return;
+    }
+
+    // Decrementa fee mensile per l'app eliminata
+    try {
+      const { data: membershipData } = await supabase
+        .from('tenant_members')
+        .select('tenant_id')
+        .eq('user_id', user?.id)
+        .single();
+
+      if (membershipData?.tenant_id) {
+        const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || 'https://zeusx-backend.onrender.com';
+        const token = process.env.BACKEND_SERVICE_TOKEN;
+        
+        await fetch(`${backendUrl}/api/update-app-fee`, {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json',
+            'X-User-ID': user?.id || '',
+            'X-User-Email': user?.email || '',
+          },
+          body: JSON.stringify({ tenantId: membershipData.tenant_id, action: 'decrement' }),
+        });
+      }
+    } catch (err) {
+      console.error('[AppDetail] errore decrement fee:', err);
+      // Non bloccare l'eliminazione se fallisce il decrement
     }
 
     router.push('/dashboard/projects');
