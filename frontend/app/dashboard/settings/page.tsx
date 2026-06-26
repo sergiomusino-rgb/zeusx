@@ -1,6 +1,55 @@
 'use client';
 
+import { useEffect, useState } from 'react';
+import { supabase } from '@/src/lib/supabase';
+
 export default function SettingsPage() {
+  const [plan, setPlan] = useState<string>('free');
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    async function loadPlan() {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        setLoading(false);
+        return;
+      }
+
+      const { data: membership } = await supabase
+        .from('tenant_members')
+        .select('tenant_id')
+        .eq('user_id', user.id)
+        .order('created_at', { ascending: true })
+        .limit(1)
+        .single();
+
+      if (!membership?.tenant_id) {
+        setLoading(false);
+        return;
+      }
+
+      const { data: tenant } = await supabase
+        .from('tenants')
+        .select('plan')
+        .eq('id', membership.tenant_id)
+        .single();
+
+      if (tenant?.plan) {
+        setPlan(tenant.plan);
+      }
+      setLoading(false);
+    }
+
+    loadPlan();
+  }, []);
+
+  const planLabel = loading ? 'Caricamento...' : `Piano ${plan.toUpperCase()} Attivo`;
+  const planColor = plan === 'vip'
+    ? 'text-amber-400 bg-amber-500/10 border-amber-500/20'
+    : plan === 'pro'
+    ? 'text-indigo-400 bg-indigo-500/10 border-indigo-500/20'
+    : 'text-slate-400 bg-slate-500/10 border-slate-500/20';
+
   return (
     <div className="max-w-4xl mx-auto space-y-8">
       <div>
@@ -32,12 +81,12 @@ export default function SettingsPage() {
           </div>
         </div>
 
-        {/* SEZIONE 2: PIANO E FATTURAZIONE (STRIPE MOCK) */}
+        {/* SEZIONE 2: PIANO E FATTURAZIONE */}
         <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 space-y-4">
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 border-b border-slate-800/60 pb-2">
             <h3 className="text-base font-bold text-slate-200">Piano & Abbonamento</h3>
-            <span className="text-xs text-indigo-400 font-bold uppercase tracking-wider bg-indigo-500/10 px-2.5 py-1 rounded-lg border border-indigo-500/20">
-              Piano PRO Attivo
+            <span className={`text-xs font-bold uppercase tracking-wider px-2.5 py-1 rounded-lg border ${planColor}`}>
+              {planLabel}
             </span>
           </div>
           <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between bg-slate-950 border border-slate-800 p-4 rounded-xl gap-4">
