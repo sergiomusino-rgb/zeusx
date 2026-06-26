@@ -1,101 +1,146 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
+import Link from 'next/link';
+import { supabase } from '@/src/lib/supabase';
 
-interface Project {
+interface App {
   id: string;
-  title: string;
-  type: 'Chat' | 'Vision' | 'Documento';
-  date: string;
-  status: 'Completato' | 'In Corso' | 'Bozza';
-  tokens: number;
+  name: string;
+  sector: string;
+  trial_ends_at: string;
+  is_active: boolean;
+  created_at: string;
+  blueprint_id: string;
 }
 
 export default function ProjectsPage() {
-  // Lista iniziale mockata dei lavori effettuati
-  const [projects] = useState<Project[]>(
-    [
-      { id: '1', title: 'Generazione Script Automazione Business', type: 'Chat', date: 'Oggi, 11:45', status: 'Completato', tokens: 1240 },
-      { id: '2', title: 'Analisi Layout Interfaccia SaaS', type: 'Vision', date: 'Ieri, 18:20', status: 'Completato', tokens: 3450 },
-      { id: '3', title: 'Estrazione Tabelle Finanziarie Q2', type: 'Documento', date: '14 Giu 2026', status: 'Completato', tokens: 5120 },
-      { id: '4', title: 'Ottimizzazione Prompt Llama 3', type: 'Chat', date: '10 Giu 2026', status: 'Bozza', tokens: 420 },
-    ]
-  );
+  const [apps, setApps] = useState<App[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+
+  useEffect(() => {
+    async function loadApps() {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        setLoading(false);
+        return;
+      }
+
+      const { data: membership, error: membershipError } = await supabase
+        .from('tenant_members')
+        .select('tenant_id')
+        .eq('user_id', user.id)
+        .order('created_at', { ascending: true })
+        .limit(1)
+        .single();
+
+      if (membershipError || !membership?.tenant_id) {
+        setLoading(false);
+        return;
+      }
+
+      const { data: appsData, error: appsError } = await supabase
+        .from('apps')
+        .select('id, name, trial_ends_at, is_active, created_at, blueprint_id, blueprints(sector)')
+        .eq('tenant_id', membership.tenant_id)
+        .order('created_at', { ascending: false });
+
+      if (appsError) {
+        console.error('[Projects] load apps error:', appsError);
+        setError('Errore caricamento app');
+      } else {
+        setApps((appsData || []).map((a: any) => ({
+          ...a,
+          sector: a.blueprints?.sector || 'custom',
+        })));
+      }
+
+      setLoading(false);
+    }
+
+    loadApps();
+  }, []);
+
+  const formatDate = (iso: string) => {
+    if (!iso) return '-';
+    return new Date(iso).toLocaleDateString('it-IT');
+  };
+
+  const isTrialExpired = (iso: string) => {
+    if (!iso) return false;
+    return new Date(iso) < new Date();
+  };
 
   return (
     <div className="max-w-6xl mx-auto space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">I tuoi Progetti</h1>
-          <p className="text-slate-400 mt-1">Gestisci la cronologia completa dei tuoi lavori e dei dati elaborati.</p>
+          <h1 className="text-3xl font-bold tracking-tight">Le tue App</h1>
+          <p className="text-slate-400 mt-1">Gestisci le app generate con ZeusX.</p>
         </div>
-        
-        {/* Barra di ricerca rapida (estetica) */}
-        <div className="w-full sm:w-72">
-          <input
-            type="text"
-            placeholder="Cerca progetto..."
-            className="w-full bg-slate-900 border border-slate-800 rounded-xl px-4 py-2.5 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500/60 transition"
-          />
-        </div>
+        <Link
+          href="/create"
+          className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-xl text-sm font-medium transition text-center"
+        >
+          + Nuova App
+        </Link>
       </div>
 
-      {/* TABELLA / LISTA DEI PROGETTI */}
+      {error && (
+        <div className="p-4 rounded-xl bg-red-500/10 border border-red-500/30 text-red-300 text-sm">
+          {error}
+        </div>
+      )}
+
       <div className="bg-slate-900 border border-slate-800 rounded-2xl overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full text-left border-collapse">
             <thead>
               <tr className="border-b border-slate-800 bg-slate-950/40 text-xs font-semibold uppercase tracking-wider text-slate-400">
-                <th className="py-4 px-6">Nome Progetto</th>
-                <th className="py-4 px-6">Tipo</th>
-                <th className="py-4 px-6">Data Elaborazione</th>
+                <th className="py-4 px-6">Nome App</th>
+                <th className="py-4 px-6">Settore</th>
+                <th className="py-4 px-6">Creata il</th>
+                <th className="py-4 px-6">Trial fino al</th>
                 <th className="py-4 px-6">Stato</th>
-                <th className="py-4 px-6 text-right">Risorse AI</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-800/50 text-sm">
-              {projects.map((project) => (
-                <tr key={project.id} className="hover:bg-slate-800/30 transition group cursor-pointer">
-                  <td className="py-4 px-6 font-medium text-slate-200 group-hover:text-blue-400 transition">
-                    {project.title}
-                  </td>
-                  <td className="py-4 px-6">
-                    <span className={`text-xs px-2.5 py-1 rounded-lg font-medium border ${
-                      project.type === 'Chat' ? 'bg-blue-500/10 border-blue-500/20 text-blue-400' :
-                      project.type === 'Vision' ? 'bg-indigo-500/10 border-indigo-500/20 text-indigo-400' :
-                      'bg-purple-500/10 border-purple-500/20 text-purple-400'
-                    }`}>
-                      {project.type}
-                    </span>
-                  </td>
-                  <td className="py-4 px-6 text-slate-400">
-                    {project.date}
-                  </td>
-                  <td className="py-4 px-6">
-                    <span className="flex items-center gap-1.5 text-slate-300">
-                      <span className={`w-1.5 h-1.5 rounded-full ${
-                        project.status === 'Completato' ? 'bg-emerald-500' :
-                        project.status === 'In Corso' ? 'bg-amber-500 animate-pulse' :
-                        'bg-slate-500'
-                      }`} />
-                      {project.status}
-                    </span>
-                  </td>
-                  <td className="py-4 px-6 text-right font-mono text-xs text-slate-400">
-                    {project.tokens.toLocaleString()} tkn
+              {loading ? (
+                <tr>
+                  <td colSpan={5} className="py-12 text-center text-slate-500">Caricamento...</td>
+                </tr>
+              ) : apps.length === 0 ? (
+                <tr>
+                  <td colSpan={5} className="py-12 text-center text-slate-500">
+                    Nessuna app trovata.{' '}
+                    <Link href="/create" className="text-blue-400 hover:underline">Crea la prima app</Link>
                   </td>
                 </tr>
-              ))}
+              ) : (
+                apps.map((app) => {
+                  const expired = isTrialExpired(app.trial_ends_at);
+                  return (
+                    <tr key={app.id} className="hover:bg-slate-800/30 transition group cursor-pointer">
+                      <td className="py-4 px-6 font-medium text-slate-200 group-hover:text-blue-400 transition">
+                        {app.name}
+                      </td>
+                      <td className="py-4 px-6 text-slate-400 capitalize">{app.sector}</td>
+                      <td className="py-4 px-6 text-slate-400">{formatDate(app.created_at)}</td>
+                      <td className="py-4 px-6 text-slate-400">{formatDate(app.trial_ends_at)}</td>
+                      <td className="py-4 px-6">
+                        <span className={`flex items-center gap-1.5 ${expired ? 'text-red-400' : 'text-emerald-400'}`}>
+                          <span className={`w-1.5 h-1.5 rounded-full ${expired ? 'bg-red-500' : 'bg-emerald-500'}`} />
+                          {app.is_active ? (expired ? 'Trial scaduto' : 'Attiva') : 'Disattivata'}
+                        </span>
+                      </td>
+                    </tr>
+                  );
+                })
+              )}
             </tbody>
           </table>
         </div>
-
-        {/* Messaggio se la tabella è vuota */}
-        {projects.length === 0 && (
-          <div className="text-center py-12 text-slate-500">
-            Nessun progetto trovato.
-          </div>
-        )}
       </div>
     </div>
   );
