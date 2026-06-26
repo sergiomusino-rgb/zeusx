@@ -174,10 +174,21 @@ export default function ProjectsPage() {
                       <td className="py-4 px-6 text-slate-400">{formatDate(app.created_at)}</td>
                       <td className="py-4 px-6 text-slate-400">{formatDate(app.trial_ends_at)}</td>
                       <td className="py-4 px-6">
-                        <span className={`flex items-center gap-1.5 ${expired ? 'text-red-400' : 'text-emerald-400'}`}>
-                          <span className={`w-1.5 h-1.5 rounded-full ${expired ? 'bg-red-500' : 'bg-emerald-500'}`} />
-                          {app.is_active ? (expired ? 'Trial scaduto' : 'Attiva') : 'Disattivata'}
-                        </span>
+                        <div className="flex items-center gap-3">
+                          <span className={`flex items-center gap-1.5 ${expired ? 'text-red-400' : 'text-emerald-400'}`}>
+                            <span className={`w-1.5 h-1.5 rounded-full ${expired ? 'bg-red-500' : 'bg-emerald-500'}`} />
+                            {app.is_active ? (expired ? 'Trial scaduto' : 'Attiva') : 'Disattivata'}
+                          </span>
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              router.push(`/app/${app.id}`);
+                            }}
+                            className="text-xs text-blue-400 hover:text-blue-300 underline"
+                          >
+                            Apri App →
+                          </button>
+                        </div>
                       </td>
                     </tr>
                   );

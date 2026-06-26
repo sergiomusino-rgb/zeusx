@@ -465,6 +465,9 @@ Rispondi SOLO con il JSON valido, senza testo aggiuntivo.`;
 // --- STRIPE ROUTES (checkout e billing) ---
 app.use('/api', require('./routes/stripe'));
 
+// --- APP RECORDS ROUTES (CRUD dati app) ---
+app.use('/api', require('./routes/app-records'));
+
 // --- ERROR HANDLER ---
 app.use((err, _req, res, _next) => {
   console.error('Unhandled error:', err);
