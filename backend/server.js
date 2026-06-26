@@ -409,15 +409,17 @@ app.post('/api/generate-app', async (req, res) => {
     const { sector, tenantId } = req.body;
     if (!sector) return res.status(400).json({ error: 'Settore richiesto' });
 
-    const provider = process.env.PREFERRED_AI_PROVIDER || 'groq';
+    const provider = 'groq';
     const prompt = `Sei un architetto software. Genera un blueprint JSON per un gestionale SaaS per il settore "${sector}".
 Il JSON deve contenere:
-- name: nome dell'app
-- sector: settore normalizzato
+- appName: nome dell'app
+- sector: settore normalizzato in kebab-case
 - description: descrizione breve
-- schema: { tables: [{ name, columns: [{ name, type, required, label }] }] }
-- ui: { pages: [{ name, route, components: [...] }] }
+- schema: { tables: [{ name, label, labelPlural, icon, fields: [{ id, type, label, required, options, target, targetLabel }] }] }
+- ui: { primaryColor, sidebar, dashboardCards: [{ type, table, label, field }] }
 Rispondi SOLO con il JSON valido, senza testo aggiuntivo.`;
+
+    console.log('[generate-app] provider:', provider);
 
     let raw = '';
 
@@ -442,7 +444,16 @@ Rispondi SOLO con il JSON valido, senza testo aggiuntivo.`;
     }
 
     const jsonMatch = raw.match(/```(?:json)?\s*([\s\S]*?)```/) || [null, raw];
-    const blueprint = JSON.parse(jsonMatch[1].trim());
+    const parsed = JSON.parse(jsonMatch[1].trim());
+
+    // Normalizza al formato BlueprintJSON atteso
+    const blueprint = {
+      appName: parsed.appName || parsed.name || `App ${sector}`,
+      sector: parsed.sector || sector.toLowerCase().replace(/\s+/g, '-'),
+      description: parsed.description || '',
+      schema: parsed.schema || { tables: [] },
+      ui: parsed.ui || { primaryColor: '#6366f1', sidebar: [], dashboardCards: [] },
+    };
 
     return res.json({ blueprint, tenantId });
   } catch (err) {
