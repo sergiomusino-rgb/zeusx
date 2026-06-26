@@ -200,6 +200,26 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'Errore salvataggio app' }, { status: 500 });
     }
 
+    // Incrementa fee mensile per la nuova app
+    try {
+      const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || 'https://zeusx-backend.onrender.com';
+      const token = process.env.BACKEND_SERVICE_TOKEN;
+      
+      await fetch(`${backendUrl}/api/update-app-fee`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+          'X-User-ID': user.id,
+          'X-User-Email': user.email || '',
+        },
+        body: JSON.stringify({ tenantId, action: 'increment' }),
+      });
+    } catch (err) {
+      console.error('[API /apps] errore aggiornamento fee:', err);
+      // Non bloccare la creazione app se fallisce l'aggiornamento fee
+    }
+
     return NextResponse.json({ app, blueprint });
   } catch (err) {
     console.error('[API /apps] error:', err);
