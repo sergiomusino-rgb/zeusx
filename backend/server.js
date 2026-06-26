@@ -84,6 +84,26 @@ async function getTenantIdBySubscriptionId(supabase, subscriptionId) {
   return data.tenant_id;
 }
 
+async function resolvePlanFromSession(stripe, session) {
+  try {
+    const lineItems = await stripe.checkout.sessions.listLineItems(session.id, { limit: 1 });
+    const priceId = lineItems.data[0]?.price?.id;
+    if (!priceId) return 'pro';
+    const price = await stripe.prices.retrieve(priceId);
+    const productId = typeof price.product === 'string' ? price.product : price.product?.id;
+    if (!productId) return 'pro';
+    const product = await stripe.products.retrieve(productId);
+    const name = (product.name || '').toLowerCase();
+    if (name.includes('vip')) return 'vip';
+    if (name.includes('pro')) return 'pro';
+    if (name.includes('basic') || name.includes('base')) return 'basic';
+    return 'pro';
+  } catch (err) {
+    console.error('[resolvePlanFromSession] errore:', err);
+    return 'pro';
+  }
+}
+
 app.post('/api/webhooks/stripe', express.raw({ type: 'application/json' }), async (req, res) => {
   if (!stripe) {
     console.error('[Stripe Webhook] STRIPE_SECRET_KEY non configurata');
@@ -117,6 +137,9 @@ app.post('/api/webhooks/stripe', express.raw({ type: 'application/json' }), asyn
           break;
         }
 
+        const plan = await resolvePlanFromSession(stripe, session);
+        console.log(`[Stripe Webhook] piano risolto: ${plan}`);
+
         const { data: tenant, error: tenantError } = await supabase
           .from('tenants')
           .select('id, name, owner_id')
@@ -130,7 +153,7 @@ app.post('/api/webhooks/stripe', express.raw({ type: 'application/json' }), asyn
 
         const { error: updateTenantError } = await supabase
           .from('tenants')
-          .update({ plan: 'pro', updated_at: new Date().toISOString() })
+          .update({ plan, updated_at: new Date().toISOString() })
           .eq('id', tenantId);
 
         if (updateTenantError) {

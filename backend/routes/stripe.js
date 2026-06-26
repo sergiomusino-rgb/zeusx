@@ -165,4 +165,67 @@ router.post('/billing', async (req, res) => {
   }
 });
 
+// POST /api/sync-plan
+router.post('/sync-plan', async (req, res) => {
+  const user = await getUser(req);
+  if (!user) return res.status(401).json({ error: 'Non autorizzato' });
+
+  try {
+    const { sessionId } = req.body || {};
+    if (!sessionId) return res.status(400).json({ error: 'sessionId mancante' });
+
+    const supabase = getSupabase();
+    const stripe = getStripe();
+
+    const session = await stripe.checkout.sessions.retrieve(sessionId);
+    const tenantId = session.client_reference_id || session.metadata?.tenant_id;
+
+    if (!tenantId) return res.status(400).json({ error: 'tenant_id mancante nella sessione' });
+
+    // Verifica che l'utente sia membro del tenant
+    const { data: membership } = await supabase
+      .from('tenant_members')
+      .select('tenant_id')
+      .eq('tenant_id', tenantId)
+      .eq('user_id', user.id)
+      .single();
+
+    if (!membership) return res.status(403).json({ error: 'Tenant non autorizzato' });
+
+    if (session.payment_status !== 'paid') {
+      return res.json({ paid: false, plan: 'free' });
+    }
+
+    const lineItems = await stripe.checkout.sessions.listLineItems(sessionId, { limit: 1 });
+    const priceId = lineItems.data[0]?.price?.id;
+    let plan = 'pro';
+
+    if (priceId) {
+      const price = await stripe.prices.retrieve(priceId);
+      const productId = typeof price.product === 'string' ? price.product : price.product?.id;
+      if (productId) {
+        const product = await stripe.products.retrieve(productId);
+        const name = (product.name || '').toLowerCase();
+        if (name.includes('vip')) plan = 'vip';
+        else if (name.includes('basic') || name.includes('base')) plan = 'basic';
+      }
+    }
+
+    const { error: updateError } = await supabase
+      .from('tenants')
+      .update({ plan, updated_at: new Date().toISOString() })
+      .eq('id', tenantId);
+
+    if (updateError) {
+      console.error('[sync-plan] errore update:', updateError);
+      return res.status(500).json({ error: 'Errore aggiornamento piano' });
+    }
+
+    return res.json({ paid: true, plan });
+  } catch (err) {
+    console.error('[sync-plan] errore:', err);
+    res.status(500).json({ error: err.message || 'Errore sync piano' });
+  }
+});
+
 module.exports = router;

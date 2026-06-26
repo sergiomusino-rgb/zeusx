@@ -1,7 +1,51 @@
 "use client";
+
 import Link from 'next/link';
+import { useEffect, useState } from 'react';
+import { useSearchParams } from 'next/navigation';
+import { supabase, getAccessTokenFromStorage } from '@/src/lib/supabase';
+
+const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || 'https://zeusx-backend.onrender.com';
 
 export default function DashboardPage() {
+  const searchParams = useSearchParams();
+  const [syncMessage, setSyncMessage] = useState('');
+
+  useEffect(() => {
+    async function syncPlan() {
+      const sessionId = searchParams.get('session_id');
+      if (!sessionId) return;
+
+      const { data: { session } } = await supabase.auth.getSession();
+      let token = session?.access_token || getAccessTokenFromStorage();
+      if (!token) return;
+
+      try {
+        const res = await fetch(`${BACKEND_URL}/api/sync-plan`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`,
+          },
+          body: JSON.stringify({ sessionId }),
+        });
+
+        const data = await res.json().catch(() => ({}));
+        if (res.ok && data.paid) {
+          setSyncMessage(`Piano ${data.plan.toUpperCase()} attivato con successo! 🎉`);
+        } else if (!data.paid) {
+          setSyncMessage('Pagamento non completato. Riprova.');
+        } else {
+          setSyncMessage('Errore durante l\'attivazione del piano.');
+        }
+      } catch (err) {
+        console.error('[Dashboard] sync-plan error:', err);
+      }
+    }
+
+    syncPlan();
+  }, [searchParams]);
+
   const features = [
     { title: "Vision & AI Edit", desc: "Analisi avanzata e modifica immagini", link: "/dashboard/vision", color: "bg-blue-600" },
     { title: "Statistiche", desc: "Monitoraggio dei tuoi processi", link: "/dashboard/stats", color: "bg-purple-600" },
@@ -20,6 +64,12 @@ export default function DashboardPage() {
           Torna alla Home
         </Link>
       </header>
+
+      {syncMessage && (
+        <div className="max-w-6xl mx-auto mb-8 p-4 rounded-xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-300 text-center font-medium">
+          {syncMessage}
+        </div>
+      )}
 
       {/* Grid delle Pagine */}
       <main className="max-w-6xl mx-auto grid grid-cols-1 md:grid-cols-3 gap-6">
