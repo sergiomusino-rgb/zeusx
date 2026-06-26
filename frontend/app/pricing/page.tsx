@@ -80,7 +80,7 @@ export default function PricingPage() {
         'Trial 30 giorni inclusi',
         'Supporto email'
       ],
-      priceId: 'price_starter_setup',
+      priceId: 'price_1TmcprRZR2YaFu2sU0m1kbFC',
       highlighted: false,
     },
     {
@@ -96,7 +96,7 @@ export default function PricingPage() {
         'Supporto prioritario',
         'API illimitate'
       ],
-      priceId: 'price_pro_setup',
+      priceId: 'price_1Tmd1tRZR2YaFu2sgHgxzcTC',
       highlighted: true,
     },
     {
@@ -113,7 +113,7 @@ export default function PricingPage() {
         'API illimitate',
         'SLA garantito'
       ],
-      priceId: 'price_business_setup',
+      priceId: 'price_1Tmd4GRZR2YaFu2s0FZ4Btym',
       highlighted: false,
     },
   ];
