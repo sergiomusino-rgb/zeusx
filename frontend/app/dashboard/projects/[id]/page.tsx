@@ -24,6 +24,7 @@ export default function AppDetailPage() {
   const [app, setApp] = useState<App | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [deleting, setDeleting] = useState(false);
 
   useEffect(() => {
     async function loadApp() {
@@ -56,6 +57,26 @@ export default function AppDetailPage() {
     if (!iso) return false;
     return new Date(iso) < new Date();
   };
+
+  async function handleDelete() {
+    if (!appId) return;
+    if (!confirm('Sei sicuro di voler eliminare questa app? L\'azione è irreversibile.')) return;
+
+    setDeleting(true);
+    const { error: deleteError } = await supabase
+      .from('apps')
+      .delete()
+      .eq('id', appId);
+
+    if (deleteError) {
+      console.error('[AppDetail] delete error:', deleteError);
+      setError(`Errore eliminazione: ${deleteError.message}`);
+      setDeleting(false);
+      return;
+    }
+
+    router.push('/dashboard/projects');
+  }
 
   if (loading) {
     return (
@@ -97,6 +118,13 @@ export default function AppDetailPage() {
           </div>
         </div>
         <div className="flex items-center gap-3">
+          <button
+            onClick={handleDelete}
+            disabled={deleting}
+            className="bg-red-600 hover:bg-red-700 disabled:bg-red-900/50 text-white px-4 py-2 rounded-xl text-xs font-medium transition"
+          >
+            {deleting ? 'Eliminazione...' : 'Elimina App'}
+          </button>
           <span className={`px-3 py-1 rounded-full text-xs font-medium ${expired ? 'bg-red-500/10 text-red-300 border border-red-500/30' : 'bg-emerald-500/10 text-emerald-300 border border-emerald-500/30'}`}>
             {expired ? 'Trial scaduto' : 'Attiva'}
           </span>
