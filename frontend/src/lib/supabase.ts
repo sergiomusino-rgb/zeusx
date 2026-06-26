@@ -9,6 +9,8 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
     autoRefreshToken: true,
     detectSessionInUrl: true,
     storageKey: 'sb-zeusx-auth-token',
+    flowType: 'pkce',
+    debug: false,
   },
 });
 
