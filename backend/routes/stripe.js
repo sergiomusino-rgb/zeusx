@@ -129,11 +129,10 @@ router.post('/create-checkout-session', async (req, res) => {
 
 // GET fee price ID in base al piano
 function getFeePriceId(planId) {
-  // Questi price_id vanno configurati su Stripe
   const feePrices = {
-    starter: process.env.STRIPE_FEE_PRICE_STARTER || '',
-    pro: process.env.STRIPE_FEE_PRICE_PRO || '',
-    business: process.env.STRIPE_FEE_PRICE_BUSINESS || '',
+    starter: process.env.STRIPE_FEE_PRICE_STARTER || 'price_1TmdIgRZR2YaFu2sT5gkrMdx',
+    pro: process.env.STRIPE_FEE_PRICE_PRO || 'price_1TmdK0RZR2YaFu2s8pXkLety',
+    business: process.env.STRIPE_FEE_PRICE_BUSINESS || 'price_1TmdKuRZR2YaFu2sHeH8fShE',
   };
   return feePrices[planId] || feePrices.starter;
 }

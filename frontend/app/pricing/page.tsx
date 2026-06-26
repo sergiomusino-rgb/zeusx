@@ -141,10 +141,9 @@ export default function PricingPage() {
     if (!selectedPlan) return;
 
     try {
-      const res = await fetch('https://zeusx-backend.onrender.com/api/create-checkout-session', {
+      const res = await fetch('/api/create-checkout-session', {
         method: 'POST',
         headers: {
-          'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({ 
