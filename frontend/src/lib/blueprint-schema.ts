@@ -1,44 +1,79 @@
 import { z } from 'zod';
 
-export const FieldSchema = z.object({
-  id: z.string().regex(/^[a-z_][a-z0-9_]*$/, "Field id must be snake_case"),
-  type: z.enum([
+// Tipi che possono arrivare da vari LLM
+const FieldTypeSchema = z.union([
+  z.enum([
     'text', 'number', 'date', 'datetime', 'boolean', 'email', 'phone',
     'textarea', 'select', 'multiselect', 'relation', 'currency', 'file', 'image'
   ]),
-  label: z.string().min(1).max(100),
+  z.enum(['string', 'integer', 'decimal', 'float', 'timestamp', 'json']),
+]);
+
+function normalizeFieldType(type: string): string {
+  const mapping: Record<string, string> = {
+    string: 'text',
+    varchar: 'text',
+    integer: 'number',
+    int: 'number',
+    decimal: 'number',
+    float: 'number',
+    numeric: 'number',
+    timestamp: 'datetime',
+    jsonb: 'text',
+    json: 'text',
+  };
+  return mapping[type?.toLowerCase()] || type;
+}
+
+const FieldOptionsSchema = z.union([
+  z.array(z.string()),
+  z.array(z.object({ value: z.string(), label: z.string() }).transform(o => o.label || o.value)),
+  z.record(z.string()).transform(rec => Object.values(rec)),
+  z.null(),
+]).optional().default([]);
+
+export const FieldSchema = z.object({
+  id: z.string().min(1).transform(s => s.replace(/[^a-z0-9_]/gi, '_').toLowerCase()),
+  type: FieldTypeSchema.transform(normalizeFieldType),
+  label: z.string().min(1).max(100).default('Campo'),
   required: z.boolean().default(false),
-  options: z.array(z.string()).optional(),
-  target: z.string().optional(),
-  targetLabel: z.string().optional(),
+  options: FieldOptionsSchema,
+  target: z.union([z.string(), z.null()]).optional().transform(v => v || undefined),
+  targetLabel: z.union([z.string(), z.null()]).optional().transform(v => v || undefined),
 });
 
 export const TableSchema = z.object({
-  name: z.string().regex(/^[a-z_][a-z0-9_]*$/, "Table name must be snake_case"),
-  label: z.string().min(1).max(100),
-  labelPlural: z.string().min(1).max(100),
+  name: z.string().min(1).transform(s => s.replace(/[^a-z0-9_]/gi, '_').toLowerCase()),
+  label: z.string().min(1).max(100).default('Tabella'),
+  labelPlural: z.string().min(1).max(100).default('Tabelle'),
   fields: z.array(FieldSchema).min(1).max(50),
-  icon: z.string().optional(),
+  icon: z.string().optional().default(''),
 });
 
 export const DashboardCardSchema = z.object({
-  type: z.enum(['count', 'sum', 'latest', 'chart']),
-  table: z.string(),
-  label: z.string(),
-  field: z.string().optional(),
+  type: z.enum(['count', 'sum', 'latest', 'chart']).default('count'),
+  table: z.string().default(''),
+  label: z.string().default(''),
+  field: z.string().optional().default(''),
   filter: z.record(z.string(), z.any()).optional(),
 });
 
 export const UIConfigSchema = z.object({
-  primaryColor: z.string().regex(/^#([0-9A-Fa-f]{6})$/, "Must be hex color").default('#6366f1'),
-  sidebar: z.array(z.string()).default([]),
+  primaryColor: z.union([
+    z.string().regex(/^#([0-9A-Fa-f]{6})$/),
+    z.string().transform(v => v.startsWith('#') ? v : `#${v}`),
+  ]).default('#6366f1'),
+  sidebar: z.union([
+    z.array(z.string()),
+    z.array(z.object({ name: z.string() }).transform(o => o.name)),
+  ]).default([]),
   dashboardCards: z.array(DashboardCardSchema).default([]),
 });
 
 export const BlueprintJSONSchema = z.object({
-  appName: z.string().min(1).max(100),
-  sector: z.string().regex(/^[a-z0-9_-]+$/, "Sector must be url-safe"),
-  description: z.string().max(500).optional(),
+  appName: z.string().min(1).max(100).default('Nuova App'),
+  sector: z.string().min(1).max(50).default('custom'),
+  description: z.string().max(500).optional().default(''),
   schema: z.object({
     tables: z.array(TableSchema).min(1).max(20),
   }),
