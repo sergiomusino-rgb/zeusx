@@ -14,6 +14,11 @@ interface App {
   created_at: string;
   blueprint_id: string;
   tenant_id: string;
+  slug?: string;
+  client_password?: string;
+  client_email?: string;
+  client_active?: boolean;
+  expires_at?: string;
 }
 
 export default function AppDetailPage() {
@@ -26,6 +31,9 @@ export default function AppDetailPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [deleting, setDeleting] = useState(false);
+  const [toggling, setToggling] = useState(false);
+  const [extending, setExtending] = useState(false);
+  const [regenerating, setRegenerating] = useState(false);
 
   useEffect(() => {
     async function loadApp() {
@@ -36,7 +44,7 @@ export default function AppDetailPage() {
 
       const { data, error } = await supabase
         .from('apps')
-        .select('id, name, config, trial_ends_at, is_active, created_at, blueprint_id, tenant_id')
+        .select('id, name, config, trial_ends_at, is_active, created_at, blueprint_id, tenant_id, slug, client_password, client_email, client_active, expires_at')
         .eq('id', appId)
         .single();
 
@@ -108,6 +116,60 @@ export default function AppDetailPage() {
     }
 
     router.push('/dashboard/projects');
+  }
+
+  async function handleClientAccess(action: string) {
+    if (!appId) return;
+    if (action === 'toggle') setToggling(true);
+    if (action === 'regenerate-password') setRegenerating(true);
+    if (action === 'extend-expiry') setExtending(true);
+
+    try {
+      const res = await fetch(`/api/apps/${appId}/client-access`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action }),
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        setError(data.error || 'Errore');
+        return;
+      }
+
+      // Aggiorna lo stato locale dell'app
+      if (action === 'toggle') {
+        setApp(prev => prev ? { ...prev, client_active: data.client_active } : prev);
+      } else if (action === 'regenerate-password') {
+        setApp(prev => prev ? { ...prev, client_password: data.new_password } : prev);
+        alert(`Nuova password generata: ${data.new_password}\nConsegnala al cliente.`);
+      } else if (action === 'extend-expiry') {
+        setApp(prev => prev ? { ...prev, expires_at: data.new_expires_at, client_active: true } : prev);
+      }
+    } catch (err) {
+      setError('Errore di connessione');
+    } finally {
+      setToggling(false);
+      setRegenerating(false);
+      setExtending(false);
+    }
+  }
+
+  async function copyToClipboard(text: string) {
+    try {
+      await navigator.clipboard.writeText(text);
+      alert('Copiato negli appunti!');
+    } catch {
+      // Fallback per browser che non supportano clipboard API
+      const textarea = document.createElement('textarea');
+      textarea.value = text;
+      document.body.appendChild(textarea);
+      textarea.select();
+      document.execCommand('copy');
+      document.body.removeChild(textarea);
+      alert('Copiato negli appunti!');
+    }
   }
 
   if (loading) {
@@ -239,6 +301,112 @@ export default function AppDetailPage() {
           )}
         </div>
       </div>
+
+      {/* Accesso Cliente */}
+      {app.slug && (
+        <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 space-y-4">
+          <h2 className="text-lg font-semibold">🔐 Accesso Cliente</h2>
+          
+          <div className="space-y-4">
+            {/* Link di accesso */}
+            <div className="space-y-2">
+              <label className="text-sm font-medium text-slate-400">Link di accesso</label>
+              <div className="flex gap-2">
+                <input
+                  type="text"
+                  readOnly
+                  value={`${window.location.origin}/a/${app.slug}`}
+                  className="flex-1 px-4 py-2 bg-slate-800 border border-slate-700 rounded-lg text-sm text-slate-300 focus:outline-none"
+                />
+                <button
+                  onClick={() => copyToClipboard(`${window.location.origin}/a/${app.slug}`)}
+                  className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-sm font-medium transition"
+                >
+                  Copia
+                </button>
+              </div>
+            </div>
+
+            {/* Password */}
+            <div className="space-y-2">
+              <label className="text-sm font-medium text-slate-400">Password iniziale</label>
+              <div className="flex gap-2">
+                <input
+                  type="text"
+                  readOnly
+                  value={app.client_password || '-'}
+                  className="flex-1 px-4 py-2 bg-slate-800 border border-slate-700 rounded-lg text-sm text-slate-300 font-mono focus:outline-none"
+                />
+                <button
+                  onClick={() => copyToClipboard(app.client_password || '')}
+                  className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-sm font-medium transition"
+                >
+                  Copia
+                </button>
+                <button
+                  onClick={() => handleClientAccess('regenerate-password')}
+                  disabled={regenerating}
+                  className="px-4 py-2 bg-amber-600 hover:bg-amber-700 disabled:bg-amber-900/50 text-white rounded-lg text-sm font-medium transition"
+                >
+                  {regenerating ? 'Generazione...' : 'Rigenera'}
+                </button>
+              </div>
+              <p className="text-xs text-slate-500">
+                 Il cliente può cambiare la password in qualsiasi momento dall'interno dell'app.
+              </p>
+            </div>
+
+            {/* Stato e scadenza */}
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 pt-2">
+              {/* Toggle attivo/bloccato */}
+              <div className="space-y-2">
+                <label className="text-sm font-medium text-slate-400">Stato accesso</label>
+                <div className="flex items-center gap-3">
+                  <button
+                    onClick={() => handleClientAccess('toggle')}
+                    disabled={toggling}
+                    className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none ${
+                      app.client_active ? 'bg-emerald-600' : 'bg-red-600'
+                    }`}
+                  >
+                    <span
+                      className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                        app.client_active ? 'translate-x-6' : 'translate-x-1'
+                      }`}
+                    />
+                  </button>
+                  <span className={`text-sm font-medium ${app.client_active ? 'text-emerald-400' : 'text-red-400'}`}>
+                    {app.client_active ? 'Attivo' : 'Bloccato'}
+                  </span>
+                </div>
+              </div>
+
+              {/* Data scadenza */}
+              <div className="space-y-2">
+                <label className="text-sm font-medium text-slate-400">Scadenza</label>
+                <p className="text-sm text-slate-300">{formatDate(app.expires_at)}</p>
+              </div>
+
+              {/* Email cliente */}
+              <div className="space-y-2">
+                <label className="text-sm font-medium text-slate-400">Email cliente</label>
+                <p className="text-sm text-slate-300">{app.client_email || '-'}</p>
+              </div>
+            </div>
+
+            {/* Pulsante estendi scadenza */}
+            <div className="pt-2">
+              <button
+                onClick={() => handleClientAccess('extend-expiry')}
+                disabled={extending}
+                className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 disabled:bg-emerald-900/50 text-white rounded-lg text-sm font-medium transition"
+              >
+                {extending ? 'Estensione...' : '🔄 Estendi scadenza di 30 giorni'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Anteprima colore */}
       <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6">
