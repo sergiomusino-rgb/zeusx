@@ -124,6 +124,7 @@ export const BlueprintJSONSchema = z.object({
   appName: z.union([z.string(), z.number()]).transform((v) => String(v)).default('Nuova App'),
   sector: z.union([z.string(), z.number()]).transform((v) => String(v)).default('custom'),
   description: z.union([z.string(), z.number()]).transform((v) => String(v)).optional().default(''),
+  logo: z.union([z.string(), z.number()]).transform((v) => String(v)).optional().default(''),
   schema: z.object({
     tables: z.array(TableSchema).min(1).max(20),
   }),

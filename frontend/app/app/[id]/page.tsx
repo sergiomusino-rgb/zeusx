@@ -174,6 +174,9 @@ export default function AppViewerPage() {
         <Link href="/dashboard/projects" className="text-gray-400 hover:text-white mb-4 block">
           ← Torna ai Progetti
         </Link>
+        {blueprint.logo && (
+          <img src={blueprint.logo} alt="Logo" className="w-16 h-16 rounded-lg mb-3 object-contain" />
+        )}
         <h1 className="text-2xl font-bold mb-2">{blueprint.appName}</h1>
         <p className="text-sm text-gray-400 mb-8">{blueprint.description}</p>
 

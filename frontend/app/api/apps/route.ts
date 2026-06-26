@@ -108,7 +108,7 @@ export async function POST(req: Request) {
     }
 
     const body = await req.json();
-    const { sector, prompt } = body;
+    const { sector, prompt, logo } = body;
 
     if (!sector || typeof sector !== 'string') {
       return NextResponse.json({ error: 'Settore richiesto' }, { status: 400 });
@@ -146,6 +146,7 @@ export async function POST(req: Request) {
     const rawBlueprint = await blueprintRes.json();
     const blueprintPayload = rawBlueprint.blueprint || rawBlueprint;
     blueprintPayload.sector = normalizeSector(sector);
+    if (logo) blueprintPayload.logo = logo;
     const blueprint = sanitizeBlueprint(blueprintPayload);
 
     // Salva o recupera blueprint

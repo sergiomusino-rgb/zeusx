@@ -8,8 +8,25 @@ export default function CreateAppPage() {
   const router = useRouter();
   const [sector, setSector] = useState('');
   const [prompt, setPrompt] = useState('');
+  const [logoFile, setLogoFile] = useState<File | null>(null);
+  const [logoUrl, setLogoUrl] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+
+  async function uploadLogo(file: File): Promise<string> {
+    const fileName = `logos/${Date.now()}-${file.name}`;
+    const { data, error } = await supabase.storage
+      .from('app-logos')
+      .upload(fileName, file, { upsert: false });
+
+    if (error) throw error;
+
+    const { data: urlData } = supabase.storage
+      .from('app-logos')
+      .getPublicUrl(data.path);
+
+    return urlData.publicUrl;
+  }
 
   const handleCreate = async () => {
     if (!sector.trim()) {
@@ -27,13 +44,23 @@ export default function CreateAppPage() {
         return;
       }
 
+      let logo = '';
+      if (logoFile) {
+        try {
+          logo = await uploadLogo(logoFile);
+        } catch (err) {
+          console.error('Errore upload logo:', err);
+          // Continua anche se il logo fallisce
+        }
+      }
+
       const res = await fetch('/api/apps', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${token}`,
         },
-        body: JSON.stringify({ sector, prompt }),
+        body: JSON.stringify({ sector, prompt, logo }),
       });
 
       const data = await res.json().catch(() => ({}));
@@ -67,6 +94,19 @@ export default function CreateAppPage() {
         value={sector}
         onChange={(e) => setSector(e.target.value)}
       />
+
+      <label className="block text-sm font-medium mb-2">Logo azienda (opzionale)</label>
+      <div className="mb-4">
+        <input
+          type="file"
+          accept="image/*"
+          onChange={(e) => setLogoFile(e.target.files?.[0] || null)}
+          className="w-full p-3 border rounded-lg bg-gray-900 border-gray-700 text-white text-sm"
+        />
+        {logoFile && (
+          <p className="text-sm text-emerald-400 mt-1">{logoFile.name}</p>
+        )}
+      </div>
 
       <label className="block text-sm font-medium mb-2">Richiesta aggiuntiva (opzionale)</label>
       <textarea
