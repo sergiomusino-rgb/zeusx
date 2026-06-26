@@ -52,11 +52,11 @@ function getPeriodISO(sub, field) {
 }
 
 function getFeePriceId(planId) {
-  // Hardcoded per ora, poi sposteremo su Render env vars
+  // Recurring monthly fee price IDs
   const feePrices = {
-    starter: 'price_1TmcprRZR2YaFu2sU0m1kbFC',
-    pro: 'price_1Tmd1tRZR2YaFu2sgHgxzcTC',
-    business: 'price_1Tmd4GRZR2YaFu2s0FZ4Btym',
+    starter: 'price_1TmdIgRZR2YaFu2sT5gkrMdx',
+    pro: 'price_1TmdK0RZR2YaFu2s8pXkLety',
+    business: 'price_1TmdKuRZR2YaFu2sHeH8fShE',
   };
   return feePrices[planId] || feePrices.starter;
 }
