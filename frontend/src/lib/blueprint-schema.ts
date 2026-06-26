@@ -81,10 +81,23 @@ export const TableSchema = z.object({
 });
 
 export const DashboardCardSchema = z.object({
-  type: z.union([z.string(), z.number()]).transform((v) => String(v)).default('count'),
-  table: z.union([z.string(), z.number()]).transform((v) => String(v)).default(''),
-  label: z.union([z.string(), z.number()]).transform((v) => String(v)).default(''),
-  field: z.union([z.string(), z.number()]).transform((v) => String(v)).optional().default(''),
+  type: z
+    .union([z.string(), z.number(), z.null()])
+    .transform((v) => (v == null ? 'count' : String(v)))
+    .default('count'),
+  table: z
+    .union([z.string(), z.number(), z.null()])
+    .transform((v) => (v == null ? '' : String(v)))
+    .default(''),
+  label: z
+    .union([z.string(), z.number(), z.null()])
+    .transform((v) => (v == null ? '' : String(v)))
+    .default(''),
+  field: z
+    .union([z.string(), z.number(), z.null()])
+    .transform((v) => (v == null ? '' : String(v)))
+    .optional()
+    .default(''),
   filter: z.record(z.string(), z.any()).optional(),
 });
 
