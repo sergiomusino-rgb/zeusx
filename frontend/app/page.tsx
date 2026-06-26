@@ -28,7 +28,7 @@ export default function Home() {
 
           <div className="mt-2 px-4 py-2 rounded-full border border-slate-800 bg-slate-900/50 backdrop-blur">
             <p className="text-sm text-slate-300">
-              ⭐ Leader globale con oltre <span className="text-indigo-400 font-bold">50.000+ abbonamenti attivi nel mondo</span>
+              ⭐ Leader con oltre <span className="text-indigo-400 font-bold">10.000 abbonamenti attivi</span>
             </p>
           </div>
 
