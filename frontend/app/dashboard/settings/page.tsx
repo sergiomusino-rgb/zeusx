@@ -1,11 +1,14 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { supabase } from '@/src/lib/supabase';
+import { supabase, getAccessTokenFromStorage } from '@/src/lib/supabase';
+
+const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || 'https://zeusx-backend.onrender.com';
 
 export default function SettingsPage() {
   const [plan, setPlan] = useState<string>('free');
   const [loading, setLoading] = useState(true);
+  const [portalLoading, setPortalLoading] = useState(false);
 
   useEffect(() => {
     async function loadPlan() {
@@ -49,6 +52,38 @@ export default function SettingsPage() {
     : plan === 'pro'
     ? 'text-indigo-400 bg-indigo-500/10 border-indigo-500/20'
     : 'text-slate-400 bg-slate-500/10 border-slate-500/20';
+
+  async function openStripePortal() {
+    setPortalLoading(true);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      const token = session?.access_token || getAccessTokenFromStorage();
+      if (!token) {
+        alert('Sessione scaduta. Effettua di nuovo il login.');
+        return;
+      }
+
+      const res = await fetch(`${BACKEND_URL}/api/billing`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+        },
+      });
+
+      const data = await res.json().catch(() => ({}));
+      if (res.ok && data.url) {
+        window.location.href = data.url;
+      } else {
+        alert(data.error || 'Errore apertura portale Stripe');
+      }
+    } catch (err) {
+      console.error('[Settings] openStripePortal error:', err);
+      alert('Errore di connessione al portale Stripe');
+    } finally {
+      setPortalLoading(false);
+    }
+  }
 
   return (
     <div className="max-w-4xl mx-auto space-y-8">
@@ -96,10 +131,11 @@ export default function SettingsPage() {
             </div>
             <button 
               type="button"
-              onClick={() => alert('Funzionalità di reindirizzamento al portale Stripe Customer Billing in arrivo!')}
-              className="text-xs bg-slate-900 border border-slate-800 hover:bg-slate-800 text-slate-300 hover:text-white px-4 py-2.5 rounded-xl transition font-medium whitespace-nowrap"
+              disabled={portalLoading || plan === 'free'}
+              onClick={openStripePortal}
+              className="text-xs bg-slate-900 border border-slate-800 hover:bg-slate-800 text-slate-300 hover:text-white px-4 py-2.5 rounded-xl transition font-medium whitespace-nowrap disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              Gestisci su Stripe 💳
+              {portalLoading ? 'Caricamento...' : 'Gestisci su Stripe 💳'}
             </button>
           </div>
         </div>
