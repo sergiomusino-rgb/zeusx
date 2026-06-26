@@ -142,8 +142,9 @@ export async function POST(req: Request) {
     }
 
     const rawBlueprint = await blueprintRes.json();
-    rawBlueprint.sector = normalizeSector(sector);
-    const blueprint = sanitizeBlueprint(rawBlueprint);
+    const blueprintPayload = rawBlueprint.blueprint || rawBlueprint;
+    blueprintPayload.sector = normalizeSector(sector);
+    const blueprint = sanitizeBlueprint(blueprintPayload);
 
     // Salva o recupera blueprint
     const normalizedSector = blueprint.sector;
