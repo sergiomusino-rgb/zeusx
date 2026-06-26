@@ -1,6 +1,6 @@
 import { createClient } from '@supabase/supabase-js';
 import { NextResponse } from 'next/server';
-import { BlueprintJSONSchema, sanitizeBlueprint, normalizeSector } from '@/src/lib/blueprint-schema';
+import { sanitizeBlueprint, normalizeSector } from '@/src/lib/blueprint-schema';
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
 const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
@@ -59,20 +59,6 @@ async function getOrCreateTenant(supabase: ReturnType<typeof createClient>, user
 
   return tenant.id;
 }
-
-export async function POST(req: Request) {
-  try {
-    const user = await getUserFromRequest(req);
-    if (!user) {
-      return NextResponse.json({ error: 'Non autorizzato' }, { status: 401 });
-    }
-
-    const body = await req.json();
-    const { sector, prompt } = body;
-
-    if (!sector || typeof sector !== 'string') {
-      return NextResponse.json({ error: 'Settore richiesto' }, { status: 400 });
-    }
 
 async function canCreateApp(supabase: ReturnType<typeof createClient>, tenantId: string): Promise<{ allowed: boolean; reason?: string }> {
   console.log('[canCreateApp] tenantId:', tenantId);
