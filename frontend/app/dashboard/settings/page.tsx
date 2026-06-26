@@ -18,23 +18,23 @@ export default function SettingsPage() {
         return;
       }
 
-      const { data: membership } = await supabase
+      const { data: memberships, error: membershipError } = await supabase
         .from('tenant_members')
         .select('tenant_id')
         .eq('user_id', user.id)
-        .order('created_at', { ascending: true })
-        .limit(1)
-        .single();
+        .limit(1);
 
-      if (!membership?.tenant_id) {
+      if (membershipError || !memberships?.[0]?.tenant_id) {
         setLoading(false);
         return;
       }
 
+      const tenantId = memberships[0].tenant_id;
+
       const { data: tenant } = await supabase
         .from('tenants')
         .select('plan')
-        .eq('id', membership.tenant_id)
+        .eq('id', tenantId)
         .single();
 
       if (tenant?.plan) {

@@ -26,15 +26,17 @@ async function getUserFromRequest(req: Request) {
 }
 
 async function getOrCreateTenant(supabase: ReturnType<typeof createClient>, user: { id: string; email?: string }) {
-  const { data: membership } = await supabase
+  const { data: memberships, error: membershipError } = await supabase
     .from('tenant_members')
     .select('tenant_id')
     .eq('user_id', user.id)
-    .order('created_at', { ascending: true })
-    .limit(1)
-    .single();
+    .limit(1);
 
-  if (membership?.tenant_id) return membership.tenant_id;
+  if (membershipError) {
+    console.error('[getOrCreateTenant] membership error:', membershipError);
+  }
+
+  if (memberships?.[0]?.tenant_id) return memberships[0].tenant_id;
 
   const { data: tenant, error: tenantError } = await supabase
     .from('tenants')
