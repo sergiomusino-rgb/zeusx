@@ -52,10 +52,11 @@ function getPeriodISO(sub, field) {
 }
 
 function getFeePriceId(planId) {
+  // Hardcoded per ora, poi sposteremo su Render env vars
   const feePrices = {
-    starter: process.env.STRIPE_FEE_PRICE_STARTER || '',
-    pro: process.env.STRIPE_FEE_PRICE_PRO || '',
-    business: process.env.STRIPE_FEE_PRICE_BUSINESS || '',
+    starter: 'price_1TmcprRZR2YaFu2sU0m1kbFC',
+    pro: 'price_1Tmd1tRZR2YaFu2sgHgxzcTC',
+    business: 'price_1Tmd4GRZR2YaFu2s0FZ4Btym',
   };
   return feePrices[planId] || feePrices.starter;
 }
