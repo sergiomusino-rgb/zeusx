@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { supabase } from '@/src/lib/supabase';
+import { supabase, getAccessTokenFromStorage } from '@/src/lib/supabase';
 
 export default function PricingPage() {
   const [userId, setUserId] = useState<string | null>(null);
@@ -30,9 +30,16 @@ export default function PricingPage() {
     if (!priceId) return alert("Sei già nel piano Free!");
 
     const { data: { session }, error } = await supabase.auth.getSession();
-    console.log('[Pricing] getSession error:', error?.message, 'session:', !!session, 'userId state:', userId);
+    let token = session?.access_token;
 
-    if (!session?.access_token) {
+    if (!token) {
+      token = getAccessTokenFromStorage();
+      console.log('[Pricing] token da localStorage:', !!token);
+    }
+
+    console.log('[Pricing] getSession error:', error?.message, 'session:', !!session, 'token:', !!token, 'userId state:', userId);
+
+    if (!token) {
       console.log('[Pricing] Nessun token valido');
       alert('Sessione non valida. Riprova il login.');
       return;
