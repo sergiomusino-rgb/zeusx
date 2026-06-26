@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import { createClient } from '@/src/lib/supabase';
+import { supabase } from '@/src/lib/supabase';
 import { sanitizeBlueprint } from '@/src/lib/blueprint-schema';
 import Link from 'next/link';
 
@@ -10,7 +10,6 @@ export default function AppViewerPage() {
   const params = useParams();
   const router = useRouter();
   const appId = params.id as string;
-  const supabase = createClient();
 
   const [loading, setLoading] = useState(true);
   const [blueprint, setBlueprint] = useState<any>(null);
@@ -380,7 +379,6 @@ function renderFieldValue(value: any, field: any) {
 }
 
 function RecordFormModal({ table, record, appId, onClose, onSave }: any) {
-  const supabase = createClient();
   const [formData, setFormData] = useState<Record<string, any>>(
     record ? record.data : {}
   );
