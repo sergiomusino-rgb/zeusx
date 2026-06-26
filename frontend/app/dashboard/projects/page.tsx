@@ -35,7 +35,7 @@ export default function ProjectsPage() {
 
       if (membershipError) {
         console.error('[Projects] membership error:', membershipError);
-        setError('Errore caricamento membership');
+        setError(`Errore caricamento membership: ${membershipError.message}`);
         setLoading(false);
         return;
       }
