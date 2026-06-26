@@ -89,6 +89,25 @@ async function canCreateApp(supabase: ReturnType<typeof createClient>, tenantId:
   return { allowed: true, slotsAvailable, tenant };
 }
 
+function generateSlug(name: string, sector: string): string {
+  const base = `${sector}-${name}`
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-|-$/g, '')
+    .slice(0, 40);
+  const suffix = Math.random().toString(36).substring(2, 6);
+  return `${base}-${suffix}`;
+}
+
+function generatePassword(): string {
+  const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789';
+  let password = '';
+  for (let i = 0; i < 10; i++) {
+    password += chars.charAt(Math.floor(Math.random() * chars.length));
+  }
+  return password;
+}
+
 export async function POST(req: Request) {
   try {
     const user = await getUserFromRequest(req);
@@ -167,9 +186,15 @@ export async function POST(req: Request) {
       blueprintId = newBlueprint.id;
     }
 
-    // Calcola trial 30 giorni
+    // Calcola trial 30 giorni e scadenza cliente
     const trialEndsAt = new Date();
     trialEndsAt.setDate(trialEndsAt.getDate() + 30);
+    const expiresAt = new Date();
+    expiresAt.setDate(expiresAt.getDate() + 30);
+
+    // Genera slug e password cliente
+    const slug = generateSlug(blueprint.appName, sector);
+    const clientPassword = generatePassword();
 
     // Salva app
     const { data: app, error: appError } = await supabase
@@ -180,9 +205,14 @@ export async function POST(req: Request) {
         name: blueprint.appName,
         config: blueprint,
         trial_ends_at: trialEndsAt.toISOString(),
+        expires_at: expiresAt.toISOString(),
+        slug,
+        client_password: clientPassword,
+        client_active: true,
+        expiry_warning_sent: false,
         is_active: true,
       })
-      .select('id, name, trial_ends_at')
+      .select('id, name, trial_ends_at, expires_at, slug, client_password')
       .single();
 
     if (appError || !app) {
