@@ -1,79 +1,116 @@
 import { z } from 'zod';
 
-// Tipi che possono arrivare da vari LLM
-const FieldTypeSchema = z.union([
-  z.enum([
-    'text', 'number', 'date', 'datetime', 'boolean', 'email', 'phone',
-    'textarea', 'select', 'multiselect', 'relation', 'currency', 'file', 'image'
-  ]),
-  z.enum(['string', 'integer', 'decimal', 'float', 'timestamp', 'json']),
-]);
+// Accetta qualsiasi tipo di campo e lo normalizza
+const FieldTypeSchema = z
+  .union([z.string(), z.number()])
+  .transform((v) => String(v).toLowerCase().trim());
 
 function normalizeFieldType(type: string): string {
   const mapping: Record<string, string> = {
     string: 'text',
     varchar: 'text',
+    char: 'text',
+    text: 'text',
     integer: 'number',
     int: 'number',
+    bigint: 'number',
     decimal: 'number',
     float: 'number',
+    double: 'number',
     numeric: 'number',
     timestamp: 'datetime',
+    timestamptz: 'datetime',
+    date: 'date',
+    datetime: 'datetime',
     jsonb: 'text',
     json: 'text',
+    boolean: 'boolean',
+    bool: 'boolean',
+    email: 'email',
+    phone: 'phone',
+    textarea: 'textarea',
+    select: 'select',
+    multiselect: 'multiselect',
+    relation: 'relation',
+    currency: 'currency',
+    file: 'file',
+    image: 'image',
   };
-  return mapping[type?.toLowerCase()] || type;
+  return mapping[type] || 'text';
 }
 
-const FieldOptionsSchema = z.union([
-  z.array(z.string()),
-  z.array(z.object({ value: z.string(), label: z.string() }).transform(o => o.label || o.value)),
-  z.record(z.string()).transform(rec => Object.values(rec)),
-  z.null(),
-]).optional().default([]);
+const FieldOptionsSchema = z
+  .union([
+    z.array(z.string()),
+    z.array(z.any()).transform((arr) => arr.map((o: any) => (typeof o === 'string' ? o : o?.label || o?.value || String(o))).filter(Boolean)),
+    z.record(z.string()).transform((rec) => Object.values(rec)),
+    z.record(z.any()).transform((rec) => Object.values(rec).map((v: any) => String(v))),
+    z.null(),
+  ])
+  .optional()
+  .default([]);
 
 export const FieldSchema = z.object({
-  id: z.string().min(1).transform(s => s.replace(/[^a-z0-9_]/gi, '_').toLowerCase()),
+  id: z
+    .union([z.string(), z.number()])
+    .transform((v) => String(v).replace(/[^a-z0-9_]/gi, '_').toLowerCase())
+    .default('campo'),
   type: FieldTypeSchema.transform(normalizeFieldType),
-  label: z.string().min(1).max(100).default('Campo'),
-  required: z.boolean().default(false),
+  label: z.union([z.string(), z.number()]).transform((v) => String(v)).default('Campo'),
+  required: z.union([z.boolean(), z.string(), z.number()]).transform((v) => v === true || v === 'true' || v === 1).default(false),
   options: FieldOptionsSchema,
-  target: z.union([z.string(), z.null()]).optional().transform(v => v || undefined),
-  targetLabel: z.union([z.string(), z.null()]).optional().transform(v => v || undefined),
+  target: z
+    .union([z.string(), z.null(), z.undefined()])
+    .optional()
+    .transform((v) => v || undefined),
+  targetLabel: z
+    .union([z.string(), z.null(), z.undefined()])
+    .optional()
+    .transform((v) => v || undefined),
 });
 
 export const TableSchema = z.object({
-  name: z.string().min(1).transform(s => s.replace(/[^a-z0-9_]/gi, '_').toLowerCase()),
-  label: z.string().min(1).max(100).default('Tabella'),
-  labelPlural: z.string().min(1).max(100).default('Tabelle'),
+  name: z
+    .union([z.string(), z.number()])
+    .transform((v) => String(v).replace(/[^a-z0-9_]/gi, '_').toLowerCase())
+    .default('tabella'),
+  label: z.union([z.string(), z.number()]).transform((v) => String(v)).default('Tabella'),
+  labelPlural: z.union([z.string(), z.number()]).transform((v) => String(v)).default('Tabelle'),
   fields: z.array(FieldSchema).min(1).max(50),
-  icon: z.string().optional().default(''),
+  icon: z.union([z.string(), z.number()]).transform((v) => String(v)).optional().default(''),
 });
 
 export const DashboardCardSchema = z.object({
-  type: z.enum(['count', 'sum', 'latest', 'chart']).default('count'),
-  table: z.string().default(''),
-  label: z.string().default(''),
-  field: z.string().optional().default(''),
+  type: z.union([z.string(), z.number()]).transform((v) => String(v)).default('count'),
+  table: z.union([z.string(), z.number()]).transform((v) => String(v)).default(''),
+  label: z.union([z.string(), z.number()]).transform((v) => String(v)).default(''),
+  field: z.union([z.string(), z.number()]).transform((v) => String(v)).optional().default(''),
   filter: z.record(z.string(), z.any()).optional(),
 });
 
+const SidebarItemSchema = z.union([
+  z.string(),
+  z.object({ name: z.string() }).transform((o) => o.name),
+  z.object({ id: z.string() }).transform((o) => o.id),
+  z.any().transform((v) => String(v)),
+]);
+
 export const UIConfigSchema = z.object({
-  primaryColor: z.union([
-    z.string().regex(/^#([0-9A-Fa-f]{6})$/),
-    z.string().transform(v => v.startsWith('#') ? v : `#${v}`),
-  ]).default('#6366f1'),
-  sidebar: z.union([
-    z.array(z.string()),
-    z.array(z.object({ name: z.string() }).transform(o => o.name)),
-  ]).default([]),
+  primaryColor: z
+    .union([
+      z.string().regex(/^#([0-9A-Fa-f]{6})$/),
+      z.string().transform((v) => (v?.startsWith('#') ? v : `#${v}`)),
+      z.string().default('#6366f1'),
+    ])
+    .default('#6366f1'),
+  sidebar: z.array(SidebarItemSchema).default([]),
   dashboardCards: z.array(DashboardCardSchema).default([]),
 });
 
 export const BlueprintJSONSchema = z.object({
-  appName: z.string().min(1).max(100).default('Nuova App'),
-  sector: z.string().min(1).max(50).default('custom'),
-  description: z.string().max(500).optional().default(''),
+  appName: z.union([z.string(), z.number()]).transform((v) => String(v)).default('Nuova App'),
+  sector: z.union([z.string(), z.number()]).transform((v) => String(v)).default('custom'),
+  description: z.union([z.string(), z.number()]).transform((v) => String(v)).optional().default(''),
   schema: z.object({
     tables: z.array(TableSchema).min(1).max(20),
   }),
