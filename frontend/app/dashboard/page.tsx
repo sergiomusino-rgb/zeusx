@@ -56,6 +56,7 @@ function SyncPlanBanner() {
 }
 
 export default function DashboardPage() {
+  const [chatInput, setChatInput] = useState('');
   const coreFeatures = [
     { 
       title: "Crea il tuo gestionale", 
@@ -123,22 +124,25 @@ export default function DashboardPage() {
           ))}
         </div>
 
-        {/* Utility Features */}
-        <div className="pt-8 border-t border-gray-800">
-          <h3 className="text-sm font-semibold text-gray-500 uppercase tracking-wider mb-4">Strumenti</h3>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            {utilityFeatures.map((item, index) => (
-              <Link href={item.link} key={index} className="group">
-                <div className="p-6 rounded-xl border border-gray-800 bg-gray-900/50 transition-all hover:border-gray-600 hover:bg-gray-900">
-                  <div className={`w-10 h-10 ${item.color} rounded-lg mb-4 flex items-center justify-center`}>
-                    <span className="text-xl">{item.icon}</span>
-                  </div>
-                  <h3 className="text-lg font-semibold mb-1">{item.title}</h3>
-                  <p className="text-sm text-gray-500">{item.desc}</p>
-                </div>
-              </Link>
-            ))}
-          </div>
+        {/* Chat AI Bar */}
+        <div className="pt-8">
+          <form onSubmit={handleChatSubmit} className="max-w-4xl mx-auto">
+            <div className="relative">
+              <input
+                type="text"
+                value={chatInput}
+                onChange={(e) => setChatInput(e.target.value)}
+                placeholder="Chiedi qualcosa a ZeusX AI..."
+                className="w-full bg-gray-900 border border-gray-700 rounded-2xl px-6 py-5 text-white placeholder-gray-500 focus:outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 text-lg"
+              />
+              <button
+                type="submit"
+                className="absolute right-3 top-1/2 -translate-y-1/2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl px-6 py-3 font-semibold transition-all"
+              >
+                Invia
+              </button>
+            </div>
+          </form>
         </div>
       </main>
 
