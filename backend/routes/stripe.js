@@ -45,29 +45,70 @@ async function getUser(req) {
   return user;
 }
 
+async function getOrCreateTenant(supabase, user) {
+  // Cerca membership esistente
+  const { data: membership, error: membershipError } = await supabase
+    .from('tenant_members')
+    .select('tenant_id')
+    .eq('user_id', user.id)
+    .order('created_at', { ascending: true })
+    .limit(1)
+    .single();
+
+  if (membership) return membership.tenant_id;
+
+  console.log('[getOrCreateTenant] Nessun tenant trovato, creazione per user:', user.id);
+
+  // Crea tenant
+  const { data: tenant, error: tenantError } = await supabase
+    .from('tenants')
+    .insert({
+      owner_id: user.id,
+      name: user.email ? `Tenant di ${user.email}` : 'Tenant personale',
+      slug: `tenant-${user.id.slice(0, 8)}`,
+      plan: 'free',
+    })
+    .select('id')
+    .single();
+
+  if (tenantError || !tenant) {
+    console.error('[getOrCreateTenant] Errore creazione tenant:', tenantError);
+    throw new Error('Errore creazione tenant');
+  }
+
+  // Crea membership owner
+  const { error: memberError } = await supabase
+    .from('tenant_members')
+    .insert({ tenant_id: tenant.id, user_id: user.id, role: 'owner' });
+
+  if (memberError) {
+    console.error('[getOrCreateTenant] Errore membership:', memberError);
+    throw new Error('Errore membership');
+  }
+
+  // Crea profilo se mancante
+  const { error: profileError } = await supabase
+    .from('profiles')
+    .upsert({ id: user.id, user_id: user.id, email: user.email || '' }, { onConflict: 'user_id' });
+
+  if (profileError) {
+    console.error('[getOrCreateTenant] Errore profilo:', profileError);
+  }
+
+  return tenant.id;
+}
+
 // POST /api/create-checkout-session
 router.post('/create-checkout-session', async (req, res) => {
   const user = await getUser(req);
   if (!user) return res.status(401).json({ error: 'Non autorizzato' });
 
   try {
-    const { priceId, tenantId: requestedTenantId } = req.query;
+    const { priceId } = req.query;
     if (!priceId) return res.status(400).json({ error: 'priceId mancante' });
 
     const supabase = getSupabase();
-    const { data: membership, error: membershipError } = await supabase
-      .from('tenant_members')
-      .select('tenant_id')
-      .eq('user_id', user.id)
-      .order('created_at', { ascending: true })
-      .limit(1)
-      .single();
-
-    if (membershipError || !membership) {
-      return res.status(400).json({ error: 'Nessun tenant trovato per l\'utente' });
-    }
-
-    const tenantId = requestedTenantId || membership.tenant_id;
+    const tenantId = await getOrCreateTenant(supabase, user);
 
     const stripe = getStripe();
     const lineItems = [{ price: priceId, quantity: 1 }];
@@ -98,22 +139,8 @@ router.post('/billing', async (req, res) => {
   if (!user) return res.status(401).json({ error: 'Non autorizzato' });
 
   try {
-    const { tenantId: requestedTenantId } = req.body || {};
     const supabase = getSupabase();
-
-    const { data: membership, error: membershipError } = await supabase
-      .from('tenant_members')
-      .select('tenant_id')
-      .eq('user_id', user.id)
-      .order('created_at', { ascending: true })
-      .limit(1)
-      .single();
-
-    if (membershipError || !membership) {
-      return res.status(400).json({ error: 'Nessun tenant trovato' });
-    }
-
-    const tenantId = requestedTenantId || membership.tenant_id;
+    const tenantId = await getOrCreateTenant(supabase, user);
 
     const { data: subscription, error } = await supabase
       .from('subscriptions')
