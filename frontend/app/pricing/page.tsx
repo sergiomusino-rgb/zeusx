@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import Link from 'next/link';
 import { supabase, getAccessTokenFromStorage } from '@/src/lib/supabase';
 
 export default function PricingPage() {
@@ -176,6 +177,13 @@ export default function PricingPage() {
   return (
     <div className="min-h-screen bg-slate-950 text-white p-12">
       <div className="max-w-6xl mx-auto">
+        {/* Header con pulsante Dashboard */}
+        <div className="flex justify-between items-center mb-8">
+          <Link href="/dashboard" className="px-6 py-2 bg-indigo-600 hover:bg-indigo-700 rounded-xl font-semibold transition-all">
+            ← Dashboard
+          </Link>
+        </div>
+
         <h1 className="text-5xl font-black text-center mb-4">Piani ZEUSX</h1>
         <p className="text-center text-slate-400 mb-12 text-lg">
           Scegli il piano giusto per il tuo business
