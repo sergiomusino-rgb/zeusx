@@ -74,24 +74,67 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'Settore richiesto' }, { status: 400 });
     }
 
+async function canCreateApp(supabase: ReturnType<typeof createClient>, tenantId: string): Promise<{ allowed: boolean; reason?: string }> {
+  const { count, error: countError } = await supabase
+    .from('apps')
+    .select('*', { count: 'exact', head: true })
+    .eq('tenant_id', tenantId);
+
+  if (countError) {
+    console.error('[canCreateApp] count error:', countError);
+    return { allowed: false, reason: 'Errore conteggio app' };
+  }
+
+  const appCount = count || 0;
+
+  const { data: tenant, error: tenantError } = await supabase
+    .from('tenants')
+    .select('plan')
+    .eq('id', tenantId)
+    .single();
+
+  if (tenantError || !tenant) {
+    return { allowed: false, reason: 'Tenant non trovato' };
+  }
+
+  const paidPlans = ['pro', 'vip', 'premium', 'basic'];
+  const isPaid = paidPlans.includes(tenant.plan?.toLowerCase() || '');
+
+  if (appCount >= 5 && !isPaid) {
+    return { allowed: false, reason: 'UpgradeToProRequired' };
+  }
+
+  return { allowed: true };
+}
+
+export async function POST(req: Request) {
+  try {
+    const user = await getUserFromRequest(req);
+    if (!user) {
+      return NextResponse.json({ error: 'Non autorizzato' }, { status: 401 });
+    }
+
+    const body = await req.json();
+    const { sector, prompt } = body;
+
+    if (!sector || typeof sector !== 'string') {
+      return NextResponse.json({ error: 'Settore richiesto' }, { status: 400 });
+    }
+
     const supabase = getServiceSupabase();
     const tenantId = await getOrCreateTenant(supabase, user);
 
-    // Controlla limite 5 app via RPC
-    const { data: canCreate, error: canCreateError } = await supabase.rpc('can_create_app', {
-      p_tenant_id: tenantId,
-    });
+    // Controlla limite 5 app
+    const { allowed, reason } = await canCreateApp(supabase, tenantId);
 
-    if (canCreateError) {
-      console.error('[API /apps] can_create_app error:', canCreateError);
-      return NextResponse.json({ error: 'Errore controllo limite app' }, { status: 500 });
-    }
-
-    if (!canCreate) {
-      return NextResponse.json(
-        { error: 'UpgradeToProRequired', message: 'Hai raggiunto il limite di 5 app. Passa a Pro per crearne altre.' },
-        { status: 403 }
-      );
+    if (!allowed) {
+      if (reason === 'UpgradeToProRequired') {
+        return NextResponse.json(
+          { error: 'UpgradeToProRequired', message: 'Hai raggiunto il limite di 5 app. Passa a Pro per crearne altre.' },
+          { status: 403 }
+        );
+      }
+      return NextResponse.json({ error: reason || 'Errore controllo limite app' }, { status: 500 });
     }
 
     // Genera blueprint dal backend
