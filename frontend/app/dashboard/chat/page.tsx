@@ -1,15 +1,19 @@
 'use client';
 
-import { useState } from 'react';
+import { Suspense, useEffect, useState, useRef } from 'react';
+import { useSearchParams } from 'next/navigation';
 
-export default function ChatPage() {
+function ChatContent() {
+  const searchParams = useSearchParams();
   const [messages, setMessages] = useState<{role: string, text: string}[]>([]);
   const [input, setInput] = useState('');
+  const initialized = useRef(false);
 
-  const handleSendMessage = async () => {
-    if (input.trim() === '') return;
+  const handleSendMessage = async (messageText?: string) => {
+    const text = messageText || input;
+    if (text.trim() === '') return;
 
-    const userMessage = input;
+    const userMessage = text;
     setMessages(prev => [...prev, { role: 'user', text: userMessage }]);
     setInput('');
 
@@ -21,7 +25,7 @@ export default function ChatPage() {
       });
 
       const data = await response.json();
-      console.log("Dati ricevuti dal server:", data); // CONTROLLA QUESTO IN CONSOLE
+      console.log("Dati ricevuti dal server:", data);
 
       if (data && data.reply) {
         setMessages(prev => [...prev, { role: 'ai', text: data.reply }]);
@@ -34,22 +38,53 @@ export default function ChatPage() {
     }
   };
 
+  useEffect(() => {
+    if (initialized.current) return;
+    const q = searchParams.get('q');
+    if (q) {
+      initialized.current = true;
+      handleSendMessage(q);
+      window.history.replaceState({}, '', '/dashboard/chat');
+    }
+  }, [searchParams]);
+
   return (
     <div className="p-8 max-w-2xl mx-auto">
-      <div className="bg-slate-900 p-4 h-96 overflow-y-auto mb-4 border border-slate-700">
+      <h1 className="text-3xl font-bold mb-6">Chat AI</h1>
+      <div className="bg-slate-900 p-4 h-96 overflow-y-auto mb-4 border border-slate-700 rounded-lg">
+        {messages.length === 0 && (
+          <p className="text-slate-500 text-center mt-20">Scrivi un messaggio per iniziare...</p>
+        )}
         {messages.map((m, i) => (
-          <p key={i} className={m.role === 'user' ? 'text-blue-400' : 'text-green-400'}>
-            {m.role === 'user' ? 'Tu: ' : 'AI: '} {m.text}
-          </p>
+          <div key={i} className={`mb-3 ${m.role === 'user' ? 'text-right' : 'text-left'}`}>
+            <span className={`inline-block px-4 py-2 rounded-xl max-w-[80%] ${
+              m.role === 'user' 
+                ? 'bg-indigo-600 text-white' 
+                : 'bg-slate-700 text-slate-100'
+            }`}>
+              {m.text}
+            </span>
+          </div>
         ))}
       </div>
-      <input 
-        className="w-full p-3 bg-slate-800 text-white"
-        value={input}
-        onChange={(e) => setInput(e.target.value)}
-        onKeyDown={(e) => e.key === 'Enter' && handleSendMessage()}
-      />
-      <button onClick={handleSendMessage} className="bg-indigo-600 text-white p-2 mt-2">Invia</button>
+      <div className="flex gap-2">
+        <input 
+          className="flex-1 p-3 bg-slate-800 text-white rounded-lg border border-slate-700 focus:outline-none focus:border-indigo-500"
+          value={input}
+          onChange={(e) => setInput(e.target.value)}
+          onKeyDown={(e) => e.key === 'Enter' && handleSendMessage()}
+          placeholder="Scrivi un messaggio..."
+        />
+        <button onClick={handleSendMessage} className="bg-indigo-600 hover:bg-indigo-700 text-white px-6 py-3 rounded-lg font-semibold transition">Invia</button>
+      </div>
     </div>
+  );
+}
+
+export default function ChatPage() {
+  return (
+    <Suspense fallback={<div className="p-8 text-center text-slate-400">Caricamento chat...</div>}>
+      <ChatContent />
+    </Suspense>
   );
 }

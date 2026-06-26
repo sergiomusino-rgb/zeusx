@@ -93,7 +93,7 @@ export default function DashboardPage() {
   const handleChatSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (chatInput.trim()) {
-      window.location.href = '/dashboard/chat';
+      window.location.href = `/dashboard/chat?q=${encodeURIComponent(chatInput.trim())}`;
     }
   };
 
