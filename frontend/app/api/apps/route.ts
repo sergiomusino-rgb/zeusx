@@ -75,14 +75,17 @@ export async function POST(req: Request) {
     }
 
 async function canCreateApp(supabase: ReturnType<typeof createClient>, tenantId: string): Promise<{ allowed: boolean; reason?: string }> {
+  console.log('[canCreateApp] tenantId:', tenantId);
+
   const { count, error: countError } = await supabase
     .from('apps')
     .select('*', { count: 'exact', head: true })
     .eq('tenant_id', tenantId);
 
+  console.log('[canCreateApp] count:', count, 'error:', countError);
+
   if (countError) {
-    console.error('[canCreateApp] count error:', countError);
-    return { allowed: false, reason: 'Errore conteggio app' };
+    return { allowed: false, reason: `Errore conteggio app: ${countError.message}` };
   }
 
   const appCount = count || 0;
@@ -92,6 +95,8 @@ async function canCreateApp(supabase: ReturnType<typeof createClient>, tenantId:
     .select('plan')
     .eq('id', tenantId)
     .single();
+
+  console.log('[canCreateApp] tenant:', tenant, 'error:', tenantError);
 
   if (tenantError || !tenant) {
     return { allowed: false, reason: 'Tenant non trovato' };
@@ -126,6 +131,7 @@ export async function POST(req: Request) {
 
     // Controlla limite 5 app
     const { allowed, reason } = await canCreateApp(supabase, tenantId);
+    console.log('[API /apps] canCreateApp:', allowed, reason);
 
     if (!allowed) {
       if (reason === 'UpgradeToProRequired') {
