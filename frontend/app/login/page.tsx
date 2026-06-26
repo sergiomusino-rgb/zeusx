@@ -31,15 +31,25 @@ export default function LoginPage() {
         const { error, data } = await supabase.auth.signInWithPassword({ email, password });
         console.log('[Login] signIn result:', { error: error?.message, session: !!data.session, user: data.user?.id });
         if (error) throw error;
-        // Aspetta che la sessione venga salvata prima del redirect
-        setTimeout(() => {
-          console.log('[Login] redirect to dashboard');
-          window.location.href = '/dashboard';
-        }, 1000);
+        // Aspetta che la sessione e i cookie vengano salvati prima del redirect
+        let attempts = 0;
+        const checkSession = setInterval(async () => {
+          const { data: { session } } = await supabase.auth.getSession();
+          attempts++;
+          console.log('[Login] checkSession attempt', attempts, 'session:', !!session);
+          if (session) {
+            clearInterval(checkSession);
+            window.location.href = '/dashboard';
+          }
+          if (attempts >= 10) {
+            clearInterval(checkSession);
+            setError('Sessione non stabilita. Riprova.');
+            setLoading(false);
+          }
+        }, 300);
       }
     } catch (err: any) {
       setError(err.message || 'Si è verificato un errore durante l\'autenticazione.');
-    } finally {
       setLoading(false);
     }
   };
