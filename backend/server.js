@@ -51,6 +51,15 @@ function getPeriodISO(sub, field) {
   return new Date(val * 1000).toISOString();
 }
 
+function getFeePriceId(planId) {
+  const feePrices = {
+    starter: process.env.STRIPE_FEE_PRICE_STARTER || '',
+    pro: process.env.STRIPE_FEE_PRICE_PRO || '',
+    business: process.env.STRIPE_FEE_PRICE_BUSINESS || '',
+  };
+  return feePrices[planId] || feePrices.starter;
+}
+
 async function upsertSubscription(supabase, tenantId, data) {
   const { error } = await supabase
     .from('subscriptions')
@@ -178,6 +187,26 @@ app.post('/api/webhooks/stripe', express.raw({ type: 'application/json' }), asyn
         });
 
         console.log(`[Stripe Webhook] Subscription attivata per tenant ${tenantId}`);
+
+        // Crea automaticamente la fee subscription per le app
+        const planId = session.metadata?.plan_id || 'starter';
+        const feePriceId = getFeePriceId(planId);
+        
+        if (feePriceId) {
+          try {
+            const feeSubscription = await stripe.subscriptions.create({
+              customer: session.customer,
+              items: [{ price: feePriceId, quantity: 0 }], // Inizia da 0, verrà incrementata con le app
+              metadata: { tenant_id: tenantId, type: 'app_fee' },
+              proration_behavior: 'always_invoice',
+            });
+
+            console.log(`[Stripe Webhook] Fee subscription creata: ${feeSubscription.id} per tenant ${tenantId}`);
+          } catch (err) {
+            console.error(`[Stripe Webhook] Errore creazione fee subscription:`, err);
+          }
+        }
+
         break;
       }
 
