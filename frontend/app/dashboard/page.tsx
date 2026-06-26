@@ -85,10 +85,17 @@ export default function DashboardPage() {
   ];
 
   const utilityFeatures = [
-    { title: "Chat AI", desc: "Assistente virtuale", link: "/dashboard/chat", color: "bg-cyan-600", icon: "💬" },
+    { title: "Chat AI", desc: "Assistente virtuale", link: "/dashboard/chat", color: "bg-cyan-600", icon: "" },
     { title: "Statistiche", desc: "Monitoraggio dei tuoi processi", link: "/dashboard/stats", color: "bg-purple-600", icon: "📊" },
     { title: "Impostazioni", desc: "Gestione API e profilo", link: "/dashboard/settings", color: "bg-gray-600", icon: "️" },
   ];
+
+  const handleChatSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (chatInput.trim()) {
+      window.location.href = '/dashboard/chat';
+    }
+  };
 
   return (
     <div className="min-h-screen bg-gray-950 text-white p-8">
