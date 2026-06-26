@@ -81,9 +81,6 @@ export default function DashboardLayout({
             <span className="text-xl font-black md:hidden tracking-wider text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-indigo-500">
               ⚡ ZEUSX
             </span>
-            <div className="text-xs text-slate-400 font-mono bg-slate-950 px-3 py-1.5 rounded-lg border border-slate-800">
-              Crediti Residui: <span className="text-emerald-400 font-bold">Illimitati</span>
-            </div>
           </div>
 
           <div className="flex items-center gap-4">

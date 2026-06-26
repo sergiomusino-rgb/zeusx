@@ -91,14 +91,11 @@ export default function DashboardPage() {
 
   return (
     <div className="min-h-screen bg-gray-950 text-white p-8">
-      <header className="max-w-6xl mx-auto mb-12 flex justify-between items-center">
+      <header className="max-w-6xl mx-auto mb-12">
         <div>
           <h1 className="text-4xl font-extrabold text-white">ZeusX Dashboard</h1>
           <p className="text-gray-400 mt-2">Bentornato, Sergio. Cosa vuoi fare oggi?</p>
         </div>
-        <Link href="/" className="px-6 py-2 bg-gray-800 rounded-full hover:bg-gray-700 transition">
-          Torna alla Home
-        </Link>
       </header>
 
       <Suspense fallback={null}>
