@@ -193,27 +193,53 @@ router.post('/sync-plan', async (req, res) => {
     if (!membership) return res.status(403).json({ error: 'Tenant non autorizzato' });
 
     if (session.payment_status !== 'paid') {
-      return res.json({ paid: false, plan: 'free' });
+      return res.json({ paid: false, plan: 'free', appLimit: 1 });
     }
 
     const lineItems = await stripe.checkout.sessions.listLineItems(sessionId, { limit: 1 });
     const priceId = lineItems.data[0]?.price?.id;
-    let plan = 'pro';
+    
+    // Mappa piano in base al priceId o nome prodotto
+    let plan = 'starter';
+    let appLimit = 1;
+
+    // Definizione piani con slot
+    const planConfig = {
+      starter: { appLimit: 1 },
+      pro: { appLimit: 5 },
+      business: { appLimit: 250 }
+    };
 
     if (priceId) {
       const price = await stripe.prices.retrieve(priceId);
       const productId = typeof price.product === 'string' ? price.product : price.product?.id;
+      
       if (productId) {
         const product = await stripe.products.retrieve(productId);
         const name = (product.name || '').toLowerCase();
-        if (name.includes('vip')) plan = 'vip';
-        else if (name.includes('basic') || name.includes('base')) plan = 'basic';
+        
+        // Determina piano dal nome prodotto
+        if (name.includes('business')) {
+          plan = 'business';
+          appLimit = planConfig.business.appLimit;
+        } else if (name.includes('pro')) {
+          plan = 'pro';
+          appLimit = planConfig.pro.appLimit;
+        } else if (name.includes('starter')) {
+          plan = 'starter';
+          appLimit = planConfig.starter.appLimit;
+        }
       }
     }
 
+    // Aggiorna tenant con nuovo piano e limiti
     const { error: updateError } = await supabase
       .from('tenants')
-      .update({ plan, updated_at: new Date().toISOString() })
+      .update({ 
+        plan, 
+        app_limit: appLimit,
+        updated_at: new Date().toISOString() 
+      })
       .eq('id', tenantId);
 
     if (updateError) {
@@ -221,7 +247,7 @@ router.post('/sync-plan', async (req, res) => {
       return res.status(500).json({ error: 'Errore aggiornamento piano' });
     }
 
-    return res.json({ paid: true, plan });
+    return res.json({ paid: true, plan, appLimit });
   } catch (err) {
     console.error('[sync-plan] errore:', err);
     res.status(500).json({ error: err.message || 'Errore sync piano' });

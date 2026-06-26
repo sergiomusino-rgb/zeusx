@@ -62,7 +62,7 @@ async function getOrCreateTenant(supabase: ReturnType<typeof createClient>, user
   return tenant.id;
 }
 
-async function canCreateApp(supabase: ReturnType<typeof createClient>, tenantId: string): Promise<{ allowed: boolean; reason?: string }> {
+async function canCreateApp(supabase: ReturnType<typeof createClient>, tenantId: string): Promise<{ allowed: boolean; reason?: string; slotsAvailable?: number }> {
   console.log('[canCreateApp] tenantId:', tenantId);
 
   const { count, error: countError } = await supabase
@@ -80,7 +80,7 @@ async function canCreateApp(supabase: ReturnType<typeof createClient>, tenantId:
 
   const { data: tenant, error: tenantError } = await supabase
     .from('tenants')
-    .select('plan')
+    .select('plan, app_limit')
     .eq('id', tenantId)
     .single();
 
@@ -90,14 +90,14 @@ async function canCreateApp(supabase: ReturnType<typeof createClient>, tenantId:
     return { allowed: false, reason: 'Tenant non trovato' };
   }
 
-  const paidPlans = ['pro', 'vip', 'premium', 'basic'];
-  const isPaid = paidPlans.includes(tenant.plan?.toLowerCase() || '');
+  const appLimit = tenant.app_limit || 1;
+  const slotsAvailable = appLimit - appCount;
 
-  if (appCount >= 5 && !isPaid) {
-    return { allowed: false, reason: 'UpgradeToProRequired' };
+  if (slotsAvailable <= 0) {
+    return { allowed: false, reason: 'SlotsExhausted', slotsAvailable: 0 };
   }
 
-  return { allowed: true };
+  return { allowed: true, slotsAvailable };
 }
 
 export async function POST(req: Request) {
@@ -122,9 +122,9 @@ export async function POST(req: Request) {
     console.log('[API /apps] canCreateApp:', allowed, reason);
 
     if (!allowed) {
-      if (reason === 'UpgradeToProRequired') {
+      if (reason === 'SlotsExhausted') {
         return NextResponse.json(
-          { error: 'UpgradeToProRequired', message: 'Hai raggiunto il limite di 5 app. Passa a Pro per crearne altre.' },
+          { error: 'SlotsExhausted', message: 'Hai esaurito gli slot app. Acquista un nuovo piano per crearne altre.', redirectTo: '/pricing' },
           { status: 403 }
         );
       }
