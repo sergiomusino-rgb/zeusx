@@ -17,6 +17,7 @@ export default function LoginPage() {
     e.preventDefault();
     setError(null);
     setLoading(true);
+    console.log('[Login] handleAuth started, isRegistering:', isRegistering);
 
     try {
       if (isRegistering) {
