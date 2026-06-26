@@ -27,15 +27,21 @@ export default function ProjectsPage() {
         return;
       }
 
-      const { data: membership, error: membershipError } = await supabase
+      const { data: memberships, error: membershipError } = await supabase
         .from('tenant_members')
         .select('tenant_id')
         .eq('user_id', user.id)
-        .order('created_at', { ascending: true })
-        .limit(1)
-        .single();
+        .limit(1);
 
-      if (membershipError || !membership?.tenant_id) {
+      if (membershipError) {
+        console.error('[Projects] membership error:', membershipError);
+        setError('Errore caricamento membership');
+        setLoading(false);
+        return;
+      }
+
+      const tenantId = memberships?.[0]?.tenant_id;
+      if (!tenantId) {
         setLoading(false);
         return;
       }
@@ -43,8 +49,7 @@ export default function ProjectsPage() {
       const { data: appsData, error: appsError } = await supabase
         .from('apps')
         .select('id, name, trial_ends_at, is_active, created_at, blueprint_id, blueprints(sector)')
-        .eq('tenant_id', membership.tenant_id)
-        .order('created_at', { ascending: false });
+        .eq('tenant_id', tenantId);
 
       if (appsError) {
         console.error('[Projects] load apps error:', appsError);
