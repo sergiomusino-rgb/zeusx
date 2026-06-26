@@ -504,6 +504,10 @@ app.use((err, _req, res, _next) => {
   res.status(500).json({ error: err.message || 'Errore interno del server' });
 });
 
+// Cron job per controllo scadenze app
+const { startExpiryCheck } = require('./jobs/expiry-check');
+startExpiryCheck();
+
 app.listen(PORT, '0.0.0.0', () => {
   console.log(`✅ ZeusX backend attivo su http://0.0.0.0:${PORT}`);
 });
