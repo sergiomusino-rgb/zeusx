@@ -62,25 +62,13 @@ async function getOrCreateTenant(supabase: ReturnType<typeof createClient>, user
   return tenant.id;
 }
 
-async function canCreateApp(supabase: ReturnType<typeof createClient>, tenantId: string): Promise<{ allowed: boolean; reason?: string; slotsAvailable?: number }> {
+async function canCreateApp(supabase: ReturnType<typeof createClient>, tenantId: string): Promise<{ allowed: boolean; reason?: string; slotsAvailable?: number; tenant?: any }> {
   console.log('[canCreateApp] tenantId:', tenantId);
 
-  const { count, error: countError } = await supabase
-    .from('apps')
-    .select('*', { count: 'exact', head: true })
-    .eq('tenant_id', tenantId);
-
-  console.log('[canCreateApp] count:', count, 'error:', countError);
-
-  if (countError) {
-    return { allowed: false, reason: `Errore conteggio app: ${countError.message}` };
-  }
-
-  const appCount = count || 0;
-
+  // Conta app totali create (incluso quelle cancellate, lo slot non si libera mai)
   const { data: tenant, error: tenantError } = await supabase
     .from('tenants')
-    .select('plan, app_limit')
+    .select('plan, app_limit, total_apps_created')
     .eq('id', tenantId)
     .single();
 
@@ -91,13 +79,14 @@ async function canCreateApp(supabase: ReturnType<typeof createClient>, tenantId:
   }
 
   const appLimit = tenant.app_limit || 1;
-  const slotsAvailable = appLimit - appCount;
+  const totalCreated = tenant.total_apps_created || 0;
+  const slotsAvailable = appLimit - totalCreated;
 
   if (slotsAvailable <= 0) {
-    return { allowed: false, reason: 'SlotsExhausted', slotsAvailable: 0 };
+    return { allowed: false, reason: 'SlotsExhausted', slotsAvailable: 0, tenant };
   }
 
-  return { allowed: true, slotsAvailable };
+  return { allowed: true, slotsAvailable, tenant };
 }
 
 export async function POST(req: Request) {
@@ -118,7 +107,7 @@ export async function POST(req: Request) {
     const tenantId = await getOrCreateTenant(supabase, user);
 
     // Controlla limite 5 app
-    const { allowed, reason } = await canCreateApp(supabase, tenantId);
+    const { allowed, reason, tenant } = await canCreateApp(supabase, tenantId);
     console.log('[API /apps] canCreateApp:', allowed, reason);
 
     if (!allowed) {
@@ -200,6 +189,12 @@ export async function POST(req: Request) {
       console.error('[API /apps] app insert error:', appError);
       return NextResponse.json({ error: 'Errore salvataggio app' }, { status: 500 });
     }
+
+    // Incrementa il contatore permanente di app create (non si libera mai)
+    await supabase
+      .from('tenants')
+      .update({ total_apps_created: (tenant.total_apps_created || 0) + 1 })
+      .eq('id', tenantId);
 
     // Incrementa fee mensile per la nuova app
     try {

@@ -44,21 +44,14 @@ export default function PricingPage() {
       if (memberships?.[0]?.tenant_id) {
         const { data: tenant } = await supabase
           .from('tenants')
-          .select('plan, app_limit')
+          .select('plan, app_limit, total_apps_created')
           .eq('id', memberships[0].tenant_id)
           .single();
 
         if (tenant) {
           setCurrentPlan(tenant.plan || 'free');
           setSlotsTotal(tenant.app_limit || 1);
-          
-          // Conta app create
-          const { count } = await supabase
-            .from('apps')
-            .select('*', { count: 'exact', head: true })
-            .eq('tenant_id', memberships[0].tenant_id);
-          
-          setSlotsUsed(count || 0);
+          setSlotsUsed(tenant.total_apps_created || 0);
         }
       }
     } catch (err) {
