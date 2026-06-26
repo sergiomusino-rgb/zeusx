@@ -118,6 +118,15 @@ export default function AppDetailPage() {
           </div>
         </div>
         <div className="flex items-center gap-3">
+          <Link
+            href={`/app/${app.id}`}
+            className="bg-indigo-600 hover:bg-indigo-700 text-white px-6 py-2 rounded-xl text-sm font-semibold transition flex items-center gap-2"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+            </svg>
+            Usa App
+          </Link>
           <button
             onClick={handleDelete}
             disabled={deleting}
