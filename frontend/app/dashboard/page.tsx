@@ -56,10 +56,37 @@ function SyncPlanBanner() {
 }
 
 export default function DashboardPage() {
-  const features = [
-    { title: "Vision & AI Edit", desc: "Analisi avanzata e modifica immagini", link: "/dashboard/vision", color: "bg-blue-600" },
-    { title: "Statistiche", desc: "Monitoraggio dei tuoi processi", link: "/dashboard/stats", color: "bg-purple-600" },
-    { title: "Impostazioni", desc: "Gestione API e profilo", link: "/dashboard/settings", color: "bg-gray-600" },
+  const coreFeatures = [
+    { 
+      title: "Crea il tuo gestionale", 
+      desc: "Seleziona un settore e lascia che ZeusX generi la tua app personalizzata",
+      link: "/create", 
+      color: "bg-gradient-to-br from-indigo-600 to-purple-600",
+      icon: "🚀",
+      highlighted: true
+    },
+    { 
+      title: "I tuoi Progetti", 
+      desc: "Gestisci e monitora le tue app esistenti",
+      link: "/dashboard/projects", 
+      color: "bg-blue-600",
+      icon: "",
+      highlighted: false
+    },
+    { 
+      title: "Vision AI", 
+      desc: "Analisi avanzata e modifica immagini",
+      link: "/dashboard/vision", 
+      color: "bg-emerald-600",
+      icon: "👁️",
+      highlighted: false
+    },
+  ];
+
+  const utilityFeatures = [
+    { title: "Chat AI", desc: "Assistente virtuale", link: "/dashboard/chat", color: "bg-cyan-600", icon: "💬" },
+    { title: "Statistiche", desc: "Monitoraggio dei tuoi processi", link: "/dashboard/stats", color: "bg-purple-600", icon: "📊" },
+    { title: "Impostazioni", desc: "Gestione API e profilo", link: "/dashboard/settings", color: "bg-gray-600", icon: "️" },
   ];
 
   return (
@@ -67,7 +94,7 @@ export default function DashboardPage() {
       <header className="max-w-6xl mx-auto mb-12 flex justify-between items-center">
         <div>
           <h1 className="text-4xl font-extrabold text-white">ZeusX Dashboard</h1>
-          <p className="text-gray-400">Bentornato, Sergio. Cosa vuoi fare oggi?</p>
+          <p className="text-gray-400 mt-2">Bentornato, Sergio. Cosa vuoi fare oggi?</p>
         </div>
         <Link href="/" className="px-6 py-2 bg-gray-800 rounded-full hover:bg-gray-700 transition">
           Torna alla Home
@@ -78,19 +105,44 @@ export default function DashboardPage() {
         <SyncPlanBanner />
       </Suspense>
 
-      <main className="max-w-6xl mx-auto grid grid-cols-1 md:grid-cols-3 gap-6">
-        {features.map((item, index) => (
-          <Link href={item.link} key={index} className="group">
-            <div className={`p-8 rounded-2xl border border-gray-800 bg-gray-900 transition-all hover:border-gray-500 hover:scale-105`}>
-              <div className={`w-12 h-12 ${item.color} rounded-xl mb-6 flex items-center justify-center`}>
-                <span className="text-2xl">⚡</span>
+      {/* Core Business Features */}
+      <main className="max-w-6xl mx-auto space-y-8">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          {coreFeatures.map((item, index) => (
+            <Link href={item.link} key={index} className="group">
+              <div className={`p-8 rounded-2xl border transition-all hover:scale-105 ${
+                item.highlighted 
+                  ? 'border-indigo-500/50 bg-gradient-to-br from-indigo-950/50 to-purple-950/50 shadow-lg shadow-indigo-500/20' 
+                  : 'border-gray-800 bg-gray-900 hover:border-gray-500'
+              }`}>
+                <div className={`w-12 h-12 ${item.color} rounded-xl mb-6 flex items-center justify-center shadow-lg`}>
+                  <span className="text-2xl">{item.icon}</span>
+                </div>
+                <h2 className="text-xl font-bold mb-2">{item.title}</h2>
+                <p className="text-gray-400 mb-6">{item.desc}</p>
+                <span className="text-blue-400 font-semibold group-hover:underline">Accedi →</span>
               </div>
-              <h2 className="text-xl font-bold mb-2">{item.title}</h2>
-              <p className="text-gray-400 mb-6">{item.desc}</p>
-              <span className="text-blue-400 font-semibold group-hover:underline">Accedi →</span>
-            </div>
-          </Link>
-        ))}
+            </Link>
+          ))}
+        </div>
+
+        {/* Utility Features */}
+        <div className="pt-8 border-t border-gray-800">
+          <h3 className="text-sm font-semibold text-gray-500 uppercase tracking-wider mb-4">Strumenti</h3>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            {utilityFeatures.map((item, index) => (
+              <Link href={item.link} key={index} className="group">
+                <div className="p-6 rounded-xl border border-gray-800 bg-gray-900/50 transition-all hover:border-gray-600 hover:bg-gray-900">
+                  <div className={`w-10 h-10 ${item.color} rounded-lg mb-4 flex items-center justify-center`}>
+                    <span className="text-xl">{item.icon}</span>
+                  </div>
+                  <h3 className="text-lg font-semibold mb-1">{item.title}</h3>
+                  <p className="text-sm text-gray-500">{item.desc}</p>
+                </div>
+              </Link>
+            ))}
+          </div>
+        </div>
       </main>
 
       <footer className="max-w-6xl mx-auto mt-20 pt-8 border-t border-gray-900 text-center text-gray-600">
