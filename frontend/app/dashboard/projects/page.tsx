@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { supabase } from '@/src/lib/supabase';
 
 interface App {
@@ -15,6 +16,7 @@ interface App {
 }
 
 export default function ProjectsPage() {
+  const router = useRouter();
   const [apps, setApps] = useState<App[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -160,7 +162,11 @@ export default function ProjectsPage() {
                 apps.map((app) => {
                   const expired = isTrialExpired(app.trial_ends_at);
                   return (
-                    <tr key={app.id} className="hover:bg-slate-800/30 transition group cursor-pointer">
+                    <tr
+                      key={app.id}
+                      onClick={() => router.push(`/dashboard/projects/${app.id}`)}
+                      className="hover:bg-slate-800/30 transition group cursor-pointer"
+                    >
                       <td className="py-4 px-6 font-medium text-slate-200 group-hover:text-blue-400 transition">
                         {app.name}
                       </td>
