@@ -47,11 +47,19 @@ export async function POST(req: NextRequest) {
     }
 
     const token = authHeader.slice(7);
-    const { data: { user }, error: authError } = await authClient.auth.getUser(token);
+    const { data: { user, session }, error: authError } = await authClient.auth.getUser(token);
 
     if (authError || !user) {
       console.error('[Checkout] Auth error:', authError);
       return NextResponse.json({ error: 'Utente non autenticato' }, { status: 401 });
+    }
+
+    // Imposta la sessione sul dbClient per RLS
+    if (session) {
+      await dbClient.auth.setSession({
+        access_token: session.access_token,
+        refresh_token: session.refresh_token,
+      });
     }
 
     console.log('[Checkout] User autenticato:', user.id, user.email);
