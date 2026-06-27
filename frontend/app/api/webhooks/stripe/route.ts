@@ -46,10 +46,12 @@ export async function POST(req: NextRequest) {
     const session = event.data.object as Stripe.Checkout.Session;
     const tenantId = session.client_reference_id || session.metadata?.tenant_id;
     const priceId = session.metadata?.price_id;
+    const planId = session.metadata?.plan_id;
 
     console.log('[Webhook] Session:', session.id);
     console.log('[Webhook] tenantId:', tenantId);
     console.log('[Webhook] priceId:', priceId);
+    console.log('[Webhook] planId:', planId);
 
     if (!tenantId) {
       console.error('[Webhook] tenant_id mancante');
@@ -68,14 +70,14 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Tenant non trovato' }, { status: 404 });
     }
 
-    // Mappa price_id → piano e slot
-    const priceToPlan: Record<string, { plan: string; slots: number }> = {
-      'price_1TmcprRZR2YaFu2sU0m1kbFC': { plan: 'starter', slots: 1 },
-      'price_1Tmd1tRZR2YaFu2sgHgxzcTC': { plan: 'pro', slots: 5 },
-      'price_1Tmd4GRZR2YaFu2s0FZ4Btym': { plan: 'business', slots: 250 },
+    // Mappa plan_id → piano e slot (usiamo plan_id come chiave principale)
+    const planToConfig: Record<string, { plan: string; slots: number }> = {
+      'starter': { plan: 'starter', slots: 1 },
+      'pro': { plan: 'pro', slots: 5 },
+      'business': { plan: 'business', slots: 250 },
     };
 
-    const planConfig = priceToPlan[priceId] || { plan: 'pro', slots: 5 };
+    const planConfig = planToConfig[planId] || { plan: 'pro', slots: 5 };
 
     // Aggiorna piano e resetta il contatore app create
     const { error: updateError } = await supabase
