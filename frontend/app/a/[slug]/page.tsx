@@ -46,32 +46,41 @@ export default function ClientLoginPage() {
     setSubmitting(true);
 
     try {
-      // Se primo accesso (email vuota), salva email
+      // Verifica password direttamente da Supabase (policy RLS permette lettura pubblica)
+      const { data: appData, error: appError } = await supabase
+        .from('apps')
+        .select('id, client_password, client_active, expires_at, config')
+        .eq('slug', slug)
+        .single();
+
+      if (appError || !appData) {
+        setError('App non trovata');
+        setSubmitting(false);
+        return;
+      }
+
+      if (!appData.client_active) {
+        setError('App bloccata');
+        setSubmitting(false);
+        return;
+      }
+
+      if (appData.client_password !== password) {
+        setError('Password errata');
+        setSubmitting(false);
+        return;
+      }
+
+      // Se primo accesso, salva email
       if (!app?.client_email && email.trim()) {
-        const saveRes = await fetch(`/api/a/${slug}/save-email`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ email: email.trim(), password }),
-        });
+        const { error: updateError } = await supabase
+          .from('apps')
+          .update({ client_email: email.trim() })
+          .eq('id', appData.id);
 
-        if (!saveRes.ok) {
-          const err = await saveRes.json();
-          setError(err.error || 'Password errata');
-          setSubmitting(false);
-          return;
-        }
-      } else {
-        // Verifica solo password
-        const checkRes = await fetch(`/api/a/${slug}/verify-password`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ password }),
-        });
-
-        if (!checkRes.ok) {
-          setError('Password errata');
-          setSubmitting(false);
-          return;
+        if (updateError) {
+          console.error('Errore salvataggio email:', updateError);
+          // Continuiamo comunque il login anche se l'email non si salva
         }
       }
 
