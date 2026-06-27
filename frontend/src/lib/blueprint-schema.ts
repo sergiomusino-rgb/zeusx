@@ -146,8 +146,8 @@ export const BlueprintJSONSchema = z.object({
   description: z.union([z.string(), z.number()]).transform((v) => String(v)).optional().default(''),
   logo: z.union([z.string(), z.number()]).transform((v) => String(v)).optional().default(''),
   schema: z.object({
-    tables: z.array(TableSchema).min(1).max(20),
-  }),
+    tables: z.array(TableSchema).min(0).max(50).default([]),
+  }).default({ tables: [] }),
   ui: UIConfigSchema,
 });
 
@@ -157,8 +157,21 @@ export type DashboardCard = z.infer<typeof DashboardCardSchema>;
 export type UIConfig = z.infer<typeof UIConfigSchema>;
 export type BlueprintJSON = z.infer<typeof BlueprintJSONSchema>;
 
-export function sanitizeBlueprint(raw: unknown): BlueprintJSON {
-  return BlueprintJSONSchema.parse(raw);
+export function sanitizeBlueprint(raw: unknown): BlueprintJSON | null {
+  try {
+    return BlueprintJSONSchema.parse(raw);
+  } catch (e) {
+    console.warn('[sanitizeBlueprint] Zod parse failed, using fallback:', e);
+    // Fallback: struttura minima con 0 tabelle
+    return {
+      appName: 'App',
+      sector: 'custom',
+      description: '',
+      logo: '',
+      schema: { tables: [] },
+      ui: { primaryColor: '#6366f1', sidebar: [], dashboardCards: [] },
+    };
+  }
 }
 
 export function normalizeSector(sector: string): string {
