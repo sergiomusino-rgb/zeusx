@@ -172,41 +172,48 @@ export default function CreateAppPage() {
         {/* ──── STEP 1: Settore ──── */}
         {step === 1 && (
           <div>
-            <h2 className="text-xl font-bold mb-1">Scegli il tuo settore</h2>
-            <p className="text-slate-400 mb-8">Seleziona il settore più vicino alla tua attività. I moduli verranno personalizzati di conseguenza.</p>
+            <h2 className="text-2xl font-bold mb-2">Scegli il tuo settore</h2>
+            <p className="text-slate-400 mb-10">Ogni settore include moduli preconfigurati pronti all'uso. Seleziona quello più adatto alla tua attività.</p>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               {SECTOR_TEMPLATES.map((sector) => {
                 const isSelected = selectedSector?.id === sector.id;
                 return (
                   <button
                     key={sector.id}
                     onClick={() => setSelectedSector(sector)}
-                    className={`group relative text-left p-6 rounded-2xl border-2 transition-all duration-200 ${
+                    className={`group relative text-left p-8 rounded-2xl border-2 transition-all duration-300 ${
                       isSelected
-                        ? 'border-indigo-500 bg-indigo-500/10 shadow-lg shadow-indigo-500/10'
-                        : 'border-slate-800 bg-slate-900/50 hover:border-slate-600 hover:bg-slate-900'
+                        ? 'border-indigo-500 bg-indigo-500/10 shadow-xl shadow-indigo-500/20 scale-[1.02]'
+                        : 'border-slate-800 bg-slate-900/50 hover:border-slate-600 hover:bg-slate-800/50 hover:scale-[1.01]'
                     }`}
                   >
                     {isSelected && (
-                      <div className="absolute top-4 right-4 w-6 h-6 rounded-full bg-indigo-500 flex items-center justify-center text-xs">
+                      <div className="absolute top-5 right-5 w-8 h-8 rounded-full bg-indigo-500 flex items-center justify-center text-sm font-bold text-white shadow-lg">
                         ✓
                       </div>
                     )}
-                    <div className={`w-14 h-14 rounded-xl bg-gradient-to-br ${SECTOR_GRADIENTS[sector.id] || 'from-slate-600 to-slate-500'} flex items-center justify-center text-2xl mb-4`}>
+                    <div className={`w-20 h-20 rounded-2xl bg-gradient-to-br ${SECTOR_GRADIENTS[sector.id] || 'from-slate-600 to-slate-500'} flex items-center justify-center text-4xl mb-5 shadow-lg`}>
                       {SECTOR_ICONS[sector.id] || '💼'}
                     </div>
-                    <h3 className="text-lg font-bold mb-1">{sector.name}</h3>
-                    <p className="text-slate-400 text-sm mb-4">{sector.description}</p>
+                    <h3 className="text-xl font-bold mb-2">{sector.name}</h3>
+                    <p className="text-slate-400 text-sm mb-5 leading-relaxed">{sector.description}</p>
                     <div className="flex flex-wrap gap-2">
                       {sector.modules.map((m) => (
                         <span
                           key={m.name}
-                          className="text-xs px-2.5 py-1 rounded-full bg-slate-800 text-slate-300"
+                          className={`text-xs px-3 py-1.5 rounded-lg font-medium ${
+                            isSelected
+                              ? 'bg-indigo-500/20 text-indigo-300'
+                              : 'bg-slate-800 text-slate-300'
+                          }`}
                         >
                           {m.icon || '📋'} {m.labelPlural}
                         </span>
                       ))}
+                    </div>
+                    <div className="mt-4 text-xs text-slate-500">
+                      {sector.modules.length} moduli · {sector.modules.reduce((acc, m) => acc + m.fields.length, 0)} campi totali
                     </div>
                   </button>
                 );
@@ -231,69 +238,32 @@ export default function CreateAppPage() {
             <h2 className="text-xl font-bold mb-1">Configura la tua app</h2>
             <p className="text-slate-400 mb-8">Dai un nome alla tua app e personalizza i dettagli.</p>
 
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-              {/* Left: Form */}
-              <div className="lg:col-span-2 space-y-6">
-                {/* Nome app */}
-                <div>
-                  <label className="block text-sm font-medium mb-2 text-slate-300">
-                    Nome dell&apos;app <span className="text-red-400">*</span>
-                  </label>
-                  <input
-                    type="text"
-                    className="w-full p-4 rounded-xl bg-slate-900 border border-slate-700 text-white placeholder-slate-500 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 outline-none transition"
-                    placeholder="Es: Studio Dentistico Rossi"
-                    value={appName}
-                    onChange={(e) => setAppName(e.target.value)}
-                  />
-                </div>
-
-                {/* Logo */}
-                <div>
-                  <label className="block text-sm font-medium mb-2 text-slate-300">Logo azienda (opzionale)</label>
-                  <div className="flex items-center gap-4">
-                    <label className="flex-1 p-4 rounded-xl border-2 border-dashed border-slate-700 hover:border-indigo-500 cursor-pointer transition text-center bg-slate-900/50">
-                      <input
-                        type="file"
-                        accept="image/*"
-                        className="hidden"
-                        onChange={(e) => setLogoFile(e.target.files?.[0] || null)}
-                      />
-                      <span className="text-sm text-slate-400">
-                        {logoFile ? logoFile.name : 'Clicca per caricare un logo'}
-                      </span>
-                    </label>
-                    {logoFile && (
-                      <button
-                        onClick={() => setLogoFile(null)}
-                        className="text-slate-500 hover:text-red-400 text-sm"
-                      >
-                        Rimuovi
-                      </button>
-                    )}
-                  </div>
-                </div>
-
-                {/* Richiesta aggiuntiva */}
-                <div>
-                  <label className="block text-sm font-medium mb-2 text-slate-300">Richiesta aggiuntiva (opzionale)</label>
-                  <textarea
-                    className="w-full p-4 rounded-xl bg-slate-900 border border-slate-700 text-white placeholder-slate-500 min-h-[120px] focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 outline-none transition resize-none"
-                    placeholder="Es: Voglio tracciare anche le spese mensili..."
-                    value={prompt}
-                    onChange={(e) => setPrompt(e.target.value)}
-                  />
-                </div>
+            <div className="max-w-2xl mx-auto space-y-6">
+              {/* Nome app */}
+              <div>
+                <label className="block text-sm font-medium mb-2 text-slate-300">
+                  Nome dell&apos;app <span className="text-red-400">*</span>
+                </label>
+                <input
+                  type="text"
+                  className="w-full p-4 rounded-xl bg-slate-900 border border-slate-700 text-white placeholder-slate-500 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 outline-none transition"
+                  placeholder="Es: Studio Dentistico Rossi"
+                  value={appName}
+                  onChange={(e) => setAppName(e.target.value)}
+                />
               </div>
 
-              {/* Right: Preview moduli */}
-              <div className="space-y-4">
-                <h3 className="text-sm font-bold text-slate-400 uppercase tracking-wider">
+              {/* Preview settore selezionato */}
+              <div className="bg-slate-900/50 border border-slate-800 rounded-xl p-6">
+                <h3 className="text-sm font-bold text-slate-400 uppercase tracking-wider mb-4">
                   Moduli inclusi ({selectedSector.modules.length})
                 </h3>
-                <div className="space-y-3">
+                <div className="grid grid-cols-2 gap-3">
                   {selectedSector.modules.map((module) => (
-                    <ModulePreview key={module.name} module={module} />
+                    <div key={module.name} className="flex items-center gap-2 text-sm">
+                      <span className="text-lg">{module.icon || '📋'}</span>
+                      <span className="text-slate-300">{module.labelPlural}</span>
+                    </div>
                   ))}
                 </div>
               </div>
@@ -305,7 +275,7 @@ export default function CreateAppPage() {
               </div>
             )}
 
-            <div className="flex justify-between mt-10">
+            <div className="flex justify-between mt-10 max-w-2xl mx-auto">
               <button
                 onClick={() => setStep(1)}
                 className="text-slate-400 hover:text-white px-6 py-3 font-medium transition"
