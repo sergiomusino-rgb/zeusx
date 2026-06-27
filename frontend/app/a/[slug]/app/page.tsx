@@ -42,7 +42,10 @@ interface AppConfig {
     theme?: 'dark' | 'light';
   };
   blueprint?: {
-    tables: TableDef[];
+    schema?: {
+      tables: TableDef[];
+    };
+    tables?: TableDef[]; // fallback per compatibilità
   };
   blocked?: boolean;
 }
@@ -1581,7 +1584,15 @@ export default function ViewerProFinal() {
   // Derived values
   const appInfo = session?.appInfo;
   const config = appInfo;
-  const tables = config?.blueprint?.schema?.tables || [];
+  
+  // Estrai tabelle da blueprint (supporta sia schema.tables che tables diretto)
+  const tables = config?.blueprint?.schema?.tables 
+    || config?.blueprint?.tables 
+    || config?.tables 
+    || [];
+  
+  console.log('[Viewer] Tables found:', tables.length, tables);
+  
   const activeTable = tables.find((t) => t.name === activeView) || null;
 
   const companyName = prefs.companyName
