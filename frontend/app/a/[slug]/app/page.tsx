@@ -1016,26 +1016,25 @@ function SettingsModal({ prefs, onPrefsChange, onClose, onLogout, onChangePasswo
         {/* Color Section */}
         <div style={sectionBox}>
           <div style={sectionTitle}>Colore Primario</div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-            <input
-              type="color"
-              value={prefs.primaryColor}
-              onChange={(e) => updatePref('primaryColor', e.target.value)}
-              style={{ width: '48px', height: '48px', border: 'none', borderRadius: '8px', cursor: 'pointer', padding: 0 }}
-            />
-            <input
-              type="text"
-              value={prefs.primaryColor}
-              onChange={(e) => updatePref('primaryColor', e.target.value)}
-              placeholder="#6366f1"
-              style={{ ...inputStyle, flex: 1 }}
-            />
-            <div
-              style={{
-                width: '48px', height: '48px', borderRadius: '8px',
-                background: prefs.primaryColor, border: `1px solid ${colors.border}`,
-              }}
-            />
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '12px' }}>
+            {COLOR_PRESETS.map((color) => (
+              <button
+                key={color}
+                onClick={() => updatePref('primaryColor', color)}
+                style={{
+                  width: '40px', height: '40px',
+                  borderRadius: '8px',
+                  background: color,
+                  border: prefs.primaryColor === color
+                    ? `3px solid ${colors.text}`
+                    : `2px solid ${colors.border}`,
+                  cursor: 'pointer',
+                  padding: 0,
+                  transition: 'all 0.15s',
+                  boxShadow: prefs.primaryColor === color ? `0 0 0 2px ${color}40` : 'none',
+                }}
+              />
+            ))}
           </div>
         </div>
 
