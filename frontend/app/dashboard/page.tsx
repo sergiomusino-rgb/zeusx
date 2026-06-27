@@ -67,19 +67,19 @@ export default function DashboardPage() {
       highlighted: true
     },
     { 
-      title: "I tuoi Progetti", 
+      title: "App Create", 
       desc: "Gestisci e monitora le tue app esistenti",
       link: "/dashboard/projects", 
       color: "bg-blue-600",
-      icon: "",
+      icon: "📁",
       highlighted: false
     },
     { 
-      title: "Vision AI", 
-      desc: "Analisi avanzata e modifica immagini",
+      title: "Calendario", 
+      desc: "Gestisci appuntamenti e scadenze",
       link: "/dashboard/vision", 
       color: "bg-emerald-600",
-      icon: "👁️",
+      icon: "📅",
       highlighted: false
     },
   ];
@@ -120,8 +120,8 @@ export default function DashboardPage() {
                   ? 'border-indigo-500/50 bg-gradient-to-br from-indigo-950/50 to-purple-950/50 shadow-lg shadow-indigo-500/20' 
                   : 'border-gray-800 bg-gray-900 hover:border-gray-500'
               }`}>
-                <div className={`w-12 h-12 ${item.color} rounded-xl mb-6 flex items-center justify-center shadow-lg`}>
-                  <span className="text-2xl">{item.icon}</span>
+                <div className={`w-24 h-24 ${item.color} rounded-xl mb-6 flex items-center justify-center shadow-lg`}>
+                  <span className="text-4xl">{item.icon}</span>
                 </div>
                 <h2 className="text-xl font-bold mb-2">{item.title}</h2>
                 <p className="text-gray-400 mb-6">{item.desc}</p>
