@@ -1,90 +1,107 @@
-import { createClient } from "@supabase/supabase-js";
-import { cookies } from "next/headers";
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from 'next/server';
+import Stripe from 'stripe';
+import { createClient } from '@supabase/supabase-js';
 
-function getSupabase() {
-  return createClient(
-    process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL || "",
-    process.env.SUPABASE_SERVICE_ROLE_KEY || ""
-  );
-}
+const stripe = new Stripe(process.env.STRIPE_SECRET_KEY || '', {
+  apiVersion: '2024-06-20',
+});
 
-async function getUserAndToken() {
+const supabase = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  process.env.SUPABASE_SERVICE_ROLE_KEY!
+);
+
+export async function POST(req: NextRequest) {
   try {
-    const cookieStore = await cookies();
-    const allCookies = cookieStore.getAll();
+    const { priceId, planId } = await req.json();
 
-    console.log('[Checkout] cookies trovati:', allCookies.map(c => c.name));
-
-    const authCookie = allCookies.find(c => c.name.endsWith('-auth-token') || c.name === 'sb-access-token');
-
-    if (!authCookie) {
-      console.log('[Checkout] Nessun cookie auth trovato');
-      return { user: null, token: null };
+    if (!priceId || !planId) {
+      return NextResponse.json({ error: 'Parametri mancanti' }, { status: 400 });
     }
 
-    let accessToken: string | undefined;
-
-    try {
-      const parsed = JSON.parse(decodeURIComponent(authCookie.value));
-      accessToken = parsed.access_token || parsed[0];
-    } catch {
-      accessToken = decodeURIComponent(authCookie.value);
+    if (!process.env.STRIPE_SECRET_KEY) {
+      return NextResponse.json({ error: 'Stripe non configurato' }, { status: 500 });
     }
 
-    if (!accessToken) {
-      console.log('[Checkout] Token non trovato nel cookie');
-      return { user: null, token: null };
+    // Ottieni l'utente dalla sessione Supabase (via token nell'header)
+    const authHeader = req.headers.get('authorization');
+    if (!authHeader?.startsWith('Bearer ')) {
+      return NextResponse.json({ error: 'Non autorizzato' }, { status: 401 });
     }
 
-    const supabase = getSupabase();
-    const { data: { user }, error } = await supabase.auth.getUser(accessToken);
+    const token = authHeader.slice(7);
+    const { data: { user }, error: authError } = await supabase.auth.getUser(token);
 
-    if (error || !user) {
-      console.log('[Checkout] getUser error:', error?.message || 'no user');
-      return { user: null, token: accessToken };
+    if (authError || !user) {
+      return NextResponse.json({ error: 'Utente non autenticato' }, { status: 401 });
     }
 
-    return { user, token: accessToken };
-  } catch (err) {
-    console.error('[Checkout] Errore:', err);
-    return { user: null, token: null };
-  }
-}
+    // Trova il tenant dell'utente
+    const { data: membership } = await supabase
+      .from('tenant_members')
+      .select('tenant_id')
+      .eq('user_id', user.id)
+      .single();
 
-export async function POST(req: Request) {
-  try {
-    const { user, token } = await getUserAndToken();
-
-    console.log("[Checkout] user:", user?.id);
-
-    if (!user) {
-      return NextResponse.json({ error: "Non autorizzato" }, { status: 401 });
+    if (!membership?.tenant_id) {
+      return NextResponse.json({ error: 'Tenant non trovato' }, { status: 404 });
     }
 
-    const body = await req.json();
-    const { priceId } = body;
+    const { data: tenant } = await supabase
+      .from('tenants')
+      .select('id, stripe_customer_id, plan')
+      .eq('id', membership.tenant_id)
+      .single();
 
-    if (!priceId) return NextResponse.json({ error: "priceId mancante" }, { status: 400 });
+    if (!tenant) {
+      return NextResponse.json({ error: 'Tenant non trovato' }, { status: 404 });
+    }
 
-    const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || "https://zeusx-backend.onrender.com";
+    // Crea o recupera il cliente Stripe
+    let customerId = tenant.stripe_customer_id;
 
-    const res = await fetch(`${backendUrl}/api/create-checkout-session?priceId=${encodeURIComponent(priceId)}`, {
-      method: "POST",
-      headers: {
-        "Authorization": `Bearer ${token || 'missing'}`,
-        "X-User-Id": user.id,
-        "X-User-Email": user.email || '',
-        "Content-Type": "application/json",
+    if (!customerId) {
+      const customer = await stripe.customers.create({
+        email: user.email,
+        metadata: {
+          supabase_user_id: user.id,
+          tenant_id: tenant.id,
+        },
+      });
+      customerId = customer.id;
+
+      await supabase
+        .from('tenants')
+        .update({ stripe_customer_id: customerId })
+        .eq('id', tenant.id);
+    }
+
+    // Crea la sessione di checkout
+    const session = await stripe.checkout.sessions.create({
+      customer: customerId,
+      mode: 'subscription',
+      payment_method_types: ['card'],
+      line_items: [
+        {
+          price: priceId,
+          quantity: 1,
+        },
+      ],
+      success_url: `${req.nextUrl.origin}/dashboard?upgrade=success`,
+      cancel_url: `${req.nextUrl.origin}/pricing?upgrade=cancelled`,
+      metadata: {
+        tenant_id: tenant.id,
+        plan_id: planId,
+        supabase_user_id: user.id,
       },
     });
 
-    const data = await res.json();
-    console.log("[Checkout] backend status:", res.status, "data:", data);
-    return NextResponse.json(data, { status: res.status });
-  } catch (err: unknown) {
-    const msg = err instanceof Error ? err.message : "Errore checkout";
-    console.error("[Checkout] Errore:", err);
-    return NextResponse.json({ error: msg }, { status: 500 });
+    return NextResponse.json({ url: session.url });
+  } catch (error) {
+    console.error('[Checkout] Errore:', error);
+    return NextResponse.json(
+      { error: error instanceof Error ? error.message : 'Errore interno' },
+      { status: 500 }
+    );
   }
 }
