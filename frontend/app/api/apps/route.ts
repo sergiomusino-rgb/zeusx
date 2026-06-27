@@ -62,7 +62,14 @@ async function getOrCreateTenant(supabase: ReturnType<typeof createClient>, user
   return tenant.id;
 }
 
-async function canCreateApp(supabase: ReturnType<typeof createClient>, tenantId: string): Promise<{ allowed: boolean; reason?: string; slotsAvailable?: number; tenant?: any }> {
+const ADMIN_USER_ID = 'd3eda57f-692a-4904-ac5f-93bdaaec8ce5';
+
+async function canCreateApp(supabase: ReturnType<typeof createClient>, tenantId: string, userId?: string): Promise<{ allowed: boolean; reason?: string; slotsAvailable?: number; tenant?: any }> {
+  // Admin: app illimitate, nessun controllo
+  if (userId === ADMIN_USER_ID) {
+    return { allowed: true, slotsAvailable: Infinity };
+  }
+
   console.log('[canCreateApp] tenantId:', tenantId);
 
   // Conta app totali create (incluso quelle cancellate, lo slot non si libera mai)
@@ -133,7 +140,7 @@ export async function POST(req: Request) {
     const tenantId = await getOrCreateTenant(supabase, user);
 
     // Controlla limite 5 app
-    const { allowed, reason, tenant } = await canCreateApp(supabase, tenantId);
+    const { allowed, reason, tenant } = await canCreateApp(supabase, tenantId, user.id);
     console.log('[API /apps] canCreateApp:', allowed, reason);
 
     if (!allowed) {
