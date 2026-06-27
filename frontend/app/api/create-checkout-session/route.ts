@@ -9,10 +9,10 @@ const authClient = createClient(
   { auth: { persistSession: false, autoRefreshToken: false } }
 );
 
-// Client per operazioni DB (service role key se disponibile)
+// Client per operazioni DB (anon key con policy ALL)
 const dbClient = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
   { auth: { persistSession: false, autoRefreshToken: false } }
 );
 
