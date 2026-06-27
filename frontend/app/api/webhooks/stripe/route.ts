@@ -68,19 +68,23 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Tenant non trovato' }, { status: 404 });
     }
 
-    // Mappa price_id → piano
-    const priceToPlan: Record<string, string> = {
-      'price_1TmcprRZR2YaFu2sU0m1kbFC': 'starter',
-      'price_1Tmd1tRZR2YaFu2sgHgxzcTC': 'pro',
-      'price_1Tmd4GRZR2YaFu2s0FZ4Btym': 'business',
+    // Mappa price_id → piano e slot
+    const priceToPlan: Record<string, { plan: string; slots: number }> = {
+      'price_1TmcprRZR2YaFu2sU0m1kbFC': { plan: 'starter', slots: 1 },
+      'price_1Tmd1tRZR2YaFu2sgHgxzcTC': { plan: 'pro', slots: 5 },
+      'price_1Tmd4GRZR2YaFu2s0FZ4Btym': { plan: 'business', slots: 250 },
     };
 
-    const newPlan = priceToPlan[priceId] || 'pro';
+    const planConfig = priceToPlan[priceId] || { plan: 'pro', slots: 5 };
 
-    // Aggiorna solo il campo plan (non aggiungere colonne che non esistono)
+    // Aggiorna piano e resetta il contatore app create
     const { error: updateError } = await supabase
       .from('tenants')
-      .update({ plan: newPlan })
+      .update({ 
+        plan: planConfig.plan,
+        total_apps_created: 0,
+        app_limit: planConfig.slots
+      })
       .eq('id', tenantId);
 
     if (updateError) {
@@ -88,7 +92,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Errore aggiornamento' }, { status: 500 });
     }
 
-    console.log('[Webhook] Piano aggiornato a:', newPlan, 'tenant:', tenantId);
+    console.log('[Webhook] Piano aggiornato a:', planConfig.plan, 'slots:', planConfig.slots, 'tenant:', tenantId);
   }
 
   return NextResponse.json({ received: true });
