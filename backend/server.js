@@ -494,6 +494,7 @@ Rispondi SOLO con il JSON valido, senza testo aggiuntivo.`;
 
 // --- STRIPE ROUTES (checkout e billing) ---
 app.use('/api', require('./routes/stripe'));
+app.use('/api', require('./routes/client-app'));
 
 // --- APP RECORDS ROUTES (CRUD dati app) ---
 app.use('/api', require('./routes/app-records'));

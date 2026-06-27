@@ -1056,15 +1056,56 @@ function SettingsModal({ prefs, onPrefsChange, onClose, onLogout, onChangePasswo
             </div>
             <div>
               <label style={{ display: 'block', marginBottom: '6px', fontSize: '13px', fontWeight: 600, color: colors.textSecondary }}>
-                URL Logo
+                Logo Azienda
               </label>
-              <input
-                type="text"
-                value={prefs.logoUrl}
-                onChange={(e) => updatePref('logoUrl', e.target.value)}
-                placeholder="https://example.com/logo.png"
-                style={inputStyle}
-              />
+              {prefs.logoUrl && (
+                <div style={{ marginBottom: '8px' }}>
+                  <img
+                    src={prefs.logoUrl}
+                    alt="Logo preview"
+                    style={{ height: '48px', maxWidth: '160px', objectFit: 'contain', borderRadius: '8px', border: `1px solid ${colors.border}` }}
+                  />
+                </div>
+              )}
+              <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                <label
+                  style={{
+                    padding: '8px 16px', borderRadius: '8px', border: `1px solid ${colors.border}`,
+                    background: colors.cardBg, color: colors.text, fontSize: '13px', fontWeight: 500,
+                    cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px',
+                  }}
+                >
+                  📁 Sfoglia...
+                  <input
+                    type="file"
+                    accept="image/*"
+                    onChange={(e) => {
+                      const file = e.target.files?.[0];
+                      if (file) {
+                        const reader = new FileReader();
+                        reader.onload = (ev) => {
+                          updatePref('logoUrl', ev.target?.result as string);
+                        };
+                        reader.readAsDataURL(file);
+                      }
+                    }}
+                    style={{ display: 'none' }}
+                  />
+                </label>
+                {prefs.logoUrl && (
+                  <button
+                    type="button"
+                    onClick={() => updatePref('logoUrl', '')}
+                    style={{
+                      padding: '8px 12px', borderRadius: '8px', border: 'none',
+                      background: colors.danger + '15', color: colors.danger,
+                      fontSize: '12px', fontWeight: 600, cursor: 'pointer',
+                    }}
+                  >
+                    Rimuovi
+                  </button>
+                )}
+              </div>
             </div>
           </div>
         </div>
@@ -1270,7 +1311,7 @@ export default function ViewerProFinal() {
   // Derived values
   const appInfo = session?.appInfo;
   const config = appInfo;
-  const tables = config?.blueprint?.tables || [];
+  const tables = config?.blueprint?.schema?.tables || config?.schema?.tables || config?.tables || [];
   const activeTable = tables.find((t) => t.name === activeView) || null;
 
   const companyName = prefs.companyName
@@ -1343,7 +1384,7 @@ export default function ViewerProFinal() {
   const loadRecords = useCallback(async (tableName: string, password: string, appId: string) => {
     setRecordsLoading(true);
     try {
-      const res = await fetch(`${BACKEND_URL}/api/apps/${appId}/records?table=${tableName}`, {
+      const res = await fetch(`${BACKEND_URL}/api/client/apps/${appId}/records?table=${tableName}`, {
         headers: { Authorization: `Bearer ${password}` },
       });
       if (!res.ok) throw new Error('Failed to load records');
@@ -1405,7 +1446,7 @@ export default function ViewerProFinal() {
     if (!session || !activeTable) return;
     setSaving(true);
     try {
-      const res = await fetch(`${BACKEND_URL}/api/apps/${session.appInfo.id}/records`, {
+      const res = await fetch(`${BACKEND_URL}/api/client/apps/${session.appInfo.id}/records`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -1427,7 +1468,7 @@ export default function ViewerProFinal() {
     if (!session || !activeTable || !modalRecord || modalRecord === 'new') return;
     setSaving(true);
     try {
-      const res = await fetch(`${BACKEND_URL}/api/apps/${session.appInfo.id}/records/${modalRecord.id}`, {
+      const res = await fetch(`${BACKEND_URL}/api/client/apps/${session.appInfo.id}/records/${modalRecord.id}`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
@@ -1449,7 +1490,7 @@ export default function ViewerProFinal() {
     if (!session || !activeTable) return;
     if (!confirm('Sei sicuro di voler eliminare questo record?')) return;
     try {
-      const res = await fetch(`${BACKEND_URL}/api/apps/${session.appInfo.id}/records/${recordId}`, {
+      const res = await fetch(`${BACKEND_URL}/api/client/apps/${session.appInfo.id}/records/${recordId}`, {
         method: 'DELETE',
         headers: { Authorization: `Bearer ${session.password}` },
       });
