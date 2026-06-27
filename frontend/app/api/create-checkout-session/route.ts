@@ -6,9 +6,14 @@ const stripe = new Stripe(process.env.STRIPE_SECRET_KEY || '', {
   apiVersion: '2024-06-20',
 });
 
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
+const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+const supabaseKey = serviceRoleKey || anonKey!;
+
 const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+  supabaseUrl,
+  supabaseKey,
   { auth: { persistSession: false, autoRefreshToken: false } }
 );
 
@@ -70,7 +75,7 @@ export async function POST(req: NextRequest) {
           tenant_id: tenantId,
           user_id: user.id,
           role: 'owner',
-        }).throwOnError();
+        });
       }
     }
 
