@@ -58,9 +58,7 @@ export default function DashboardLayout({
         {/* Info Utente in basso alla Sidebar */}
         <div className="p-4 border-t border-slate-800/60 bg-slate-950/40">
           <div className="flex items-center gap-3 px-2 py-1">
-            <div className="w-8 h-8 rounded-full bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center font-bold text-xs">
-              M
-            </div>
+            <img src="/favicon.png" alt="ZeusX" className="w-8 h-8 rounded-full object-cover" />
             <div className="overflow-hidden">
               <p className="text-sm font-semibold truncate">by MUSINO</p>
               <span className="text-[10px] text-indigo-400 uppercase font-bold tracking-wider bg-indigo-500/10 px-1.5 py-0.5 rounded">
