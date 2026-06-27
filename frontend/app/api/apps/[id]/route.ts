@@ -60,6 +60,12 @@ export async function DELETE(
       return NextResponse.json({ error: 'Non autorizzato' }, { status: 403 });
     }
 
+    // Permetti eliminazione solo se app non attiva (client_active === false) o scaduta
+    const isActive = app.client_active !== false && (!app.expires_at || new Date(app.expires_at) > new Date());
+    if (isActive) {
+      return NextResponse.json({ error: 'Puoi eliminare solo app dismesse o scadute' }, { status: 400 });
+    }
+
     // Elimina eventuali record associati
     await adminClient
       .from('app_records')

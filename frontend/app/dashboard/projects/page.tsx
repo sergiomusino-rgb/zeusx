@@ -230,8 +230,9 @@ export default function ProjectsPage() {
                               e.stopPropagation();
                               setDeleteModal({ open: true, appId: app.id, appName: app.name });
                             }}
-                            className="text-red-400 hover:text-red-300 transition"
-                            title="Elimina app"
+                            className={`transition ${expired ? 'text-red-400 hover:text-red-300' : 'text-slate-600 cursor-not-allowed'}`}
+                            title={expired ? 'Elimina app' : 'Puoi eliminare solo app dismesse o scadute'}
+                            disabled={!expired}
                           >
                             <Trash2 size={16} />
                           </button>
