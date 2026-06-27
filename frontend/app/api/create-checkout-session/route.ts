@@ -37,20 +37,46 @@ export async function POST(req: NextRequest) {
     }
 
     // Trova il tenant dell'utente
-    const { data: membership } = await supabase
+    const { data: memberships, error: membershipError } = await supabase
       .from('tenant_members')
       .select('tenant_id')
       .eq('user_id', user.id)
-      .single();
+      .limit(1);
 
-    if (!membership?.tenant_id) {
-      return NextResponse.json({ error: 'Tenant non trovato' }, { status: 404 });
+    let tenantId = memberships?.[0]?.tenant_id;
+
+    // Se non ha un tenant, creane uno
+    if (!tenantId) {
+      console.log('[Checkout] Nessun tenant trovato, creazione in corso per user:', user.id);
+      const { data: tenant, error: tenantError } = await supabase
+        .from('tenants')
+        .insert({
+          owner_id: user.id,
+          name: user.email ? `Tenant di ${user.email}` : 'Tenant personale',
+          slug: `tenant-${user.id.slice(0, 8)}`,
+          plan: 'free',
+        })
+        .select('id')
+        .single();
+
+      if (tenantError || !tenant) {
+        console.error('[Checkout] Errore creazione tenant:', tenantError);
+        return NextResponse.json({ error: 'Errore creazione tenant' }, { status: 500 });
+      }
+
+      tenantId = tenant.id;
+
+      await supabase.from('tenant_members').insert({
+        tenant_id: tenantId,
+        user_id: user.id,
+        role: 'owner',
+      });
     }
 
     const { data: tenant } = await supabase
       .from('tenants')
       .select('id, stripe_customer_id, plan')
-      .eq('id', membership.tenant_id)
+      .eq('id', tenantId)
       .single();
 
     if (!tenant) {
