@@ -1,236 +1,128 @@
-import { createClient } from "@supabase/supabase-js";
-import { NextResponse } from "next/server";
-import Stripe from "stripe";
+import { NextRequest, NextResponse } from 'next/server';
+import Stripe from 'stripe';
+import { createClient } from '@supabase/supabase-js';
 
-const STRIPE_API_VERSION = "2026-06-24.dahlia";
-
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY || "", {
-  apiVersion: "2025-02-24.acacia" as any,
+const stripe = new Stripe(process.env.STRIPE_SECRET_KEY || '', {
+  apiVersion: '2024-06-20',
 });
 
-const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET || "";
+const supabase = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+  { auth: { persistSession: false, autoRefreshToken: false } }
+);
 
-function getSupabase() {
-  return createClient(
-    process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL || "",
-    process.env.SUPABASE_SERVICE_ROLE_KEY || ""
-  );
-}
+export async function POST(req: NextRequest) {
+  const sig = req.headers.get('stripe-signature');
+  const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET;
 
-function getPeriodISO(sub: Stripe.Subscription, field: 'current_period_start' | 'current_period_end'): string {
-  const val = (sub as any)[field];
-  return new Date(val * 1000).toISOString();
-}
-
-export async function POST(req: Request) {
-  const payload = await req.text();
-  const signature = req.headers.get("stripe-signature") || "";
+  if (!sig || !webhookSecret) {
+    console.error('[Webhook] Config mancante:', { sig: !!sig, webhookSecret: !!webhookSecret });
+    return NextResponse.json({ error: 'Configurazione webhook mancante' }, { status: 500 });
+  }
 
   let event: Stripe.Event;
 
   try {
-    event = stripe.webhooks.constructEvent(payload, signature, webhookSecret);
-  } catch (err: any) {
-    console.error(`Webhook signature verification failed: ${err.message}`);
-    return NextResponse.json({ error: `Webhook Error: ${err.message}` }, { status: 400 });
+    const body = await req.text();
+    event = stripe.webhooks.constructEvent(body, sig, webhookSecret);
+  } catch (error: any) {
+    console.error('[Webhook] Errore validazione:', error.message);
+    return NextResponse.json({ error: `Webhook Error: ${error.message}` }, { status: 400 });
   }
 
-  const supabase = getSupabase();
+  console.log('[Webhook] Evento ricevuto:', event.type);
 
-  try {
-    switch (event.type) {
-      case "checkout.session.completed": {
-        const session = event.data.object as Stripe.Checkout.Session;
-        const tenantId = session.client_reference_id || session.metadata?.tenant_id;
-        const customerEmail = session.customer_email || session.customer_details?.email;
+  // Gestisci checkout.session.completed
+  if (event.type === 'checkout.session.completed') {
+    const session = event.data.object as Stripe.Checkout.Session;
+    const tenantId = session.client_reference_id || session.metadata?.tenant_id;
 
-        console.log(`[Stripe Webhook] checkout.session.completed - sessionId: ${session.id}, tenantId: ${tenantId}, email: ${customerEmail}`);
+    console.log('[Webhook] Session completed:', session.id, 'tenantId:', tenantId);
 
-        if (!tenantId) {
-          console.error("[Stripe Webhook] checkout.session.completed: tenant_id mancante nella sessione Stripe");
-          break;
-        }
-
-        const { data: tenant, error: tenantError } = await supabase
-          .from("tenants")
-          .select("id, name, owner_id")
-          .eq("id", tenantId)
-          .single();
-
-        if (tenantError || !tenant) {
-          console.error(`[Stripe Webhook] checkout.session.completed: tenant ${tenantId} non trovato`, tenantError);
-          break;
-        }
-
-        console.log(`[Stripe Webhook] Tenant trovato: ${tenant.name} (${tenant.id})`);
-
-        const { error: updateTenantError } = await supabase
-          .from("tenants")
-          .update({ plan: "pro", updated_at: new Date().toISOString() })
-          .eq("id", tenantId);
-
-        if (updateTenantError) {
-          console.error(`[Stripe Webhook] checkout.session.completed: errore aggiornamento tenant ${tenantId}`, updateTenantError);
-          throw updateTenantError;
-        }
-
-        console.log(`[Stripe Webhook] Tenant ${tenantId} aggiornato a piano PRO`);
-
-        const subscriptionId = session.subscription as string;
-        if (!subscriptionId) {
-          console.error("[Stripe Webhook] checkout.session.completed: subscription id mancante");
-          break;
-        }
-
-        const subscription = await stripe.subscriptions.retrieve(subscriptionId);
-
-        await upsertSubscription(supabase, tenantId, {
-          stripe_customer_id: session.customer as string,
-          stripe_subscription_id: subscriptionId,
-          status: subscription.status,
-          current_period_start: getPeriodISO(subscription, 'current_period_start'),
-          current_period_end: getPeriodISO(subscription, 'current_period_end'),
-        });
-
-        console.log(`[Stripe Webhook] Subscription attivata per tenant ${tenantId}`);
-        break;
-      }
-
-      case "invoice.payment_succeeded": {
-        const invoice = event.data.object as any;
-        const subscriptionId = invoice.subscription as string;
-        if (!subscriptionId) break;
-
-        const subscription = await stripe.subscriptions.retrieve(subscriptionId);
-        const tenantId = await getTenantIdBySubscriptionId(supabase, subscriptionId);
-
-        if (!tenantId) {
-          console.error(`invoice.payment_succeeded: tenant non trovato per ${subscriptionId}`);
-          break;
-        }
-
-        await upsertSubscription(supabase, tenantId, {
-          stripe_customer_id: invoice.customer as string,
-          stripe_subscription_id: subscriptionId,
-          status: subscription.status,
-          current_period_start: getPeriodISO(subscription, 'current_period_start'),
-          current_period_end: getPeriodISO(subscription, 'current_period_end'),
-        });
-
-        console.log(`Rinnovo pagato per tenant ${tenantId}`);
-        break;
-      }
-
-      case "invoice.payment_failed": {
-        const invoice = event.data.object as any;
-        const subscriptionId = invoice.subscription as string;
-        if (!subscriptionId) break;
-
-        const tenantId = await getTenantIdBySubscriptionId(supabase, subscriptionId);
-        if (!tenantId) break;
-
-        await supabase
-          .from("subscriptions")
-          .update({ status: "past_due", updated_at: new Date().toISOString() })
-          .eq("tenant_id", tenantId)
-          .eq("stripe_subscription_id", subscriptionId);
-
-        console.log(`Pagamento fallito per tenant ${tenantId}`);
-        break;
-      }
-
-      case "customer.subscription.deleted": {
-        const subscription = event.data.object as Stripe.Subscription;
-        const subscriptionId = subscription.id;
-
-        const tenantId = await getTenantIdBySubscriptionId(supabase, subscriptionId);
-        if (!tenantId) break;
-
-        await supabase
-          .from("subscriptions")
-          .update({ status: "canceled", updated_at: new Date().toISOString() })
-          .eq("tenant_id", tenantId)
-          .eq("stripe_subscription_id", subscriptionId);
-
-        console.log(`Subscription cancellata per tenant ${tenantId}`);
-        break;
-      }
-
-      case "customer.subscription.updated": {
-        const subscription = event.data.object as Stripe.Subscription;
-        const subscriptionId = subscription.id;
-
-        const tenantId = await getTenantIdBySubscriptionId(supabase, subscriptionId);
-        if (!tenantId) break;
-
-        await upsertSubscription(supabase, tenantId, {
-          stripe_customer_id: subscription.customer as string,
-          stripe_subscription_id: subscriptionId,
-          status: subscription.status,
-          current_period_start: getPeriodISO(subscription, 'current_period_start'),
-          current_period_end: getPeriodISO(subscription, 'current_period_end'),
-        });
-
-        console.log(`Subscription aggiornata per tenant ${tenantId}`);
-        break;
-      }
-
-      default:
-        console.log(`Unhandled event type: ${event.type}`);
+    if (!tenantId) {
+      console.error('[Webhook] tenant_id mancante nella sessione');
+      return NextResponse.json({ error: 'tenant_id mancante' }, { status: 400 });
     }
 
-    return NextResponse.json({ received: true });
-  } catch (err: unknown) {
-    const msg = err instanceof Error ? err.message : "Errore webhook";
-    console.error("Errore webhook Stripe:", err);
-    return NextResponse.json({ error: msg }, { status: 500 });
+    // Aggiorna il piano del tenant
+    const { data: tenant, error: tenantError } = await supabase
+      .from('tenants')
+      .select('id, plan')
+      .eq('id', tenantId)
+      .single();
+
+    if (tenantError || !tenant) {
+      console.error('[Webhook] Tenant non trovato:', tenantId, tenantError);
+      return NextResponse.json({ error: 'Tenant non trovato' }, { status: 404 });
+    }
+
+    console.log('[Webhook] Tenant trovato:', tenant.id, 'piano attuale:', tenant.plan);
+
+    // Estrai il price_id dalla subscription per determinare il piano
+    const subscriptionId = session.subscription as string;
+    let newPlan = 'pro'; // Default
+
+    if (subscriptionId) {
+      try {
+        const subscription = await stripe.subscriptions.retrieve(subscriptionId);
+        const priceId = subscription.items.data[0]?.price.id;
+
+        // Mappa price_id → piano
+        const priceToPlan: Record<string, string> = {
+          'price_1TmcprRZR2YaFu2sU0m1kbFC': 'starter',
+          'price_1Tmd1tRZR2YaFu2sgHgxzcTC': 'pro',
+          'price_1Tmd4GRZR2YaFu2s0FZ4Btym': 'business',
+        };
+
+        if (priceId && priceToPlan[priceId]) {
+          newPlan = priceToPlan[priceId];
+        }
+      } catch (err) {
+        console.error('[Webhook] Errore lettura subscription:', err);
+      }
+    }
+
+    // Aggiorna il tenant con il nuovo piano
+    const { error: updateError } = await supabase
+      .from('tenants')
+      .update({
+        plan: newPlan,
+        stripe_subscription_id: subscriptionId,
+        stripe_customer_id: session.customer as string,
+      })
+      .eq('id', tenantId);
+
+    if (updateError) {
+      console.error('[Webhook] Errore aggiornamento tenant:', updateError);
+      return NextResponse.json({ error: 'Errore aggiornamento' }, { status: 500 });
+    }
+
+    console.log('[Webhook] Piano aggiornato a:', newPlan, 'tenant:', tenantId);
   }
-}
 
-interface SubscriptionData {
-  stripe_customer_id: string;
-  stripe_subscription_id: string;
-  status: string;
-  current_period_start: string;
-  current_period_end: string;
-}
+  // Gestisci customer.subscription.deleted (cancellazione)
+  if (event.type === 'customer.subscription.deleted') {
+    const subscription = event.data.object as Stripe.Subscription;
+    const customerId = subscription.customer as string;
 
-async function upsertSubscription(
-  supabase: ReturnType<typeof getSupabase>,
-  tenantId: string,
-  data: SubscriptionData
-) {
-  const { error } = await supabase
-    .from("subscriptions")
-    .upsert(
-      {
-        tenant_id: tenantId,
-        stripe_customer_id: data.stripe_customer_id,
-        stripe_subscription_id: data.stripe_subscription_id,
-        status: data.status,
-        current_period_start: data.current_period_start,
-        current_period_end: data.current_period_end,
-        updated_at: new Date().toISOString(),
-      },
-      { onConflict: "tenant_id" }
-    );
+    console.log('[Webhook] Subscription deleted:', subscription.id, 'customer:', customerId);
 
-  if (error) {
-    console.error("upsertSubscription error:", error);
-    throw error;
+    // Trova il tenant per stripe_customer_id
+    const { data: tenant } = await supabase
+      .from('tenants')
+      .select('id, plan')
+      .eq('stripe_customer_id', customerId)
+      .single();
+
+    if (tenant) {
+      await supabase
+        .from('tenants')
+        .update({ plan: 'free', stripe_subscription_id: null })
+        .eq('id', tenant.id);
+      console.log('[Webhook] Tenant', tenant.id, 'degradato a free');
+    }
   }
-}
 
-async function getTenantIdBySubscriptionId(
-  supabase: ReturnType<typeof getSupabase>,
-  subscriptionId: string
-): Promise<string | null> {
-  const { data, error } = await supabase
-    .from("subscriptions")
-    .select("tenant_id")
-    .eq("stripe_subscription_id", subscriptionId)
-    .single();
-
-  if (error || !data) return null;
-  return data.tenant_id;
+  return NextResponse.json({ received: true });
 }
