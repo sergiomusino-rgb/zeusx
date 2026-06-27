@@ -423,7 +423,67 @@ interface DataTableProps {
 function DataTable({
   table, records, loading, searchQuery, onSearchChange,
   onEdit, onDelete, onAddNew, colors, radius, shadow,
-}: DataTableProps) {
+  appId, password,
+}: DataTableProps & { appId?: string; password?: string }) {
+  const fileInputRef = React.useRef<HTMLInputElement>(null);
+  const [importing, setImporting] = useState(false);
+  const [importMsg, setImportMsg] = useState('');
+  const [exporting, setExporting] = useState(false);
+  const handleExport = async () => {
+    if (!appId || !password) return;
+    setExporting(true);
+    try {
+      const res = await fetch(`${BACKEND_URL}/api/client/apps/${appId}/export?table=${table.name}`, {
+        headers: { Authorization: `Bearer ${password}` },
+      });
+      if (!res.ok) throw new Error('Errore esportazione');
+      const blob = await res.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `${table.name}-${new Date().toISOString().split('T')[0]}.csv`;
+      a.click();
+      window.URL.revokeObjectURL(url);
+    } catch (err) {
+      alert(err instanceof Error ? err.message : 'Errore esportazione');
+    } finally {
+      setExporting(false);
+    }
+  };
+
+  const handleImport = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !appId || !password) return;
+
+    setImporting(true);
+    setImportMsg('');
+
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
+      formData.append('table', table.name);
+
+      const res = await fetch(`${BACKEND_URL}/api/client/apps/${appId}/import`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${password}` },
+        body: formData,
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        throw new Error(data.error || 'Errore importazione');
+      }
+
+      setImportMsg(`${data.imported} record importati`);
+      e.target.value = '';
+    } catch (err) {
+      setImportMsg(err instanceof Error ? err.message : 'Errore importazione');
+    } finally {
+      setImporting(false);
+    }
+  };
+
   const filteredRecords = useMemo(() => {
     if (!searchQuery.trim()) return records;
     const q = searchQuery.toLowerCase();

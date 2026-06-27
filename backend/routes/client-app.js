@@ -3,6 +3,7 @@ const router = express.Router();
 const { createClient } = require('@supabase/supabase-js');
 const multer = require('multer');
 const csv = require('csv-parser');
+const { stringify } = require('csv-stringify/sync');
 
 const upload = multer({ storage: multer.memoryStorage() });
 
@@ -278,6 +279,44 @@ router.post('/client/apps/:appId/import', clientAuthMiddleware, upload.single('f
     res.json({ imported: data?.length || 0 });
   } catch (err) {
     console.error('Import exception:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// GET /api/client/apps/:appId/export?table=clients
+router.get('/client/apps/:appId/export', clientAuthMiddleware, async (req, res) => {
+  try {
+    const { table } = req.query;
+    if (!table) {
+      return res.status(400).json({ error: 'Parametro table obbligatorio' });
+    }
+
+    const supabase = getSupabase();
+    const { data, error } = await supabase
+      .from('app_records')
+      .select('data')
+      .eq('app_id', req.appId)
+      .eq('tenant_id', req.tenantId)
+      .eq('table_name', table)
+      .order('created_at', { ascending: true });
+
+    if (error) {
+      console.error('Export query error:', error);
+      return res.status(500).json({ error: error.message });
+    }
+
+    if (!data || data.length === 0) {
+      return res.status(404).json({ error: 'Nessun record da esportare' });
+    }
+
+    const flatData = data.map(row => row.data);
+    const csvOutput = stringify(flatData, { header: true });
+
+    res.setHeader('Content-Type', 'text/csv');
+    res.setHeader('Content-Disposition', `attachment; filename=${table}-export.csv`);
+    res.send(csvOutput);
+  } catch (err) {
+    console.error('Export exception:', err);
     res.status(500).json({ error: err.message });
   }
 });
