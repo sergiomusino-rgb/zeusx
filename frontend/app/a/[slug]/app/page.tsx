@@ -9,6 +9,7 @@ import {
   LayoutDashboard, Settings, LogOut, Search, Plus, Pencil, Trash2,
   X, ChevronDown, Users, ShoppingCart, Package, DollarSign, TrendingUp,
   AlertTriangle, Calendar, CheckCircle, Clock, XCircle, Menu,
+  Download, Upload,
 } from 'lucide-react';
 
 // ─── Interfaces ───────────────────────────────────────────────────────────────

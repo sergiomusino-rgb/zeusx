@@ -1,6 +1,10 @@
 const express = require('express');
 const router = express.Router();
 const { createClient } = require('@supabase/supabase-js');
+const multer = require('multer');
+const csv = require('csv-parser');
+
+const upload = multer({ storage: multer.memoryStorage() });
 
 function getSupabase() {
   return createClient(
@@ -230,6 +234,50 @@ router.delete('/api/client/apps/:appId/records/:recordId', clientAuthMiddleware,
     res.json({ success: true });
   } catch (err) {
     console.error('DELETE client record exception:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// POST /api/client/apps/:appId/import
+router.post('/client/apps/:appId/import', clientAuthMiddleware, upload.single('file'), async (req, res) => {
+  try {
+    const { table } = req.body;
+    if (!table || !req.file) {
+      return res.status(400).json({ error: 'table e file obbligatori' });
+    }
+
+    const records = [];
+    const parser = req.file.buffer.pipe(csv());
+
+    for await (const row of parser) {
+      records.push(row);
+    }
+
+    if (records.length === 0) {
+      return res.status(400).json({ error: 'File CSV vuoto' });
+    }
+
+    const supabase = getSupabase();
+    const insertData = records.map(row => ({
+      app_id: req.appId,
+      tenant_id: req.tenantId,
+      table_name: table,
+      data: row,
+    }));
+
+    const { data, error } = await supabase
+      .from('app_records')
+      .insert(insertData)
+      .select();
+
+    if (error) {
+      console.error('Import error:', error);
+      return res.status(500).json({ error: error.message });
+    }
+
+    res.json({ imported: data?.length || 0 });
+  } catch (err) {
+    console.error('Import exception:', err);
     res.status(500).json({ error: err.message });
   }
 });
