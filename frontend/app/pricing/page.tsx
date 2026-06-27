@@ -66,11 +66,11 @@ export default function PricingPage() {
       id: 'starter',
       name: 'STARTER',
       setupPrice: '0',
-      monthlyFee: '25',
+      monthlyFee: '50',
       slots: '1',
       features: [
         '1 slot app',
-        'Fee mensile: 25€/app',
+        'Fee mensile: 50€/app (dopo 1 mese gratis)',
         'Trial 30 giorni inclusi',
         'Supporto email'
       ],
