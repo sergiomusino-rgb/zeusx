@@ -56,42 +56,38 @@ export async function POST(req: NextRequest) {
 
     console.log('[Checkout] User autenticato:', user.id, user.email);
 
-    // Cerca tenant con service role key
-    console.log('[Checkout] Cerco tenant per user_id:', user.id);
-    const { data: memberships, error: membershipError } = await dbClient
-      .from('tenant_members')
-      .select('tenant_id')
-      .eq('user_id', user.id)
-      .limit(1);
+    // Cerca tenant - prima per owner_id (più diretto)
+    console.log('[Checkout] Cerco tenant per owner_id:', user.id);
+    const { data: tenantByOwner, error: ownerError } = await dbClient
+      .from('tenants')
+      .select('id, stripe_customer_id, plan')
+      .eq('owner_id', user.id)
+      .limit(1)
+      .single();
 
-    console.log('[Checkout] memberships:', memberships, 'error:', membershipError);
+    console.log('[Checkout] tenantByOwner:', tenantByOwner, 'error:', ownerError);
 
-    let tenantId = memberships?.[0]?.tenant_id || null;
+    let tenantId = tenantByOwner?.id || null;
 
+    // Se non trovato per owner_id, cerca nelle membership
     if (!tenantId) {
-      console.log('[Checkout] Cerco per owner_id...');
-      const { data: tenantAsOwner, error: ownerError } = await dbClient
-        .from('tenants')
-        .select('id')
-        .eq('owner_id', user.id)
-        .limit(1)
-        .single();
+      console.log('[Checkout] Cerco nelle membership...');
+      const { data: memberships, error: membershipError } = await dbClient
+        .from('tenant_members')
+        .select('tenant_id')
+        .eq('user_id', user.id)
+        .limit(1);
 
-      console.log('[Checkout] tenantAsOwner:', tenantAsOwner, 'error:', ownerError);
+      console.log('[Checkout] memberships:', memberships, 'error:', membershipError);
 
-      if (tenantAsOwner) {
-        tenantId = tenantAsOwner.id;
-        const { error: insertError } = await dbClient.from('tenant_members').insert({
-          tenant_id: tenantId,
-          user_id: user.id,
-          role: 'owner',
-        });
-        console.log('[Checkout] Insert membership error:', insertError);
+      if (memberships?.[0]?.tenant_id) {
+        tenantId = memberships[0].tenant_id;
       }
     }
 
+    // Se ancora non trovato, crea nuovo tenant
     if (!tenantId) {
-      console.log('[Checkout] Creo nuovo tenant...');
+      console.log('[Checkout] Creo nuovo tenant per user:', user.id);
       const { data: newTenant, error: createError } = await dbClient
         .from('tenants')
         .insert({
@@ -100,36 +96,46 @@ export async function POST(req: NextRequest) {
           slug: `tenant-${user.id.slice(0, 8)}`,
           plan: 'free',
         })
-        .select('id')
+        .select('id, stripe_customer_id, plan')
         .single();
 
-      console.log('[Checkout] newTenant:', newTenant, 'error:', createError);
+      console.log('[Checkout] newTenant:', newTenant, 'createError:', createError);
 
       if (createError || !newTenant) {
-        return NextResponse.json({ error: 'Errore creazione tenant' }, { status: 500 });
+        console.error('[Checkout] Errore creazione tenant:', createError);
+        return NextResponse.json({ error: 'Errore creazione tenant: ' + (createError?.message || 'sconosciuto') }, { status: 500 });
       }
 
       tenantId = newTenant.id;
 
-      await dbClient.from('tenant_members').insert({
+      // Aggiungi membership
+      const { error: membershipInsertError } = await dbClient.from('tenant_members').insert({
         tenant_id: tenantId,
         user_id: user.id,
         role: 'owner',
       });
+
+      console.log('[Checkout] membership insert error:', membershipInsertError);
     }
 
     console.log('[Checkout] tenantId finale:', tenantId);
 
-    // Recupera tenant completo
-    const { data: tenant, error: tenantError } = await dbClient
-      .from('tenants')
-      .select('id, stripe_customer_id, plan')
-      .eq('id', tenantId)
-      .single();
+    // Recupera tenant completo se abbiamo solo l'id
+    let tenant = tenantByOwner || null;
+    if (!tenant && tenantId) {
+      console.log('[Checkout] Recupero tenant completo per id:', tenantId);
+      const { data: tenantFull, error: tenantError } = await dbClient
+        .from('tenants')
+        .select('id, stripe_customer_id, plan')
+        .eq('id', tenantId)
+        .single();
 
-    console.log('[Checkout] tenant:', tenant, 'error:', tenantError);
+      console.log('[Checkout] tenantFull:', tenantFull, 'error:', tenantError);
+      tenant = tenantFull;
+    }
 
     if (!tenant) {
+      console.error('[Checkout] Tenant non trovato dopo tutti i tentativi');
       return NextResponse.json({ error: 'Tenant non trovato' }, { status: 404 });
     }
 
