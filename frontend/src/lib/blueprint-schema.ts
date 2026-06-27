@@ -116,8 +116,27 @@ export const UIConfigSchema = z.object({
       z.string().default('#6366f1'),
     ])
     .default('#6366f1'),
-  sidebar: z.array(SidebarItemSchema).default([]),
-  dashboardCards: z.array(DashboardCardSchema).default([]),
+  sidebar: z.union([
+    z.array(SidebarItemSchema),
+    z.record(z.unknown()).transform((obj) => Object.keys(obj)),
+    z.object({}).transform(() => []),
+  ]).default([]),
+  dashboardCards: z.union([
+    z.array(DashboardCardSchema),
+    z.record(z.unknown()).transform((obj) => Object.values(obj).map((v: unknown) => {
+      if (typeof v === 'object' && v !== null) {
+        const entry = v as Record<string, unknown>;
+        return {
+          type: String(entry.type || 'count'),
+          table: String(entry.table || ''),
+          label: String(entry.label || ''),
+          field: String(entry.field || ''),
+        };
+      }
+      return { type: 'count', table: '', label: '', field: '' };
+    })),
+    z.object({}).transform(() => []),
+  ]).default([]),
 });
 
 export const BlueprintJSONSchema = z.object({
