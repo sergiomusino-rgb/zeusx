@@ -271,7 +271,7 @@ function Dashboard({ colors, radius, shadow, companyName }: DashboardProps) {
                   borderRadius: '8px',
                   color: colors.text,
                 }}
-                formatter={(value) => [`EUR ${(Number(value) || 0).toLocaleString()}`, 'Fatturato']}
+                formatter={(value: number) => [`EUR ${value.toLocaleString()}`, 'Fatturato']}
               />
               <Line
                 type="monotone"
@@ -654,7 +654,7 @@ function RecordModal({ table, record, onSave, onClose, saving, colors }: RecordM
   });
 
   const handleChange = (fieldName: string, value: unknown) => {
-    setFormData((prev: Record<string, any>) => ({ ...prev, [fieldName]: value }));
+    setFormData((prev) => ({ ...prev, [fieldName]: value }));
   };
 
   const handleSubmit = (e: React.FormEvent) => {

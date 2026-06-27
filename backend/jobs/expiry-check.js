@@ -1,6 +1,15 @@
 const cron = require('node-cron');
 const { createClient } = require('@supabase/supabase-js');
-const { Resend } = require('resend');
+
+let resend = null;
+try {
+  const { Resend } = require('resend');
+  if (process.env.RESEND_API_KEY) {
+    resend = new Resend(process.env.RESEND_API_KEY);
+  }
+} catch {
+  console.log('[Cron] Resend non configurato - invio email disabilitato');
+}
 
 const supabase = createClient(
   process.env.SUPABASE_URL,
