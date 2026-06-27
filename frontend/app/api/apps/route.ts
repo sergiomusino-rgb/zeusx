@@ -78,7 +78,14 @@ async function canCreateApp(supabase: ReturnType<typeof createClient>, tenantId:
     return { allowed: false, reason: 'Tenant non trovato' };
   }
 
-  const appLimit = tenant.app_limit || 1;
+  const planLimits: Record<string, number> = {
+    free: 0,
+    starter: 1,
+    pro: 5,
+    business: 250,
+  };
+
+  const appLimit = planLimits[tenant.plan] ?? tenant.app_limit ?? 1;
   const totalCreated = tenant.total_apps_created || 0;
   const slotsAvailable = appLimit - totalCreated;
 
