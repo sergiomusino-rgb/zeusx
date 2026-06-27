@@ -119,8 +119,8 @@ export default function CreateAppPage() {
         throw new Error(data.error || data.message || `Errore ${res.status}`);
       }
 
-      console.log('[CreateApp] Success, redirecting to dashboard');
-      router.push(`/dashboard/projects?app=${data.app.id}`);
+      console.log('[CreateApp] Success, redirecting to app viewer');
+      router.push(`/app/${data.app.id}`);
     } catch (err) {
       console.error('[CreateApp] Errore:', err);
       const errorMsg = err instanceof Error ? err.message : 'Errore durante la creazione';
