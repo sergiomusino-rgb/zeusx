@@ -87,8 +87,8 @@ export async function POST(req: NextRequest) {
         .single();
 
       if (createErr || !newTenant) {
-        console.error('[Checkout] Errore creazione tenant:', createErr);
-        return NextResponse.json({ error: 'Impossibile creare il tenant' }, { status: 500 });
+        console.error('[Checkout] Errore creazione tenant:', JSON.stringify(createErr));
+        return NextResponse.json({ error: 'Impossibile creare il tenant: ' + JSON.stringify(createErr) }, { status: 500 });
       }
 
       tenant = newTenant;
