@@ -36,8 +36,8 @@ export default function Home() {
             <Link href="/login" className="bg-blue-600 hover:bg-blue-700 text-white font-semibold px-8 py-4 rounded-xl text-center shadow-lg transition">
               Inizia
             </Link>
-            <Link href="/pricing" className="bg-slate-800 hover:bg-slate-700 text-white font-semibold px-8 py-4 rounded-xl text-center transition">
-              Vedi i Piani
+            <Link href="/info" className="bg-slate-800 hover:bg-slate-700 text-white font-semibold px-8 py-4 rounded-xl text-center transition">
+              Prezzi e Termini
             </Link>
           </div>
         </section>
