@@ -76,11 +76,14 @@ export default function CreateAppPage() {
     setError('');
     setLoading(true);
 
+    console.log('[CreateApp] Starting creation...', { appName, sector: selectedSector.id });
+
     try {
       const { data: { session } } = await supabase.auth.getSession();
       const token = session?.access_token || getAccessTokenFromStorage();
       if (!token) {
         setError('Sessione scaduta. Effettua di nuovo il login.');
+        setLoading(false);
         return;
       }
 
@@ -89,6 +92,7 @@ export default function CreateAppPage() {
         try { logo = await uploadLogo(logoFile); } catch { /* continua */ }
       }
 
+      console.log('[CreateApp] Sending request to /api/apps');
       const res = await fetch('/api/apps', {
         method: 'POST',
         headers: {
@@ -103,20 +107,24 @@ export default function CreateAppPage() {
         }),
       });
 
+      console.log('[CreateApp] Response status:', res.status);
       const data = await res.json().catch(() => ({}));
+      console.log('[CreateApp] Response data:', data);
 
       if (!res.ok) {
         if (res.status === 403 && data.error === 'UpgradeToProRequired') {
           router.push('/pricing');
           return;
         }
-        throw new Error(data.error || 'Errore creazione app');
+        throw new Error(data.error || data.message || `Errore ${res.status}`);
       }
 
+      console.log('[CreateApp] Success, redirecting to dashboard');
       router.push(`/dashboard/projects?app=${data.app.id}`);
     } catch (err) {
-      console.error('Errore creazione app:', err);
-      setError(err instanceof Error ? err.message : 'Errore durante la creazione');
+      console.error('[CreateApp] Errore:', err);
+      const errorMsg = err instanceof Error ? err.message : 'Errore durante la creazione';
+      setError(errorMsg);
     } finally {
       setLoading(false);
     }

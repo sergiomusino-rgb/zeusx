@@ -65,13 +65,29 @@ async function getOrCreateTenant(supabase: ReturnType<typeof createClient>, user
 const ADMIN_USER_ID = 'd3eda57f-692a-4904-ac5f-93bdaaec8ce5';
 
 async function canCreateApp(supabase: ReturnType<typeof createClient>, tenantId: string, userId?: string): Promise<{ allowed: boolean; reason?: string; slotsAvailable?: number; tenant?: any }> {
-  // Admin: app illimitate, nessun controllo
+  // Admin: app illimitate
   if (userId === ADMIN_USER_ID) {
-    const { data: tenant } = await supabase
+    const { data: tenant, error: tenantError } = await supabase
       .from('tenants')
       .select('plan, app_limit, total_apps_created')
       .eq('id', tenantId)
       .single();
+    if (tenantError || !tenant) {
+      // Crea tenant se non esiste
+      const { data: newTenant } = await supabase
+        .from('tenants')
+        .insert({
+          owner_id: userId,
+          name: 'Admin Tenant',
+          slug: `admin-${userId.slice(0, 8)}`,
+          plan: 'free',
+          total_apps_created: 0,
+        })
+        .select('plan, app_limit, total_apps_created')
+        .single();
+      console.log('[canCreateApp] admin tenant created:', newTenant);
+      return { allowed: true, slotsAvailable: Infinity, tenant: newTenant };
+    }
     return { allowed: true, slotsAvailable: Infinity, tenant };
   }
 
