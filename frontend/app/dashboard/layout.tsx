@@ -57,14 +57,12 @@ export default function DashboardLayout({
 
         {/* Info Utente in basso alla Sidebar */}
         <div className="p-4 border-t border-slate-800/60 bg-slate-950/40">
-          <div className="flex items-center gap-3 px-2 py-1">
-            <img src="/favicon.png" alt="ZeusX" className="w-8 h-8 rounded-full object-cover" />
-            <div className="overflow-hidden">
-              <p className="text-sm font-semibold truncate">by MUSINO</p>
-              <span className="text-[10px] text-indigo-400 uppercase font-bold tracking-wider bg-indigo-500/10 px-1.5 py-0.5 rounded">
-                Piano PRO
-              </span>
-            </div>
+          <div className="flex flex-col items-center gap-2 px-2 py-1">
+            <img src="/favicon.png" alt="ZeusX" className="w-16 h-16 rounded-full object-cover" />
+            <p className="text-sm font-semibold">by MUSINO</p>
+            <span className="text-[10px] text-indigo-400 uppercase font-bold tracking-wider bg-indigo-500/10 px-2 py-0.5 rounded">
+              Piano PRO
+            </span>
           </div>
         </div>
       </aside>
