@@ -47,7 +47,7 @@ export async function POST(req: NextRequest) {
     // Trova il tenant dell'utente - prima per owner_id
     const { data: tenantByOwner } = await dbClient
       .from('tenants')
-      .select('id, stripe_customer_id, plan, owner_id')
+      .select('id, plan, owner_id')
       .eq('owner_id', user.id)
       .limit(1)
       .maybeSingle();
@@ -66,7 +66,7 @@ export async function POST(req: NextRequest) {
       if (membership?.tenant_id) {
         const { data: tenantFromMembership } = await dbClient
           .from('tenants')
-          .select('id, stripe_customer_id, plan, owner_id')
+          .select('id, plan, owner_id')
           .eq('id', membership.tenant_id)
           .single();
         tenant = tenantFromMembership;
@@ -83,7 +83,7 @@ export async function POST(req: NextRequest) {
           slug: `tenant-${user.id.slice(0, 8)}`,
           plan: 'free',
         })
-        .select('id, stripe_customer_id, plan, owner_id')
+        .select('id, plan, owner_id')
         .single();
 
       if (createErr || !newTenant) {
@@ -101,24 +101,15 @@ export async function POST(req: NextRequest) {
       });
     }
 
-    // Crea o recupera il cliente Stripe
-    let customerId = tenant.stripe_customer_id;
-
-    if (!customerId) {
-      const customer = await stripe.customers.create({
-        email: user.email,
-        metadata: {
-          supabase_user_id: user.id,
-          tenant_id: tenant.id,
-        },
-      });
-      customerId = customer.id;
-
-      await dbClient
-        .from('tenants')
-        .update({ stripe_customer_id: customerId })
-        .eq('id', tenant.id);
-    }
+    // Crea il cliente Stripe (non salviamo stripe_customer_id nel DB perché la colonna non esiste)
+    const customer = await stripe.customers.create({
+      email: user.email,
+      metadata: {
+        supabase_user_id: user.id,
+        tenant_id: tenant.id,
+      },
+    });
+    const customerId = customer.id;
 
     // Crea la sessione di checkout
     const session = await stripe.checkout.sessions.create({
