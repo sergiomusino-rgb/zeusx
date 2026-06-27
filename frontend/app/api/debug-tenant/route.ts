@@ -15,15 +15,26 @@ const dbClient = createClient(
 
 export async function GET(req: NextRequest) {
   try {
+    // Leggi il token dal cookie o header
     const authHeader = req.headers.get('authorization');
     const token = authHeader?.startsWith('Bearer ') ? authHeader.slice(7) : null;
 
+    // Fallback: leggi dal cookie
+    const tokenFromCookie = req.cookies.get('supabase.auth.token')?.value;
+    const finalToken = token || tokenFromCookie;
+
     let userInfo: any = null;
-    if (token) {
-      const { data: { user }, error } = await authClient.auth.getUser(token);
+    if (finalToken) {
+      console.log('[Debug] Token presente, lunghezza:', finalToken.length);
+      const { data: { user }, error } = await authClient.auth.getUser(finalToken);
+      if (error) {
+        console.error('[Debug] Auth error:', error);
+      }
       if (!error && user) {
         userInfo = { id: user.id, email: user.email };
       }
+    } else {
+      console.log('[Debug] Nessun token trovato');
     }
 
     const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY ? 'PRESENT' : 'MISSING';
