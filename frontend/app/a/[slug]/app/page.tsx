@@ -829,6 +829,232 @@ function RecordModal({ table, record, onSave, onClose, saving, colors }: RecordM
   );
 }
 
+// ─── ColorPicker Component ────────────────────────────────────────────────────
+
+interface ColorPickerProps {
+  value: string;
+  onChange: (color: string) => void;
+}
+
+function ColorPicker({ value, onChange }: ColorPickerProps) {
+  const [hue, setHue] = useState(0);
+  const [saturation, setSaturation] = useState(100);
+  const [lightness, setLightness] = useState(50);
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const [isDragging, setIsDragging] = useState(false);
+
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+
+    const width = canvas.width;
+    const height = canvas.height;
+
+    // Draw hue gradient
+    for (let x = 0; x < width; x++) {
+      const hue = (x / width) * 360;
+      ctx.fillStyle = `hsl(${hue}, 100%, 50%)`;
+      ctx.fillRect(x, 0, 1, height);
+    }
+  }, []);
+
+  const handleCanvasClick = (e: React.MouseEvent<HTMLCanvasElement>) => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+
+    const rect = canvas.getBoundingClientRect();
+    const x = e.clientX - rect.left;
+    const y = e.clientY - rect.top;
+
+    const newHue = Math.round((x / rect.width) * 360);
+    const newSaturation = Math.round(100 - (y / rect.height) * 100);
+
+    setHue(newHue);
+    setSaturation(newSaturation);
+    updateColor(newHue, newSaturation, lightness);
+  };
+
+  const handleCanvasMouseDown = () => {
+    setIsDragging(true);
+  };
+
+  const handleCanvasMouseMove = (e: React.MouseEvent<HTMLCanvasElement>) => {
+    if (!isDragging) return;
+    handleCanvasClick(e);
+  };
+
+  const handleCanvasMouseUp = () => {
+    setIsDragging(false);
+  };
+
+  const updateColor = (h: number, s: number, l: number) => {
+    const hex = hslToHex(h, s, l);
+    onChange(hex);
+  };
+
+  const hslToHex = (h: number, s: number, l: number): string => {
+    s /= 100;
+    l /= 100;
+    const a = s * Math.min(l, 1 - l);
+    const f = (n: number) => {
+      const k = (n + h / 30) % 12;
+      const color = l - a * Math.max(Math.min(k - 3, 9 - k, 1), -1);
+      return Math.round(255 * color).toString(16).padStart(2, '0');
+    };
+    return `#${f(0)}${f(8)}${f(4)}`;
+  };
+
+  const canvasWidth = 280;
+  const canvasHeight = 60;
+  const cursorX = (hue / 360) * canvasWidth;
+  const cursorY = ((100 - saturation) / 100) * canvasHeight;
+
+  return (
+    <div>
+      <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '12px' }}>
+        <div
+          style={{
+            width: '48px',
+            height: '48px',
+            borderRadius: '8px',
+            background: value,
+            border: '2px solid rgba(255,255,255,0.2)',
+          }}
+        />
+        <div style={{ flex: 1 }}>
+          <div style={{ color: colors.text, fontSize: '14px', fontWeight: 600, marginBottom: '4px' }}>
+            Colore Attuale
+          </div>
+          <div style={{ color: colors.textSecondary, fontSize: '12px', fontFamily: 'monospace' }}>
+            {value.toUpperCase()}
+          </div>
+        </div>
+      </div>
+
+      <div style={{ position: 'relative', marginBottom: '12px' }}>
+        <canvas
+          ref={canvasRef}
+          width={canvasWidth}
+          height={canvasHeight}
+          onClick={handleCanvasClick}
+          onMouseDown={handleCanvasMouseDown}
+          onMouseMove={handleCanvasMouseMove}
+          onMouseUp={handleCanvasMouseUp}
+          onMouseLeave={handleCanvasMouseUp}
+          style={{
+            width: '100%',
+            height: '60px',
+            borderRadius: '8px',
+            cursor: 'crosshair',
+            border: `2px solid ${colors.border}`,
+          }}
+        />
+        <div
+          style={{
+            position: 'absolute',
+            left: `${cursorX - 10}px`,
+            top: `${cursorY - 10}px`,
+            width: '20px',
+            height: '20px',
+            borderRadius: '50%',
+            background: 'white',
+            border: '2px solid black',
+            pointerEvents: 'none',
+            boxShadow: '0 2px 4px rgba(0,0,0,0.3)',
+          }}
+        />
+      </div>
+
+      <div>
+        <label style={{ display: 'block', marginBottom: '6px', fontSize: '12px', color: colors.textSecondary }}>
+          Luminosità: {lightness}%
+        </label>
+        <input
+          type="range"
+          min="0"
+          max="100"
+          value={lightness}
+          onChange={(e) => {
+            const newLightness = Number(e.target.value);
+            setLightness(newLightness);
+            updateColor(hue, saturation, newLightness);
+          }}
+          style={{ width: '100%' }}
+        />
+      </div>
+
+      <div style={{ marginTop: '12px', display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
+        {COLOR_PRESETS.map((preset) => (
+          <button
+            key={preset}
+            onClick={() => {
+              onChange(preset);
+              const h = hexToHsl(preset).h;
+              const s = hexToHsl(preset).s;
+              const l = hexToHsl(preset).l;
+              setHue(h);
+              setSaturation(s);
+              setLightness(l);
+            }}
+            style={{
+              width: '32px',
+              height: '32px',
+              borderRadius: '6px',
+              background: preset,
+              border: value === preset ? '2px solid white' : '2px solid transparent',
+              cursor: 'pointer',
+              boxShadow: value === preset ? `0 0 0 2px ${preset}` : 'none',
+            }}
+          />
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function hexToHsl(hex: string) {
+  let r = parseInt(hex.slice(1, 3), 16) / 255;
+  let g = parseInt(hex.slice(3, 5), 16) / 255;
+  let b = parseInt(hex.slice(5, 7), 16) / 255;
+
+  const max = Math.max(r, g, b);
+  const min = Math.min(r, g, b);
+  let h = 0;
+  let s = 0;
+  const l = (max + min) / 2;
+
+  if (max !== min) {
+    const d = max - min;
+    s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
+    switch (max) {
+      case r:
+        h = ((g - b) / d + (g < b ? 6 : 0)) / 6;
+        break;
+      case g:
+        h = ((b - r) / d + 2) / 6;
+        break;
+      case b:
+        h = ((r - g) / d + 4) / 6;
+        break;
+    }
+  }
+
+  return {
+    h: Math.round(h * 360),
+    s: Math.round(s * 100),
+    l: Math.round(l * 100),
+  };
+}
+
+const COLOR_PRESETS = [
+  '#6366f1', '#8b5cf6', '#ec4899', '#f43f5e',
+  '#ef4444', '#f59e0b', '#10b981', '#06b6d4',
+  '#3b82f6', '#64748b', '#1e293b', '#ffffff',
+];
+
 // ─── SettingsModal Component ──────────────────────────────────────────────────
 
 interface SettingsModalProps {
@@ -1011,6 +1237,15 @@ function SettingsModal({ prefs, onPrefsChange, onClose, onLogout, onChangePasswo
               );
             })}
           </div>
+        </div>
+
+        {/* Color Section */}
+        <div style={sectionBox}>
+          <div style={sectionTitle}>Colore Primario</div>
+          <ColorPicker 
+            value={prefs.primaryColor} 
+            onChange={(color) => updatePref('primaryColor', color)} 
+          />
         </div>
 
         {/* Brand Section */}
