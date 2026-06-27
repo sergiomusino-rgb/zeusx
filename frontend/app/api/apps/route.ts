@@ -135,7 +135,7 @@ export async function POST(req: Request) {
     }
 
     const body = await req.json();
-    const { sector, prompt, logo } = body;
+    const { sector, prompt, logo, name: userAppName } = body;
 
     if (!sector || typeof sector !== 'string') {
       return NextResponse.json({ error: 'Settore richiesto' }, { status: 400 });
@@ -211,8 +211,9 @@ export async function POST(req: Request) {
     const expiresAt = new Date();
     expiresAt.setDate(expiresAt.getDate() + 30);
 
-    // Genera slug e password cliente
-    const slug = generateSlug(blueprint.appName, sector);
+    // Genera slug e password cliente (usa nome utente se fornito, altrimenti blueprint)
+    const finalName = userAppName || blueprint.appName;
+    const slug = generateSlug(finalName, sector);
     const clientPassword = generatePassword();
 
     // Salva app
@@ -221,7 +222,7 @@ export async function POST(req: Request) {
       .insert({
         tenant_id: tenantId,
         blueprint_id: blueprintId,
-        name: blueprint.appName,
+        name: finalName,
         config: blueprint,
         trial_ends_at: trialEndsAt.toISOString(),
         expires_at: expiresAt.toISOString(),
