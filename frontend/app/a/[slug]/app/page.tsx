@@ -2,6 +2,11 @@
 
 import { useEffect, useState, useCallback } from 'react';
 import { useParams, useRouter } from 'next/navigation';
+import { createClient } from '@supabase/supabase-js';
+
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
+const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
+const supabase = createClient(supabaseUrl, supabaseAnonKey);
 
 interface FieldDef {
   id: string;
@@ -91,29 +96,40 @@ export default function ClientViewerPage() {
           return;
         }
 
-        const res = await fetch(`/api/a/${slug}/verify-password`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ password: storedPassword }),
-        });
+        const { data: appData, error: appError } = await supabase
+          .from('apps')
+          .select('id, client_password, client_active, expires_at, config')
+          .eq('slug', slug)
+          .single();
 
-        if (!res.ok) {
+        if (appError || !appData) {
           localStorage.removeItem(sessionKey);
           router.replace(`/a/${slug}`);
           return;
         }
 
-        const result = await res.json();
-        if (result.blocked) {
+        if (!appData.client_active) {
           router.replace(`/a/${slug}/blocked`);
           return;
         }
 
+        if (appData.client_password !== storedPassword) {
+          localStorage.removeItem(sessionKey);
+          router.replace(`/a/${slug}`);
+          return;
+        }
+
+        const app = {
+          id: appData.id,
+          config: appData.config,
+          expires_at: appData.expires_at,
+        };
+
         setPassword(storedPassword);
-        setAppInfo(result.app);
+        setAppInfo(app);
         setAuthenticated(true);
 
-        const tables = result.app?.config?.schema?.tables;
+        const tables = appData.config?.schema?.tables;
         if (tables?.length > 0) {
           setSelectedTable(tables[0].name);
         }
@@ -132,8 +148,8 @@ export default function ClientViewerPage() {
     if (!tableName || !appInfo) return;
     setLoadingRecords(true);
     try {
-      const res = await fetch(`/api/a/${slug}/records?table=${tableName}`, {
-        headers: { 'x-app-password': password, 'x-app-slug': slug },
+      const res = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/api/apps/${appInfo.id}/records?table=${tableName}`, {
+        headers: { 'Authorization': `Bearer ${password}` },
       });
       if (!res.ok) throw new Error('Failed to load records');
       const data = await res.json();
@@ -144,7 +160,7 @@ export default function ClientViewerPage() {
     } finally {
       setLoadingRecords(false);
     }
-  }, [slug, password, appInfo]);
+  }, [password, appInfo]);
 
   useEffect(() => {
     if (authenticated && selectedTable) {
@@ -155,9 +171,9 @@ export default function ClientViewerPage() {
   // --- CRUD handlers ---
   async function handleCreateRecord(data: Record<string, any>) {
     try {
-      const res = await fetch(`/api/a/${slug}/records`, {
+      const res = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/api/apps/${appInfo.id}/records`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'x-app-password': password, 'x-app-slug': slug },
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${password}` },
         body: JSON.stringify({ table: selectedTable, data }),
       });
       if (!res.ok) throw new Error('Create failed');
@@ -172,9 +188,9 @@ export default function ClientViewerPage() {
 
   async function handleUpdateRecord(recordId: string, data: Record<string, any>) {
     try {
-      const res = await fetch(`/api/a/${slug}/records/${recordId}`, {
+      const res = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/api/apps/${appInfo.id}/records/${recordId}`, {
         method: 'PUT',
-        headers: { 'Content-Type': 'application/json', 'x-app-password': password, 'x-app-slug': slug },
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${password}` },
         body: JSON.stringify({ data }),
       });
       if (!res.ok) throw new Error('Update failed');
@@ -190,9 +206,9 @@ export default function ClientViewerPage() {
   async function handleDeleteRecord(recordId: string) {
     if (!confirm('Eliminare questo record?')) return;
     try {
-      const res = await fetch(`/api/a/${slug}/records/${recordId}`, {
+      const res = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/api/apps/${appInfo.id}/records/${recordId}`, {
         method: 'DELETE',
-        headers: { 'x-app-password': password, 'x-app-slug': slug },
+        headers: { 'Authorization': `Bearer ${password}` },
       });
       if (!res.ok) throw new Error('Delete failed');
       loadRecords(selectedTable);
