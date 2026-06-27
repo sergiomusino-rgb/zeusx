@@ -330,16 +330,16 @@ function ImportModal({ tableName, onImport, onClose }: { tableName: string; onIm
         <form onSubmit={handleSubmit} className="p-6 space-y-4">
           <div>
             <label className="block text-sm font-medium text-gray-300 mb-2">
-              Seleziona file CSV
+              Seleziona file CSV o Excel
             </label>
             <input
               type="file"
-              accept=".csv"
+              accept=".csv,.xlsx,.xls"
               onChange={(e) => setFile(e.target.files?.[0] || null)}
               className="w-full px-4 py-3 bg-gray-800 border border-gray-700 rounded-lg text-white focus:border-indigo-500 focus:outline-none"
             />
             <p className="text-xs text-gray-500 mt-2">
-              Il file CSV deve avere le intestazioni corrispondenti ai campi della tabella.
+              Il file deve avere le intestazioni corrispondenti ai campi della tabella. Supportati: CSV, Excel (.xlsx, .xls).
             </p>
           </div>
 

@@ -5,6 +5,7 @@ const multer = require('multer');
 const csv = require('csv-parser');
 const { stringify } = require('csv-stringify/sync');
 const stream = require('stream');
+const XLSX = require('xlsx');
 
 const upload = multer({ storage: multer.memoryStorage() });
 
@@ -201,15 +202,24 @@ router.post('/apps/:appId/import', authMiddleware, tenantMiddleware, upload.sing
       return res.status(400).json({ error: 'table e file obbligatori' });
     }
 
-    const records = [];
-    const parser = req.file.buffer.pipe(csv());
+    const fileName = req.file.originalname.toLowerCase();
+    let records = [];
 
-    for await (const row of parser) {
-      records.push(row);
+    if (fileName.endsWith('.csv')) {
+      const parser = req.file.buffer.pipe(csv());
+      for await (const row of parser) {
+        records.push(row);
+      }
+    } else if (fileName.endsWith('.xlsx') || fileName.endsWith('.xls')) {
+      const workbook = XLSX.read(req.file.buffer, { type: 'buffer' });
+      const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
+      records = XLSX.utils.sheet_to_json(firstSheet);
+    } else {
+      return res.status(400).json({ error: 'Formato file non supportato. Usa CSV o Excel (.xlsx, .xls)' });
     }
 
     if (records.length === 0) {
-      return res.status(400).json({ error: 'File CSV vuoto' });
+      return res.status(400).json({ error: 'File vuoto' });
     }
 
     const supabaseAdmin = getSupabase();
