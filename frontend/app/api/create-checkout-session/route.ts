@@ -18,7 +18,7 @@ function decodeJWT(token: string): { sub?: string; email?: string } {
   try {
     const parts = token.split('.');
     if (parts.length !== 3) return {};
-    const payload = JSON.parse(Buffer.from(parts[1], 'base64').toString());
+    const payload = JSON.parse(atob(parts[1]));
     return { sub: payload.sub, email: payload.email };
   } catch {
     return {};
