@@ -67,7 +67,12 @@ const ADMIN_USER_ID = 'd3eda57f-692a-4904-ac5f-93bdaaec8ce5';
 async function canCreateApp(supabase: ReturnType<typeof createClient>, tenantId: string, userId?: string): Promise<{ allowed: boolean; reason?: string; slotsAvailable?: number; tenant?: any }> {
   // Admin: app illimitate, nessun controllo
   if (userId === ADMIN_USER_ID) {
-    return { allowed: true, slotsAvailable: Infinity };
+    const { data: tenant } = await supabase
+      .from('tenants')
+      .select('plan, app_limit, total_apps_created')
+      .eq('id', tenantId)
+      .single();
+    return { allowed: true, slotsAvailable: Infinity, tenant };
   }
 
   console.log('[canCreateApp] tenantId:', tenantId);
@@ -235,10 +240,12 @@ export async function POST(req: Request) {
     }
 
     // Incrementa il contatore permanente di app create (non si libera mai)
-    await supabase
-      .from('tenants')
-      .update({ total_apps_created: (tenant.total_apps_created || 0) + 1 })
-      .eq('id', tenantId);
+    if (user.id !== ADMIN_USER_ID) {
+      await supabase
+        .from('tenants')
+        .update({ total_apps_created: (tenant?.total_apps_created || 0) + 1 })
+        .eq('id', tenantId);
+    }
 
     // Incrementa fee mensile per la nuova app
     try {
