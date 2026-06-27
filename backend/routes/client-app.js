@@ -53,7 +53,10 @@ router.post('/api/a/:slug', async (req, res) => {
       id: app.id,
       slug: app.slug,
       appName: app.name,
-      ...appConfig,
+      blueprint: {
+        ...appConfig,
+        schema: appConfig.schema || { tables: [] },
+      },
       branding: {
         company_name: appConfig.appName || app.name,
         primary_color: appConfig.branding?.primary_color || appConfig.ui?.primaryColor || '#6366f1',
