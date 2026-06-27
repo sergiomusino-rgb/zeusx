@@ -1581,7 +1581,7 @@ export default function ViewerProFinal() {
   // Derived values
   const appInfo = session?.appInfo;
   const config = appInfo;
-  const tables = config?.blueprint?.schema?.tables || config?.schema?.tables || config?.tables || [];
+  const tables = config?.blueprint?.schema?.tables || [];
   const activeTable = tables.find((t) => t.name === activeView) || null;
 
   const companyName = prefs.companyName

@@ -54,13 +54,17 @@ router.post('/api/a/:slug', async (req, res) => {
 
     // Return app info with blueprint/config
     const appConfig = app.config || {};
+    
+    // Estrai le tabelle dal blueprint salvato
+    const tables = appConfig.schema?.tables || appConfig.blueprint?.schema?.tables || appConfig.tables || [];
+    
     const appInfo = {
       id: app.id,
       slug: app.slug,
       appName: app.name,
       blueprint: {
         ...appConfig,
-        schema: appConfig.schema || { tables: [] },
+        schema: { tables },
       },
       branding: {
         company_name: appConfig.appName || app.name,
