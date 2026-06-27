@@ -50,7 +50,8 @@ export default function PricingPage() {
 
         if (tenant) {
           setCurrentPlan(tenant.plan || 'free');
-          setSlotsTotal(tenant.app_limit || 1);
+          const planLimits: Record<string, number> = { free: 0, starter: 1, pro: 5, business: 250 };
+          setSlotsTotal(planLimits[tenant.plan] ?? tenant.app_limit ?? 1);
           setSlotsUsed(tenant.total_apps_created || 0);
         }
       }
@@ -260,16 +261,15 @@ export default function PricingPage() {
 
               <button
                 onClick={() => handleUpgrade(plan.id)}
-                disabled={currentPlan === plan.id}
                 className={`w-full py-4 rounded-xl font-bold transition-all ${
                   currentPlan === plan.id
-                    ? 'bg-slate-800 text-slate-500 cursor-not-allowed'
+                    ? 'bg-emerald-600 hover:bg-emerald-700 text-white'
                     : plan.highlighted
                     ? 'bg-indigo-600 hover:bg-indigo-700 text-white'
                     : 'bg-slate-800 hover:bg-slate-700 text-white'
                 }`}
               >
-                {currentPlan === plan.id ? 'Piano Attuale' : 'Acquista Piano'}
+                {currentPlan === plan.id ? 'Rigenera Slot' : 'Acquista Piano'}
               </button>
             </div>
           ))}
