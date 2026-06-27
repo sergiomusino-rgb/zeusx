@@ -1,74 +1,70 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 
-const authClient = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-  { auth: { persistSession: false, autoRefreshToken: false } }
-);
-
-const dbClient = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-  { auth: { persistSession: false, autoRefreshToken: false } }
-);
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
+const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '';
+const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY || '';
 
 export async function GET(req: NextRequest) {
+  const steps: Record<string, unknown> = {};
+
   try {
-    // Leggi il token dal cookie o header
+    steps.supabaseUrl = supabaseUrl ? 'SET' : 'MISSING';
+    steps.anonKey = anonKey ? 'SET' : 'MISSING';
+    steps.serviceRoleKey = serviceRoleKey ? 'SET' : 'MISSING';
+
+    // 1. Test auth con anon key
+    const authClient = createClient(supabaseUrl, anonKey, { auth: { persistSession: false, autoRefreshToken: false } });
     const authHeader = req.headers.get('authorization');
-    const token = authHeader?.startsWith('Bearer ') ? authHeader.slice(7) : null;
+    steps.hasAuthHeader = !!authHeader;
 
-    // Fallback: leggi dal cookie
-    const tokenFromCookie = req.cookies.get('supabase.auth.token')?.value;
-    const finalToken = token || tokenFromCookie;
+    if (authHeader?.startsWith('Bearer ')) {
+      const token = authHeader.slice(7);
+      const { data: { user }, error } = await authClient.auth.getUser(token);
+      steps.authSuccess = !error;
+      steps.authError = error?.message || null;
+      steps.userId = user?.id || null;
+      steps.userEmail = user?.email || null;
 
-    let userInfo: any = null;
-    if (finalToken) {
-      console.log('[Debug] Token presente, lunghezza:', finalToken.length);
-      const { data: { user }, error } = await authClient.auth.getUser(finalToken);
-      if (error) {
-        console.error('[Debug] Auth error:', error);
+      if (user) {
+        // 2. Test query tenants con anon key
+        const { data: tenants, error: tErr } = await authClient
+          .from('tenants')
+          .select('id, owner_id, name, plan')
+          .eq('owner_id', user.id)
+          .limit(5);
+        steps.anonQueryTenants = { data: tenants, error: tErr?.message };
+
+        // 3. Test query tenants con service role key
+        if (serviceRoleKey) {
+          const dbClient = createClient(supabaseUrl, serviceRoleKey, { auth: { persistSession: false, autoRefreshToken: false } });
+          const { data: srTenants, error: srErr } = await dbClient
+            .from('tenants')
+            .select('id, owner_id, name, plan')
+            .eq('owner_id', user.id)
+            .limit(5);
+          steps.serviceRoleQueryTenants = { data: srTenants, error: srErr?.message };
+        }
+
+        // 4. Test query membership
+        const { data: memberships, error: mErr } = await authClient
+          .from('tenant_members')
+          .select('*')
+          .eq('user_id', user.id)
+          .limit(5);
+        steps.memberships = { data: memberships, error: mErr?.message };
+
+        // 5. ALL tenants
+        const { data: allTenants, error: allErr } = await authClient
+          .from('tenants')
+          .select('id, owner_id, name, plan')
+          .limit(10);
+        steps.allTenants = { data: allTenants, error: allErr?.message };
       }
-      if (!error && user) {
-        userInfo = { id: user.id, email: user.email };
-      }
-    } else {
-      console.log('[Debug] Nessun token trovato');
     }
 
-    const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY ? 'PRESENT' : 'MISSING';
-    const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ? 'PRESENT' : 'MISSING';
-    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || 'NOT SET';
-
-    const result: any = {
-      supabaseUrl: supabaseUrl,
-      serviceRoleKey: serviceRoleKey,
-      anonKey: anonKey,
-      user: userInfo,
-    };
-
-    if (userInfo) {
-      const { data: tenantsByOwner } = await dbClient
-        .from('tenants')
-        .select('id, owner_id, name, plan')
-        .eq('owner_id', userInfo.id);
-      result.tenantsByOwner = tenantsByOwner;
-
-      const { data: memberships } = await dbClient
-        .from('tenant_members')
-        .select('tenant_id, role')
-        .eq('user_id', userInfo.id);
-      result.memberships = memberships;
-
-      const { data: allTenants } = await dbClient
-        .from('tenants')
-        .select('id, owner_id, name, plan');
-      result.allTenants = allTenants;
-    }
-
-    return NextResponse.json(result);
-  } catch (error) {
-    return NextResponse.json({ error: String(error) });
+    return NextResponse.json(steps);
+  } catch (e: unknown) {
+    return NextResponse.json({ error: (e as Error).message, steps });
   }
 }
