@@ -1013,31 +1013,6 @@ function SettingsModal({ prefs, onPrefsChange, onClose, onLogout, onChangePasswo
           </div>
         </div>
 
-        {/* Color Section */}
-        <div style={sectionBox}>
-          <div style={sectionTitle}>Colore Primario</div>
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '12px' }}>
-            {COLOR_PRESETS.map((color) => (
-              <button
-                key={color}
-                onClick={() => updatePref('primaryColor', color)}
-                style={{
-                  width: '40px', height: '40px',
-                  borderRadius: '8px',
-                  background: color,
-                  border: prefs.primaryColor === color
-                    ? `3px solid ${colors.text}`
-                    : `2px solid ${colors.border}`,
-                  cursor: 'pointer',
-                  padding: 0,
-                  transition: 'all 0.15s',
-                  boxShadow: prefs.primaryColor === color ? `0 0 0 2px ${color}40` : 'none',
-                }}
-              />
-            ))}
-          </div>
-        </div>
-
         {/* Brand Section */}
         <div style={sectionBox}>
           <div style={sectionTitle}>Brand</div>
