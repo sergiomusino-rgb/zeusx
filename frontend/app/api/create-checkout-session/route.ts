@@ -127,6 +127,7 @@ export async function POST(req: NextRequest) {
       metadata: {
         tenant_id: tenant.id,
         plan_id: planId,
+        price_id: priceId,
         supabase_user_id: user.id,
       },
     });
