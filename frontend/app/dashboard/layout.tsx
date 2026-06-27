@@ -15,7 +15,7 @@ export default function DashboardLayout({
   const navigation = [
     { name: '📊 Dashboard', href: '/dashboard' },
     { name: '💬 Chat AI', href: '/dashboard/chat' },
-    { name: '👁️ Vision AI', href: '/dashboard/vision' },
+    { name: '📅 Calendario', href: '/dashboard/vision' },
     { name: '🚀 App Create', href: '/dashboard/projects' },
     { name: '💎 Piani e Abbonamento', href: '/pricing' },
     { name: '⚙️ Impostazioni', href: '/dashboard/settings' },
