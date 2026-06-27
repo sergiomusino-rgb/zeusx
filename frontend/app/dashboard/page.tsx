@@ -56,7 +56,18 @@ function SyncPlanBanner() {
 }
 
 export default function DashboardPage() {
+  const ADMIN_USER_ID = 'd3eda57f-692a-4904-ac5f-93bdaaec8ce5';
   const [chatInput, setChatInput] = useState('');
+  const [isAdmin, setIsAdmin] = useState(false);
+
+  useEffect(() => {
+    async function checkAdmin() {
+      const { data: { user } } = await supabase.auth.getUser();
+      setIsAdmin(user?.id === ADMIN_USER_ID);
+    }
+    checkAdmin();
+  }, []);
+
   const coreFeatures = [
     { 
       title: "Crea il tuo gestionale", 
@@ -79,10 +90,22 @@ export default function DashboardPage() {
       desc: "Gestisci appuntamenti e scadenze",
       link: "/dashboard/vision", 
       color: "bg-emerald-600",
-      icon: "📅",
+      icon: "",
       highlighted: false
     },
   ];
+
+  // Card admin visibile solo per il tuo account
+  if (isAdmin) {
+    coreFeatures.push({
+      title: "Admin Panel",
+      desc: "Statistiche, ricavi e gestione piattaforma",
+      link: "/admin",
+      color: "bg-gradient-to-br from-red-600 to-orange-600",
+      icon: "👑",
+      highlighted: false,
+    });
+  }
 
   const utilityFeatures = [
     { title: "Chat AI", desc: "Assistente virtuale", link: "/dashboard/chat", color: "bg-cyan-600", icon: "" },
