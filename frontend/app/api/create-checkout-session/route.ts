@@ -16,7 +16,7 @@ const authClient = createClient(
 // Client per DB operations (service role key bypassa RLS)
 const dbClient = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!,
+  process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
   { auth: { persistSession: false, autoRefreshToken: false } }
 );
 
@@ -28,8 +28,8 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Parametri mancanti' }, { status: 400 });
     }
 
-    if (!process.env.STRIPE_SECRET_KEY || !process.env.SUPABASE_SERVICE_ROLE_KEY) {
-      return NextResponse.json({ error: 'Configurazione mancante' }, { status: 500 });
+    if (!process.env.STRIPE_SECRET_KEY) {
+      return NextResponse.json({ error: 'Stripe non configurato' }, { status: 500 });
     }
 
     const authHeader = req.headers.get('authorization');
@@ -44,26 +44,61 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Utente non autenticato' }, { status: 401 });
     }
 
-    // Trova il tenant dell'utente
-    const { data: membership } = await dbClient
-      .from('tenant_members')
-      .select('tenant_id')
-      .eq('user_id', user.id)
+    // Trova il tenant dell'utente - prima per owner_id
+    const { data: tenantByOwner } = await dbClient
+      .from('tenants')
+      .select('id, stripe_customer_id, plan, owner_id')
+      .eq('owner_id', user.id)
       .limit(1)
-      .single();
+      .maybeSingle();
 
-    if (!membership?.tenant_id) {
-      return NextResponse.json({ error: 'Tenant non trovato' }, { status: 404 });
+    let tenant = tenantByOwner;
+
+    // Fallback: cerca nelle membership
+    if (!tenant) {
+      const { data: membership } = await dbClient
+        .from('tenant_members')
+        .select('tenant_id')
+        .eq('user_id', user.id)
+        .limit(1)
+        .maybeSingle();
+
+      if (membership?.tenant_id) {
+        const { data: tenantFromMembership } = await dbClient
+          .from('tenants')
+          .select('id, stripe_customer_id, plan, owner_id')
+          .eq('id', membership.tenant_id)
+          .single();
+        tenant = tenantFromMembership;
+      }
     }
 
-    const { data: tenant } = await dbClient
-      .from('tenants')
-      .select('id, stripe_customer_id, plan')
-      .eq('id', membership.tenant_id)
-      .single();
-
+    // Se ancora non trovato, crea un nuovo tenant
     if (!tenant) {
-      return NextResponse.json({ error: 'Tenant non trovato' }, { status: 404 });
+      const { data: newTenant, error: createErr } = await dbClient
+        .from('tenants')
+        .insert({
+          owner_id: user.id,
+          name: user.email || 'Tenant personale',
+          slug: `tenant-${user.id.slice(0, 8)}`,
+          plan: 'free',
+        })
+        .select('id, stripe_customer_id, plan, owner_id')
+        .single();
+
+      if (createErr || !newTenant) {
+        console.error('[Checkout] Errore creazione tenant:', createErr);
+        return NextResponse.json({ error: 'Impossibile creare il tenant' }, { status: 500 });
+      }
+
+      tenant = newTenant;
+
+      // Aggiungi membership
+      await dbClient.from('tenant_members').insert({
+        tenant_id: tenant.id,
+        user_id: user.id,
+        role: 'owner',
+      });
     }
 
     // Crea o recupera il cliente Stripe
