@@ -1,19 +1,24 @@
 'use client';
 
-import { useEffect, useState, useCallback } from 'react';
-import { useParams, useRouter } from 'next/navigation';
-import { createClient } from '@supabase/supabase-js';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import {
+  LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
+  PieChart, Pie, Cell, Legend,
+} from 'recharts';
+import {
+  LayoutDashboard, Settings, LogOut, Search, Plus, Pencil, Trash2,
+  X, ChevronDown, Users, ShoppingCart, Package, DollarSign, TrendingUp,
+  AlertTriangle, Calendar, CheckCircle, Clock, XCircle, Menu,
+} from 'lucide-react';
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
-const supabase = createClient(supabaseUrl, supabaseAnonKey);
+// ─── Interfaces ───────────────────────────────────────────────────────────────
 
 interface FieldDef {
-  id: string;
-  type: string;
+  name: string;
   label: string;
-  required: boolean;
-  options: string[];
+  type: string;
+  options?: string[];
+  required?: boolean;
 }
 
 interface TableDef {
@@ -24,520 +29,798 @@ interface TableDef {
   fields: FieldDef[];
 }
 
-interface Blueprint {
+interface AppConfig {
+  id: string;
+  slug: string;
   appName: string;
-  description: string;
-  logo: string;
-  schema: { tables: TableDef[] };
-  ui: { primaryColor: string };
+  logo?: string;
+  branding?: {
+    company_name?: string;
+    logo_url?: string;
+    primary_color?: string;
+    theme?: 'dark' | 'light';
+  };
+  blueprint?: {
+    tables: TableDef[];
+  };
+  blocked?: boolean;
 }
 
-interface AppInfo {
-  id: string;
-  name: string;
-  config: Blueprint;
-  expires_at: string | null;
+interface AppSession {
+  slug: string;
+  password: string;
+  appInfo: AppConfig;
 }
 
 interface Record {
   id: string;
-  data: Record<string, any>;
-  created_at: string;
-  updated_at?: string;
+  [key: string]: unknown;
 }
 
-export default function ClientViewerPage() {
-  const params = useParams();
-  const router = useRouter();
-  const slug = params.slug as string;
+interface UserPrefs {
+  layout: 'corporate' | 'modern' | 'compact';
+  theme: 'dark' | 'light';
+  primaryColor: string;
+  companyName: string;
+  logoUrl: string;
+}
 
-  const [authenticated, setAuthenticated] = useState(false);
-  const [checking, setChecking] = useState(true);
-  const [appInfo, setAppInfo] = useState<AppInfo | null>(null);
-  const [password, setPassword] = useState('');
-  const [selectedTable, setSelectedTable] = useState('');
-  const [records, setRecords] = useState<Record[]>([]);
-  const [loadingRecords, setLoadingRecords] = useState(false);
-  const [showFormModal, setShowFormModal] = useState(false);
-  const [editingRecord, setEditingRecord] = useState<Record | null>(null);
-  const [showSettings, setShowSettings] = useState(false);
-  const [sidebarOpen, setSidebarOpen] = useState(false);
+// ─── Constants ────────────────────────────────────────────────────────────────
 
-  const sessionKey = `app_session_${slug}`;
+const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:3001';
 
-  // --- Expiry helpers ---
-  function getExpiryStatus(expiresAt: string | null): { expired: boolean; expiringSoon: boolean; daysLeft: number } {
-    if (!expiresAt) return { expired: false, expiringSoon: false, daysLeft: 999 };
-    const now = new Date();
-    const exp = new Date(expiresAt);
-    const diffMs = exp.getTime() - now.getTime();
-    const daysLeft = Math.ceil(diffMs / (1000 * 60 * 60 * 24));
-    return {
-      expired: daysLeft <= 0,
-      expiringSoon: daysLeft > 0 && daysLeft <= 5,
-      daysLeft,
-    };
-  }
+const ICON_MAP: Record<string, React.ReactNode> = {
+  users: <Users size={18} />,
+  orders: <ShoppingCart size={18} />,
+  products: <Package size={18} />,
+  invoices: <DollarSign size={18} />,
+  default: <LayoutDashboard size={18} />,
+};
 
-  // --- Auth flow ---
-  useEffect(() => {
-    async function checkSession() {
-      try {
-        const raw = localStorage.getItem(sessionKey);
-        if (!raw) {
-          router.replace(`/a/${slug}`);
-          return;
-        }
-        const session = JSON.parse(raw);
-        const storedPassword = session.password;
-        if (!storedPassword) {
-          localStorage.removeItem(sessionKey);
-          router.replace(`/a/${slug}`);
-          return;
-        }
+const LAYOUT_CONFIG = {
+  corporate: { sidebarWidth: 'w-72', padding: 'p-8', radius: 'rounded-2xl', shadow: 'shadow-2xl' },
+  modern:    { sidebarWidth: 'w-64', padding: 'p-6', radius: 'rounded-xl',  shadow: 'shadow-xl' },
+  compact:   { sidebarWidth: 'w-56', padding: 'p-4', radius: 'rounded-lg',  shadow: 'shadow-lg' },
+};
 
-        const { data: appData, error: appError } = await supabase
-          .from('apps')
-          .select('id, client_password, client_active, expires_at, config')
-          .eq('slug', slug)
-          .single();
+const CHART_COLORS = ['#6366f1', '#22c55e', '#f59e0b', '#ef4444', '#06b6d4', '#8b5cf6'];
 
-        if (appError || !appData) {
-          localStorage.removeItem(sessionKey);
-          router.replace(`/a/${slug}`);
-          return;
-        }
+// ─── Mock Data ────────────────────────────────────────────────────────────────
 
-        if (!appData.client_active) {
-          router.replace(`/a/${slug}/blocked`);
-          return;
-        }
+const MONTHLY_REVENUE = [
+  { month: 'Gen', revenue: 12400 }, { month: 'Feb', revenue: 15800 },
+  { month: 'Mar', revenue: 14200 }, { month: 'Apr', revenue: 18900 },
+  { month: 'Mag', revenue: 21300 }, { month: 'Giu', revenue: 19700 },
+  { month: 'Lug', revenue: 23100 }, { month: 'Ago', revenue: 20500 },
+  { month: 'Set', revenue: 25800 }, { month: 'Ott', revenue: 28400 },
+  { month: 'Nov', revenue: 26200 }, { month: 'Dic', revenue: 31500 },
+];
 
-        if (appData.client_password !== storedPassword) {
-          localStorage.removeItem(sessionKey);
-          router.replace(`/a/${slug}`);
-          return;
-        }
+const ORDERS_BY_STATUS = [
+  { name: 'Completati', value: 145, color: '#22c55e' },
+  { name: 'In corso', value: 67, color: '#f59e0b' },
+  { name: 'In attesa', value: 23, color: '#ef4444' },
+];
 
-        const app = {
-          id: appData.id,
-          config: appData.config,
-          expires_at: appData.expires_at,
-        };
+const UPCOMING_DEADLINES = [
+  { id: '1', date: '2026-07-05', client: 'Rossi Srl', amount: 2450.00 },
+  { id: '2', date: '2026-07-08', client: 'Bianchi SpA', amount: 1890.50 },
+  { id: '3', date: '2026-07-12', client: 'Verdi & Co', amount: 3200.00 },
+  { id: '4', date: '2026-07-15', client: 'Neri Group', amount: 980.75 },
+  { id: '5', date: '2026-07-20', client: 'Gialli Ltd', amount: 4100.00 },
+];
 
-        setPassword(storedPassword);
-        setAppInfo(app);
-        setAuthenticated(true);
+// ─── Theme Helpers ────────────────────────────────────────────────────────────
 
-        const tables = appData.config?.schema?.tables;
-        if (tables?.length > 0) {
-          setSelectedTable(tables[0].name);
-        }
-      } catch {
-        localStorage.removeItem(sessionKey);
-        router.replace(`/a/${slug}`);
-      } finally {
-        setChecking(false);
-      }
-    }
-    checkSession();
-  }, [slug, router, sessionKey]);
+function getThemeVars(theme: 'dark' | 'light', primaryColor: string) {
+  const isDark = theme === 'dark';
+  return {
+    bg: isDark ? '#0a0e1a' : '#f8fafc',
+    text: isDark ? '#ffffff' : '#0f172a',
+    textSecondary: isDark ? '#94a3b8' : '#64748b',
+    cardBg: isDark ? '#1e293b' : '#ffffff',
+    cardBgAlt: isDark ? '#162032' : '#f1f5f9',
+    border: isDark ? '#334155' : '#e2e8f0',
+    sidebarBg: isDark ? '#0f172a' : '#1e293b',
+    sidebarText: '#e2e8f0',
+    sidebarHover: isDark ? '#1e293b' : '#334155',
+    inputBg: isDark ? '#0f172a' : '#f1f5f9',
+    inputBorder: isDark ? '#334155' : '#cbd5e1',
+    primary: primaryColor,
+    primaryHover: primaryColor + 'dd',
+    danger: '#ef4444',
+    success: '#22c55e',
+    warning: '#f59e0b',
+  };
+}
 
-  // --- Load records ---
-  const loadRecords = useCallback(async (tableName: string) => {
-    if (!tableName || !appInfo) return;
-    setLoadingRecords(true);
-    try {
-      const res = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/api/apps/${appInfo.id}/records?table=${tableName}`, {
-        headers: { 'Authorization': `Bearer ${password}` },
-      });
-      if (!res.ok) throw new Error('Failed to load records');
-      const data = await res.json();
-      setRecords(data.records || []);
-    } catch (err) {
-      console.error('Load records error:', err);
-      setRecords([]);
-    } finally {
-      setLoadingRecords(false);
-    }
-  }, [password, appInfo]);
+// ─── Utility: Icon Resolver ──────────────────────────────────────────────────
 
-  useEffect(() => {
-    if (authenticated && selectedTable) {
-      loadRecords(selectedTable);
-    }
-  }, [authenticated, selectedTable, loadRecords]);
+function resolveIcon(iconName: string): React.ReactNode {
+  const key = iconName?.toLowerCase() || 'default';
+  return ICON_MAP[key] || ICON_MAP.default;
+}
 
-  // --- CRUD handlers ---
-  async function handleCreateRecord(data: Record<string, any>) {
-    try {
-      const res = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/api/apps/${appInfo.id}/records`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${password}` },
-        body: JSON.stringify({ table: selectedTable, data }),
-      });
-      if (!res.ok) throw new Error('Create failed');
-      setShowFormModal(false);
-      setEditingRecord(null);
-      loadRecords(selectedTable);
-    } catch (err) {
-      console.error('Create record error:', err);
-      alert('Errore durante la creazione del record');
-    }
-  }
+// ─── KPI Card ─────────────────────────────────────────────────────────────────
 
-  async function handleUpdateRecord(recordId: string, data: Record<string, any>) {
-    try {
-      const res = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/api/apps/${appInfo.id}/records/${recordId}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${password}` },
-        body: JSON.stringify({ data }),
-      });
-      if (!res.ok) throw new Error('Update failed');
-      setShowFormModal(false);
-      setEditingRecord(null);
-      loadRecords(selectedTable);
-    } catch (err) {
-      console.error('Update record error:', err);
-      alert('Errore durante la modifica del record');
-    }
-  }
+interface KpiCardProps {
+  title: string;
+  value: string;
+  icon: React.ReactNode;
+  trend?: string;
+  trendUp?: boolean;
+  colors: ReturnType<typeof getThemeVars>;
+  radius: string;
+}
 
-  async function handleDeleteRecord(recordId: string) {
-    if (!confirm('Eliminare questo record?')) return;
-    try {
-      const res = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/api/apps/${appInfo.id}/records/${recordId}`, {
-        method: 'DELETE',
-        headers: { 'Authorization': `Bearer ${password}` },
-      });
-      if (!res.ok) throw new Error('Delete failed');
-      loadRecords(selectedTable);
-    } catch (err) {
-      console.error('Delete record error:', err);
-      alert('Errore durante l\'eliminazione del record');
-    }
-  }
-
-  function handleLogout() {
-    localStorage.removeItem(sessionKey);
-    router.replace(`/a/${slug}`);
-  }
-
-  // --- Render helpers ---
-  function renderFieldValue(value: any, field: FieldDef) {
-    if (value == null || value === '') return <span className="text-slate-600">&mdash;</span>;
-    switch (field.type) {
-      case 'currency':
-        return <span>&euro;{parseFloat(value).toFixed(2)}</span>;
-      case 'boolean':
-        return value ? <span className="text-emerald-400">S&igrave;</span> : <span className="text-red-400">No</span>;
-      case 'date':
-      case 'datetime':
-        return <span>{new Date(value).toLocaleDateString('it-IT')}</span>;
-      default:
-        return <span>{String(value)}</span>;
-    }
-  }
-
-  // --- Loading state ---
-  if (checking) {
-    return (
-      <div className="min-h-screen bg-slate-950 text-white flex items-center justify-center">
-        <div className="text-xl text-slate-400">Caricamento...</div>
-      </div>
-    );
-  }
-
-  if (!authenticated || !appInfo) {
-    return null;
-  }
-
-  const blueprint = appInfo.config;
-  const tables = blueprint?.schema?.tables || [];
-  const currentTable = tables.find((t) => t.name === selectedTable);
-  const expiry = getExpiryStatus(appInfo.expires_at);
-  const primaryColor = blueprint?.ui?.primaryColor || '#6366f1';
-
+function KpiCard({ title, value, icon, trend, trendUp, colors, radius }: KpiCardProps) {
   return (
-    <div className="min-h-screen bg-slate-950 text-white flex flex-col">
-      {/* Expiry Banner */}
-      {expiry.expired && (
-        <div className="bg-red-600 text-white text-center py-2 px-4 text-sm font-semibold">
-          Questa app &egrave; scaduta. I dati sono visibili in sola lettura. Contatta il tuo gestionale per rinnovare l&apos;accesso.
-        </div>
-      )}
-      {expiry.expiringSoon && !expiry.expired && (
-        <div className="bg-orange-500 text-white text-center py-2 px-4 text-sm font-semibold">
-          Questa app scade tra {expiry.daysLeft} giorno{expiry.daysLeft !== 1 ? 'i' : ''}. Contatta il tuo gestionale per rinnovare.
-        </div>
-      )}
-
-      <div className="flex flex-1 overflow-hidden">
-        {/* Mobile sidebar overlay */}
-        {sidebarOpen && (
-          <div className="fixed inset-0 bg-black/60 z-40 lg:hidden" onClick={() => setSidebarOpen(false)} />
-        )}
-
-        {/* Sidebar */}
-        <aside
-          className={`fixed lg:static inset-y-0 left-0 z-50 w-64 bg-slate-900 border-r border-slate-800 flex flex-col transform transition-transform duration-200 ${
-            sidebarOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'
-          }`}
-        >
-          <div className="p-5 border-b border-slate-800">
-            <div className="flex items-center gap-3">
-              {blueprint.logo && (
-                <img src={blueprint.logo} alt="Logo" className="w-10 h-10 rounded-lg object-contain" />
-              )}
-              <div>
-                <h1 className="text-lg font-bold truncate">{blueprint.appName}</h1>
-                <p className="text-xs text-slate-500 truncate">{slug}</p>
-              </div>
-            </div>
-          </div>
-
-          <nav className="flex-1 overflow-y-auto p-3 space-y-1">
-            {tables.map((table) => (
-              <button
-                key={table.name}
-                onClick={() => {
-                  setSelectedTable(table.name);
-                  setSidebarOpen(false);
-                }}
-                className={`w-full text-left px-3 py-2.5 rounded-lg text-sm font-medium transition flex items-center gap-2 ${
-                  selectedTable === table.name
-                    ? 'text-white'
-                    : 'text-slate-400 hover:bg-slate-800 hover:text-slate-200'
-                }`}
-                style={selectedTable === table.name ? { backgroundColor: primaryColor } : undefined}
-              >
-                {table.icon && <span>{table.icon}</span>}
-                <span className="truncate">{table.labelPlural || table.label}</span>
-              </button>
-            ))}
-          </nav>
-
-          <div className="p-3 border-t border-slate-800 space-y-1">
-            <button
-              onClick={() => setShowSettings(true)}
-              className="w-full text-left px-3 py-2.5 rounded-lg text-sm text-slate-400 hover:bg-slate-800 hover:text-slate-200 transition flex items-center gap-2"
-            >
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.066 2.573c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.573 1.066c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.066-2.573c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
-              Impostazioni
-            </button>
-            <button
-              onClick={handleLogout}
-              className="w-full text-left px-3 py-2.5 rounded-lg text-sm text-red-400 hover:bg-red-500/10 transition flex items-center gap-2"
-            >
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" /></svg>
-              Esci
-            </button>
-          </div>
-        </aside>
-
-        {/* Main content */}
-        <main className="flex-1 flex flex-col overflow-hidden">
-          {/* Top bar */}
-          <header className="h-14 border-b border-slate-800 flex items-center justify-between px-4 lg:px-6 shrink-0">
-            <div className="flex items-center gap-3">
-              <button
-                onClick={() => setSidebarOpen(true)}
-                className="lg:hidden p-1.5 rounded-lg hover:bg-slate-800 text-slate-400"
-              >
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" /></svg>
-              </button>
-              <h2 className="text-lg font-semibold truncate">
-                {currentTable?.icon && <span className="mr-2">{currentTable.icon}</span>}
-                {currentTable?.labelPlural || currentTable?.label || 'Seleziona una tabella'}
-              </h2>
-            </div>
-            {!expiry.expired && currentTable && (
-              <button
-                onClick={() => { setEditingRecord(null); setShowFormModal(true); }}
-                className="px-4 py-2 rounded-lg text-sm font-semibold text-white transition hover:opacity-90"
-                style={{ backgroundColor: primaryColor }}
-              >
-                + Nuovo
-              </button>
-            )}
-          </header>
-
-          {/* Records table */}
-          <div className="flex-1 overflow-auto p-4 lg:p-6">
-            {loadingRecords ? (
-              <div className="flex items-center justify-center h-64 text-slate-500">Caricamento record...</div>
-            ) : !currentTable ? (
-              <div className="flex items-center justify-center h-64 text-slate-500">Nessuna tabella disponibile</div>
-            ) : (
-              <div className="bg-slate-900 rounded-xl border border-slate-800 overflow-hidden">
-                <div className="overflow-x-auto">
-                  <table className="w-full">
-                    <thead className="bg-slate-800/60">
-                      <tr>
-                        {currentTable.fields.map((field) => (
-                          <th key={field.id} className="px-4 py-3 text-left text-xs font-semibold text-slate-400 uppercase tracking-wider whitespace-nowrap">
-                            {field.label}
-                          </th>
-                        ))}
-                        {!expiry.expired && (
-                          <th className="px-4 py-3 text-right text-xs font-semibold text-slate-400 uppercase tracking-wider">Azioni</th>
-                        )}
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-slate-800">
-                      {records.length === 0 ? (
-                        <tr>
-                          <td colSpan={currentTable.fields.length + (expiry.expired ? 0 : 1)} className="px-4 py-16 text-center text-slate-500">
-                            Nessun record presente.
-                          </td>
-                        </tr>
-                      ) : (
-                        records.map((record) => (
-                          <tr key={record.id} className="hover:bg-slate-800/40 transition">
-                            {currentTable.fields.map((field) => (
-                              <td key={field.id} className="px-4 py-3 text-sm text-slate-300 whitespace-nowrap max-w-[200px] truncate">
-                                {renderFieldValue(record.data?.[field.id], field)}
-                              </td>
-                            ))}
-                            {!expiry.expired && (
-                              <td className="px-4 py-3 text-right whitespace-nowrap">
-                                <button
-                                  onClick={() => { setEditingRecord(record); setShowFormModal(true); }}
-                                  className="text-sm text-blue-400 hover:text-blue-300 mr-4 transition"
-                                >
-                                  Modifica
-                                </button>
-                                <button
-                                  onClick={() => handleDeleteRecord(record.id)}
-                                  className="text-sm text-red-400 hover:text-red-300 transition"
-                                >
-                                  Elimina
-                                </button>
-                              </td>
-                            )}
-                          </tr>
-                        ))
-                      )}
-                    </tbody>
-                  </table>
-                </div>
-                <div className="px-4 py-3 border-t border-slate-800 text-xs text-slate-500">
-                  {records.length} record{records.length !== 1 ? 'i' : 'o'}
-                </div>
-              </div>
-            )}
-          </div>
-        </main>
+    <div
+      className={`${radius} ${LAYOUT_CONFIG.corporate.shadow}`}
+      style={{
+        background: colors.cardBg,
+        border: `1px solid ${colors.border}`,
+        padding: '24px',
+        display: 'flex',
+        flexDirection: 'column',
+        gap: '12px',
+        transition: 'transform 0.2s, box-shadow 0.2s',
+      }}
+      onMouseEnter={(e) => { e.currentTarget.style.transform = 'translateY(-2px)'; }}
+      onMouseLeave={(e) => { e.currentTarget.style.transform = 'translateY(0)'; }}
+    >
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <span style={{ color: colors.textSecondary, fontSize: '14px', fontWeight: 500 }}>{title}</span>
+        <div style={{ color: colors.primary, opacity: 0.8 }}>{icon}</div>
       </div>
-
-      {/* Record Form Modal */}
-      {showFormModal && currentTable && (
-        <RecordFormModal
-          table={currentTable}
-          record={editingRecord}
-          primaryColor={primaryColor}
-          onClose={() => { setShowFormModal(false); setEditingRecord(null); }}
-          onSave={(data) => {
-            if (editingRecord) {
-              handleUpdateRecord(editingRecord.id, data);
-            } else {
-              handleCreateRecord(data);
-            }
-          }}
-        />
-      )}
-
-      {/* Settings Modal */}
-      {showSettings && (
-        <SettingsModal
-          slug={slug}
-          password={password}
-          primaryColor={primaryColor}
-          onClose={() => setShowSettings(false)}
-          onPasswordChanged={(newPassword) => {
-            setPassword(newPassword);
-            localStorage.setItem(sessionKey, JSON.stringify({ slug, password: newPassword }));
-            setShowSettings(false);
-          }}
-          onLogout={handleLogout}
-        />
+      <span style={{ color: colors.text, fontSize: '28px', fontWeight: 700 }}>{value}</span>
+      {trend && (
+        <div style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '13px' }}>
+          <TrendingUp
+            size={14}
+            style={{ color: trendUp ? colors.success : colors.danger, transform: trendUp ? 'none' : 'rotate(180deg)' }}
+          />
+          <span style={{ color: trendUp ? colors.success : colors.danger }}>{trend}</span>
+          <span style={{ color: colors.textSecondary }}>vs mese scorso</span>
+        </div>
       )}
     </div>
   );
 }
 
-// ===================== Record Form Modal =====================
+// ─── Dashboard Component ──────────────────────────────────────────────────────
 
-function RecordFormModal({
-  table,
-  record,
-  primaryColor,
-  onClose,
-  onSave,
-}: {
-  table: TableDef;
-  record: Record | null;
-  primaryColor: string;
-  onClose: () => void;
-  onSave: (data: Record<string, any>) => void;
-}) {
-  const [formData, setFormData] = useState<Record<string, any>>(
-    record ? { ...record.data } : {}
+interface DashboardProps {
+  colors: ReturnType<typeof getThemeVars>;
+  radius: string;
+  shadow: string;
+  companyName: string;
+}
+
+function Dashboard({ colors, radius, shadow, companyName }: DashboardProps) {
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
+      <div>
+        <h1 style={{ color: colors.text, fontSize: '28px', fontWeight: 700, margin: 0 }}>
+          Dashboard
+        </h1>
+        <p style={{ color: colors.textSecondary, fontSize: '14px', marginTop: '4px' }}>
+          Panoramica attivita per {companyName}
+        </p>
+      </div>
+
+      {/* KPI Cards */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '20px' }}>
+        <KpiCard
+          title="Fatturato Oggi"
+          value="EUR 4.280"
+          icon={<DollarSign size={22} />}
+          trend="+12.5%"
+          trendUp={true}
+          colors={colors}
+          radius={radius}
+        />
+        <KpiCard
+          title="Nuovi Clienti"
+          value="23"
+          icon={<Users size={22} />}
+          trend="+8.1%"
+          trendUp={true}
+          colors={colors}
+          radius={radius}
+        />
+        <KpiCard
+          title="Ordini Aperti"
+          value="67"
+          icon={<ShoppingCart size={22} />}
+          trend="-3.2%"
+          trendUp={false}
+          colors={colors}
+          radius={radius}
+        />
+        <KpiCard
+          title="Stock Critico"
+          value="5"
+          icon={<AlertTriangle size={22} />}
+          trend="+2"
+          trendUp={false}
+          colors={colors}
+          radius={radius}
+        />
+      </div>
+
+      {/* Charts Row */}
+      <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '20px' }}>
+        {/* Line Chart - Monthly Revenue */}
+        <div
+          className={`${radius} ${shadow}`}
+          style={{ background: colors.cardBg, border: `1px solid ${colors.border}`, padding: '24px' }}
+        >
+          <h3 style={{ color: colors.text, fontSize: '16px', fontWeight: 600, margin: '0 0 16px 0' }}>
+            Fatturato Mensile
+          </h3>
+          <ResponsiveContainer width="100%" height={280}>
+            <LineChart data={MONTHLY_REVENUE}>
+              <CartesianGrid strokeDasharray="3 3" stroke={colors.border} />
+              <XAxis dataKey="month" stroke={colors.textSecondary} fontSize={12} />
+              <YAxis stroke={colors.textSecondary} fontSize={12} tickFormatter={(v) => `${(v / 1000).toFixed(0)}k`} />
+              <Tooltip
+                contentStyle={{
+                  background: colors.cardBg,
+                  border: `1px solid ${colors.border}`,
+                  borderRadius: '8px',
+                  color: colors.text,
+                }}
+                formatter={(value: number) => [`EUR ${value.toLocaleString()}`, 'Fatturato']}
+              />
+              <Line
+                type="monotone"
+                dataKey="revenue"
+                stroke={colors.primary}
+                strokeWidth={3}
+                dot={{ fill: colors.primary, r: 4 }}
+                activeDot={{ r: 6 }}
+              />
+            </LineChart>
+          </ResponsiveContainer>
+        </div>
+
+        {/* Pie Chart - Orders by Status */}
+        <div
+          className={`${radius} ${shadow}`}
+          style={{ background: colors.cardBg, border: `1px solid ${colors.border}`, padding: '24px' }}
+        >
+          <h3 style={{ color: colors.text, fontSize: '16px', fontWeight: 600, margin: '0 0 16px 0' }}>
+            Ordini per Stato
+          </h3>
+          <ResponsiveContainer width="100%" height={280}>
+            <PieChart>
+              <Pie
+                data={ORDERS_BY_STATUS}
+                cx="50%"
+                cy="45%"
+                innerRadius={55}
+                outerRadius={85}
+                paddingAngle={4}
+                dataKey="value"
+              >
+                {ORDERS_BY_STATUS.map((entry, index) => (
+                  <Cell key={`cell-${index}`} fill={entry.color} />
+                ))}
+              </Pie>
+              <Tooltip
+                contentStyle={{
+                  background: colors.cardBg,
+                  border: `1px solid ${colors.border}`,
+                  borderRadius: '8px',
+                  color: colors.text,
+                }}
+              />
+              <Legend
+                verticalAlign="bottom"
+                formatter={(value) => <span style={{ color: colors.textSecondary, fontSize: '12px' }}>{value}</span>}
+              />
+            </PieChart>
+          </ResponsiveContainer>
+        </div>
+      </div>
+
+      {/* Upcoming Deadlines Table */}
+      <div
+        className={`${radius} ${shadow}`}
+        style={{ background: colors.cardBg, border: `1px solid ${colors.border}`, padding: '24px' }}
+      >
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '16px' }}>
+          <Calendar size={18} style={{ color: colors.primary }} />
+          <h3 style={{ color: colors.text, fontSize: '16px', fontWeight: 600, margin: 0 }}>
+            Scadenze Imminenti
+          </h3>
+        </div>
+        <div style={{ overflowX: 'auto' }}>
+          <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+            <thead>
+              <tr>
+                {['Data', 'Cliente', 'Importo', 'Stato'].map((h) => (
+                  <th
+                    key={h}
+                    style={{
+                      textAlign: 'left',
+                      padding: '10px 12px',
+                      borderBottom: `2px solid ${colors.border}`,
+                      color: colors.textSecondary,
+                      fontSize: '12px',
+                      fontWeight: 600,
+                      textTransform: 'uppercase',
+                      letterSpacing: '0.05em',
+                    }}
+                  >
+                    {h}
+                  </th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {UPCOMING_DEADLINES.map((d) => {
+                const daysUntil = Math.ceil((new Date(d.date).getTime() - Date.now()) / (1000 * 60 * 60 * 24));
+                const statusColor = daysUntil <= 5 ? colors.danger : daysUntil <= 10 ? colors.warning : colors.success;
+                const statusLabel = daysUntil <= 5 ? 'Urgente' : daysUntil <= 10 ? 'Prossima' : 'Pianificata';
+                return (
+                  <tr key={d.id} style={{ borderBottom: `1px solid ${colors.border}` }}>
+                    <td style={{ padding: '12px', color: colors.text, fontSize: '14px' }}>
+                      {new Date(d.date).toLocaleDateString('it-IT')}
+                    </td>
+                    <td style={{ padding: '12px', color: colors.text, fontSize: '14px', fontWeight: 500 }}>
+                      {d.client}
+                    </td>
+                    <td style={{ padding: '12px', color: colors.text, fontSize: '14px' }}>
+                      EUR {d.amount.toLocaleString('it-IT', { minimumFractionDigits: 2 })}
+                    </td>
+                    <td style={{ padding: '12px' }}>
+                      <span
+                        style={{
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: '4px',
+                          padding: '4px 10px',
+                          borderRadius: '9999px',
+                          fontSize: '12px',
+                          fontWeight: 600,
+                          background: statusColor + '20',
+                          color: statusColor,
+                        }}
+                      >
+                        {statusLabel}
+                      </span>
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
   );
-  const [saving, setSaving] = useState(false);
+}
 
-  function updateField(fieldId: string, value: any) {
-    setFormData((prev) => ({ ...prev, [fieldId]: value }));
-  }
+// ─── DataTable Component ──────────────────────────────────────────────────────
 
-  async function handleSubmit(e: React.FormEvent) {
-    e.preventDefault();
-    setSaving(true);
-    try {
-      onSave(formData);
-    } finally {
-      setSaving(false);
-    }
-  }
+interface DataTableProps {
+  table: TableDef;
+  records: Record[];
+  loading: boolean;
+  searchQuery: string;
+  onSearchChange: (q: string) => void;
+  onEdit: (record: Record) => void;
+  onDelete: (recordId: string) => void;
+  onAddNew: () => void;
+  colors: ReturnType<typeof getThemeVars>;
+  radius: string;
+  shadow: string;
+}
+
+function DataTable({
+  table, records, loading, searchQuery, onSearchChange,
+  onEdit, onDelete, onAddNew, colors, radius, shadow,
+}: DataTableProps) {
+  const filteredRecords = useMemo(() => {
+    if (!searchQuery.trim()) return records;
+    const q = searchQuery.toLowerCase();
+    return records.filter((r) =>
+      table.fields.some((f) => {
+        const val = r[f.name];
+        return val != null && String(val).toLowerCase().includes(q);
+      })
+    );
+  }, [records, searchQuery, table.fields]);
 
   return (
-    <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4" onClick={onClose}>
-      <div className="bg-slate-900 rounded-xl border border-slate-700 max-w-2xl w-full max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
-        <div className="p-5 border-b border-slate-800 flex items-center justify-between">
-          <h3 className="text-xl font-bold">
-            {record ? `Modifica ${table.label}` : `Nuovo ${table.label}`}
-          </h3>
-          <button onClick={onClose} className="p-1.5 rounded-lg hover:bg-slate-800 text-slate-400 transition">
-            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+      {/* Header */}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px' }}>
+        <h2 style={{ color: colors.text, fontSize: '24px', fontWeight: 700, margin: 0 }}>
+          {table.labelPlural}
+        </h2>
+        <button
+          onClick={onAddNew}
+          style={{
+            display: 'flex', alignItems: 'center', gap: '6px',
+            padding: '10px 18px', borderRadius: '10px', border: 'none',
+            background: colors.primary, color: '#fff', fontSize: '14px',
+            fontWeight: 600, cursor: 'pointer', transition: 'opacity 0.2s',
+          }}
+          onMouseEnter={(e) => { e.currentTarget.style.opacity = '0.85'; }}
+          onMouseLeave={(e) => { e.currentTarget.style.opacity = '1'; }}
+        >
+          <Plus size={16} /> Nuovo
+        </button>
+      </div>
+
+      {/* Search Bar */}
+      <div
+        className={`${radius}`}
+        style={{
+          display: 'flex', alignItems: 'center', gap: '8px',
+          background: colors.cardBg, border: `1px solid ${colors.border}`,
+          padding: '10px 16px',
+        }}
+      >
+        <Search size={18} style={{ color: colors.textSecondary }} />
+        <input
+          type="text"
+          placeholder={`Cerca in ${table.labelPlural}...`}
+          value={searchQuery}
+          onChange={(e) => onSearchChange(e.target.value)}
+          style={{
+            flex: 1, border: 'none', outline: 'none', background: 'transparent',
+            color: colors.text, fontSize: '14px',
+          }}
+        />
+        {searchQuery && (
+          <button
+            onClick={() => onSearchChange('')}
+            style={{ background: 'none', border: 'none', cursor: 'pointer', color: colors.textSecondary, padding: '2px' }}
+          >
+            <X size={16} />
+          </button>
+        )}
+      </div>
+
+      {/* Table */}
+      <div
+        className={`${radius} ${shadow}`}
+        style={{
+          background: colors.cardBg, border: `1px solid ${colors.border}`,
+          overflow: 'hidden',
+        }}
+      >
+        <div style={{ overflowX: 'auto', maxHeight: '600px', overflowY: 'auto' }}>
+          <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+            <thead style={{ position: 'sticky', top: 0, zIndex: 10 }}>
+              <tr style={{ background: colors.cardBgAlt }}>
+                {table.fields.map((field) => (
+                  <th
+                    key={field.name}
+                    style={{
+                      textAlign: 'left', padding: '12px 16px',
+                      borderBottom: `2px solid ${colors.border}`,
+                      color: colors.textSecondary, fontSize: '12px',
+                      fontWeight: 600, textTransform: 'uppercase',
+                      letterSpacing: '0.05em', whiteSpace: 'nowrap',
+                    }}
+                  >
+                    {field.label}
+                  </th>
+                ))}
+                <th
+                  style={{
+                    textAlign: 'center', padding: '12px 16px',
+                    borderBottom: `2px solid ${colors.border}`,
+                    color: colors.textSecondary, fontSize: '12px',
+                    fontWeight: 600, textTransform: 'uppercase',
+                    letterSpacing: '0.05em', width: '100px',
+                  }}
+                >
+                  Azioni
+                </th>
+              </tr>
+            </thead>
+            <tbody>
+              {loading ? (
+                <tr>
+                  <td
+                    colSpan={table.fields.length + 1}
+                    style={{ padding: '40px', textAlign: 'center', color: colors.textSecondary }}
+                  >
+                    Caricamento records...
+                  </td>
+                </tr>
+              ) : filteredRecords.length === 0 ? (
+                <tr>
+                  <td
+                    colSpan={table.fields.length + 1}
+                    style={{ padding: '40px', textAlign: 'center', color: colors.textSecondary }}
+                  >
+                    {searchQuery ? 'Nessun risultato per la ricerca' : 'Nessun record presente'}
+                  </td>
+                </tr>
+              ) : (
+                filteredRecords.map((record, idx) => (
+                  <tr
+                    key={record.id || idx}
+                    style={{
+                      borderBottom: `1px solid ${colors.border}`,
+                      transition: 'background 0.15s',
+                    }}
+                    onMouseEnter={(e) => { e.currentTarget.style.background = colors.cardBgAlt; }}
+                    onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; }}
+                  >
+                    {table.fields.map((field) => (
+                      <td
+                        key={field.name}
+                        style={{
+                          padding: '12px 16px', color: colors.text,
+                          fontSize: '14px', whiteSpace: 'nowrap',
+                          maxWidth: '200px', overflow: 'hidden',
+                          textOverflow: 'ellipsis',
+                        }}
+                      >
+                        {field.type === 'checkbox'
+                          ? (record[field.name] ? 'Si' : 'No')
+                          : field.type === 'select'
+                            ? String(record[field.name] ?? '')
+                            : String(record[field.name] ?? '')}
+                      </td>
+                    ))}
+                    <td style={{ padding: '12px 16px', textAlign: 'center' }}>
+                      <div style={{ display: 'flex', justifyContent: 'center', gap: '8px' }}>
+                        <button
+                          onClick={() => onEdit(record)}
+                          title="Modifica"
+                          style={{
+                            background: colors.primary + '20', border: 'none',
+                            borderRadius: '8px', padding: '6px', cursor: 'pointer',
+                            color: colors.primary, display: 'flex', alignItems: 'center',
+                            transition: 'background 0.2s',
+                          }}
+                          onMouseEnter={(e) => { e.currentTarget.style.background = colors.primary + '40'; }}
+                          onMouseLeave={(e) => { e.currentTarget.style.background = colors.primary + '20'; }}
+                        >
+                          <Pencil size={15} />
+                        </button>
+                        <button
+                          onClick={() => onDelete(record.id)}
+                          title="Elimina"
+                          style={{
+                            background: colors.danger + '20', border: 'none',
+                            borderRadius: '8px', padding: '6px', cursor: 'pointer',
+                            color: colors.danger, display: 'flex', alignItems: 'center',
+                            transition: 'background 0.2s',
+                          }}
+                          onMouseEnter={(e) => { e.currentTarget.style.background = colors.danger + '40'; }}
+                          onMouseLeave={(e) => { e.currentTarget.style.background = colors.danger + '20'; }}
+                        >
+                          <Trash2 size={15} />
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
+        </div>
+
+        {/* Footer counter */}
+        <div
+          style={{
+            padding: '12px 16px', borderTop: `1px solid ${colors.border}`,
+            display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+          }}
+        >
+          <span style={{ color: colors.textSecondary, fontSize: '13px' }}>
+            {filteredRecords.length} di {records.length} record
+          </span>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ─── RecordModal Component ────────────────────────────────────────────────────
+
+interface RecordModalProps {
+  table: TableDef;
+  record: Record | null; // null = new record
+  onSave: (data: Record<string, unknown>) => void;
+  onClose: () => void;
+  saving: boolean;
+  colors: ReturnType<typeof getThemeVars>;
+}
+
+function RecordModal({ table, record, onSave, onClose, saving, colors }: RecordModalProps) {
+  const isEdit = record !== null;
+  const [formData, setFormData] = useState<Record<string, unknown>>(() => {
+    if (record) {
+      const data: Record<string, unknown> = {};
+      table.fields.forEach((f) => { data[f.name] = record[f.name] ?? ''; });
+      return data;
+    }
+    const data: Record<string, unknown> = {};
+    table.fields.forEach((f) => {
+      data[f.name] = f.type === 'checkbox' ? false : '';
+    });
+    return data;
+  });
+
+  const handleChange = (fieldName: string, value: unknown) => {
+    setFormData((prev) => ({ ...prev, [fieldName]: value }));
+  };
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    onSave(formData);
+  };
+
+  const inputStyle: React.CSSProperties = {
+    width: '100%', padding: '10px 14px', borderRadius: '8px',
+    border: `1px solid ${colors.inputBorder}`, background: colors.inputBg,
+    color: colors.text, fontSize: '14px', outline: 'none',
+    transition: 'border-color 0.2s', boxSizing: 'border-box',
+  };
+
+  const labelStyle: React.CSSProperties = {
+    display: 'block', marginBottom: '6px', fontSize: '13px',
+    fontWeight: 600, color: colors.textSecondary,
+  };
+
+  return (
+    <div
+      style={{
+        position: 'fixed', inset: 0, zIndex: 1000,
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+        background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(8px)',
+      }}
+      onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
+    >
+      <div
+        className="rounded-2xl"
+        style={{
+          background: colors.cardBg, border: `1px solid ${colors.border}`,
+          width: '100%', maxWidth: '560px', maxHeight: '85vh',
+          overflow: 'auto', padding: '32px',
+          boxShadow: '0 25px 50px -12px rgba(0,0,0,0.5)',
+        }}
+      >
+        {/* Header */}
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
+          <h2 style={{ color: colors.text, fontSize: '20px', fontWeight: 700, margin: 0 }}>
+            {isEdit ? `Modifica ${table.label}` : `Nuovo ${table.label}`}
+          </h2>
+          <button
+            onClick={onClose}
+            style={{
+              background: 'none', border: 'none', cursor: 'pointer',
+              color: colors.textSecondary, padding: '4px',
+            }}
+          >
+            <X size={20} />
           </button>
         </div>
 
-        <form onSubmit={handleSubmit} className="p-5 space-y-4">
+        {/* Form */}
+        <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '18px' }}>
           {table.fields.map((field) => (
-            <div key={field.id}>
-              <label className="block text-sm font-medium text-slate-300 mb-1.5">
+            <div key={field.name}>
+              <label style={labelStyle}>
                 {field.label}
-                {field.required && <span className="text-red-400 ml-1">*</span>}
+                {field.required && <span style={{ color: colors.danger, marginLeft: '4px' }}>*</span>}
               </label>
-              <FieldInput field={field} value={formData[field.id] ?? ''} onChange={(val) => updateField(field.id, val)} />
+
+              {field.type === 'textarea' ? (
+                <textarea
+                  value={String(formData[field.name] ?? '')}
+                  onChange={(e) => handleChange(field.name, e.target.value)}
+                  rows={3}
+                  style={{ ...inputStyle, resize: 'vertical' }}
+                  onFocus={(e) => { e.currentTarget.style.borderColor = colors.primary; }}
+                  onBlur={(e) => { e.currentTarget.style.borderColor = colors.inputBorder; }}
+                />
+              ) : field.type === 'select' ? (
+                <div style={{ position: 'relative' }}>
+                  <select
+                    value={String(formData[field.name] ?? '')}
+                    onChange={(e) => handleChange(field.name, e.target.value)}
+                    style={{ ...inputStyle, appearance: 'none', paddingRight: '36px' }}
+                    onFocus={(e) => { e.currentTarget.style.borderColor = colors.primary; }}
+                    onBlur={(e) => { e.currentTarget.style.borderColor = colors.inputBorder; }}
+                  >
+                    <option value="">Seleziona...</option>
+                    {(field.options || []).map((opt) => (
+                      <option key={opt} value={opt}>{opt}</option>
+                    ))}
+                  </select>
+                  <ChevronDown
+                    size={16}
+                    style={{
+                      position: 'absolute', right: '12px', top: '50%',
+                      transform: 'translateY(-50%)', color: colors.textSecondary,
+                      pointerEvents: 'none',
+                    }}
+                  />
+                </div>
+              ) : field.type === 'checkbox' ? (
+                <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer' }}>
+                  <input
+                    type="checkbox"
+                    checked={Boolean(formData[field.name])}
+                    onChange={(e) => handleChange(field.name, e.target.checked)}
+                    style={{ width: '18px', height: '18px', accentColor: colors.primary }}
+                  />
+                  <span style={{ color: colors.text, fontSize: '14px' }}>
+                    {formData[field.name] ? 'Attivo' : 'Non attivo'}
+                  </span>
+                </label>
+              ) : field.type === 'number' ? (
+                <input
+                  type="number"
+                  value={String(formData[field.name] ?? '')}
+                  onChange={(e) => handleChange(field.name, e.target.value)}
+                  style={inputStyle}
+                  onFocus={(e) => { e.currentTarget.style.borderColor = colors.primary; }}
+                  onBlur={(e) => { e.currentTarget.style.borderColor = colors.inputBorder; }}
+                />
+              ) : field.type === 'date' ? (
+                <input
+                  type="date"
+                  value={String(formData[field.name] ?? '')}
+                  onChange={(e) => handleChange(field.name, e.target.value)}
+                  style={inputStyle}
+                  onFocus={(e) => { e.currentTarget.style.borderColor = colors.primary; }}
+                  onBlur={(e) => { e.currentTarget.style.borderColor = colors.inputBorder; }}
+                />
+              ) : (
+                <input
+                  type="text"
+                  value={String(formData[field.name] ?? '')}
+                  onChange={(e) => handleChange(field.name, e.target.value)}
+                  style={inputStyle}
+                  onFocus={(e) => { e.currentTarget.style.borderColor = colors.primary; }}
+                  onBlur={(e) => { e.currentTarget.style.borderColor = colors.inputBorder; }}
+                />
+              )}
             </div>
           ))}
 
-          <div className="flex gap-3 pt-4">
-            <button
-              type="submit"
-              disabled={saving}
-              className="flex-1 px-5 py-2.5 rounded-lg text-sm font-semibold text-white transition hover:opacity-90 disabled:opacity-50"
-              style={{ backgroundColor: primaryColor }}
-            >
-              {saving ? 'Salvataggio...' : record ? 'Salva modifiche' : 'Crea record'}
-            </button>
+          {/* Buttons */}
+          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '12px', marginTop: '8px' }}>
             <button
               type="button"
               onClick={onClose}
-              className="px-5 py-2.5 rounded-lg text-sm font-semibold bg-slate-800 hover:bg-slate-700 transition"
+              style={{
+                padding: '10px 20px', borderRadius: '10px',
+                border: `1px solid ${colors.border}`, background: 'transparent',
+                color: colors.textSecondary, fontSize: '14px', fontWeight: 600,
+                cursor: 'pointer', transition: 'background 0.2s',
+              }}
+              onMouseEnter={(e) => { e.currentTarget.style.background = colors.cardBgAlt; }}
+              onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; }}
             >
               Annulla
+            </button>
+            <button
+              type="submit"
+              disabled={saving}
+              style={{
+                padding: '10px 24px', borderRadius: '10px', border: 'none',
+                background: saving ? colors.textSecondary : colors.primary,
+                color: '#fff', fontSize: '14px', fontWeight: 600,
+                cursor: saving ? 'not-allowed' : 'pointer', transition: 'opacity 0.2s',
+              }}
+              onMouseEnter={(e) => { if (!saving) e.currentTarget.style.opacity = '0.85'; }}
+              onMouseLeave={(e) => { e.currentTarget.style.opacity = '1'; }}
+            >
+              {saving ? 'Salvataggio...' : 'Salva'}
             </button>
           </div>
         </form>
@@ -546,205 +829,915 @@ function RecordFormModal({
   );
 }
 
-// ===================== Field Input =====================
+// ─── SettingsModal Component ──────────────────────────────────────────────────
 
-function FieldInput({ field, value, onChange }: { field: FieldDef; value: any; onChange: (val: any) => void }) {
-  const baseClass = 'w-full px-3 py-2.5 bg-slate-800 border border-slate-700 rounded-lg text-sm text-white placeholder-slate-500 focus:border-indigo-500 focus:outline-none transition';
-
-  switch (field.type) {
-    case 'textarea':
-      return (
-        <textarea value={value} onChange={(e) => onChange(e.target.value)} rows={3} className={baseClass} placeholder={field.label} />
-      );
-    case 'select':
-      return (
-        <select value={value} onChange={(e) => onChange(e.target.value)} className={baseClass}>
-          <option value="">Seleziona...</option>
-          {field.options?.map((opt) => (
-            <option key={opt} value={opt}>{opt}</option>
-          ))}
-        </select>
-      );
-    case 'boolean':
-      return (
-        <label className="flex items-center gap-2 cursor-pointer">
-          <input
-            type="checkbox"
-            checked={value === true || value === 'true'}
-            onChange={(e) => onChange(e.target.checked)}
-            className="w-4 h-4 rounded bg-slate-800 border-slate-600 text-indigo-500 focus:ring-indigo-500"
-          />
-          <span className="text-sm text-slate-300">{field.label}</span>
-        </label>
-      );
-    case 'number':
-    case 'currency':
-      return (
-        <input type="number" value={value} onChange={(e) => onChange(e.target.value)} step={field.type === 'currency' ? '0.01' : '1'} className={baseClass} placeholder={field.label} />
-      );
-    case 'date':
-      return (
-        <input type="date" value={value} onChange={(e) => onChange(e.target.value)} className={baseClass} />
-      );
-    case 'datetime':
-      return (
-        <input type="datetime-local" value={value} onChange={(e) => onChange(e.target.value)} className={baseClass} />
-      );
-    case 'email':
-      return (
-        <input type="email" value={value} onChange={(e) => onChange(e.target.value)} className={baseClass} placeholder="email@esempio.com" />
-      );
-    case 'phone':
-      return (
-        <input type="tel" value={value} onChange={(e) => onChange(e.target.value)} className={baseClass} placeholder="+39 ..." />
-      );
-    default:
-      return (
-        <input type="text" value={value} onChange={(e) => onChange(e.target.value)} className={baseClass} placeholder={field.label} />
-      );
-  }
+interface SettingsModalProps {
+  prefs: UserPrefs;
+  onPrefsChange: (prefs: UserPrefs) => void;
+  onClose: () => void;
+  onLogout: () => void;
+  onChangePassword: (oldPw: string, newPw: string) => Promise<void>;
+  colors: ReturnType<typeof getThemeVars>;
+  slug: string;
 }
 
-// ===================== Settings Modal =====================
+function SettingsModal({ prefs, onPrefsChange, onClose, onLogout, onChangePassword, colors, slug }: SettingsModalProps) {
+  const [oldPassword, setOldPassword] = useState('');
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [passwordMsg, setPasswordMsg] = useState<{ text: string; type: 'success' | 'error' } | null>(null);
+  const [changingPw, setChangingPw] = useState(false);
 
-function SettingsModal({
-  slug,
-  password,
-  primaryColor,
-  onClose,
-  onPasswordChanged,
-  onLogout,
-}: {
+  const updatePref = <K extends keyof UserPrefs>(key: K, value: UserPrefs[K]) => {
+    onPrefsChange({ ...prefs, [key]: value });
+  };
+
+  const handlePasswordChange = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setPasswordMsg(null);
+
+    if (!oldPassword || !newPassword || !confirmPassword) {
+      setPasswordMsg({ text: 'Compila tutti i campi', type: 'error' });
+      return;
+    }
+    if (newPassword !== confirmPassword) {
+      setPasswordMsg({ text: 'Le password non coincidono', type: 'error' });
+      return;
+    }
+    if (newPassword.length < 6) {
+      setPasswordMsg({ text: 'La nuova password deve avere almeno 6 caratteri', type: 'error' });
+      return;
+    }
+
+    setChangingPw(true);
+    try {
+      await onChangePassword(oldPassword, newPassword);
+      setPasswordMsg({ text: 'Password cambiata con successo!', type: 'success' });
+      setOldPassword('');
+      setNewPassword('');
+      setConfirmPassword('');
+    } catch (err) {
+      setPasswordMsg({ text: err instanceof Error ? err.message : 'Errore nel cambio password', type: 'error' });
+    } finally {
+      setChangingPw(false);
+    }
+  };
+
+  const sectionTitle: React.CSSProperties = {
+    color: colors.text, fontSize: '15px', fontWeight: 700,
+    marginBottom: '12px', textTransform: 'uppercase', letterSpacing: '0.05em',
+  };
+
+  const sectionBox: React.CSSProperties = {
+    background: colors.cardBgAlt, borderRadius: '12px',
+    padding: '20px', marginBottom: '20px',
+    border: `1px solid ${colors.border}`,
+  };
+
+  const inputStyle: React.CSSProperties = {
+    width: '100%', padding: '10px 14px', borderRadius: '8px',
+    border: `1px solid ${colors.inputBorder}`, background: colors.inputBg,
+    color: colors.text, fontSize: '14px', outline: 'none',
+    boxSizing: 'border-box',
+  };
+
+  const layouts: Array<{ key: UserPrefs['layout']; label: string; desc: string }> = [
+    { key: 'corporate', label: 'Corporate', desc: 'Ampio e spazioso' },
+    { key: 'modern', label: 'Modern', desc: 'Bilanciato' },
+    { key: 'compact', label: 'Compact', desc: 'Compatto e denso' },
+  ];
+
+  return (
+    <div
+      style={{
+        position: 'fixed', inset: 0, zIndex: 1000,
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+        background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(8px)',
+      }}
+      onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
+    >
+      <div
+        className="rounded-2xl"
+        style={{
+          background: colors.cardBg, border: `1px solid ${colors.border}`,
+          width: '100%', maxWidth: '640px', maxHeight: '85vh',
+          overflow: 'auto', padding: '32px',
+          boxShadow: '0 25px 50px -12px rgba(0,0,0,0.5)',
+        }}
+      >
+        {/* Header */}
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '28px' }}>
+          <h2 style={{ color: colors.text, fontSize: '22px', fontWeight: 700, margin: 0 }}>Impostazioni</h2>
+          <button
+            onClick={onClose}
+            style={{ background: 'none', border: 'none', cursor: 'pointer', color: colors.textSecondary, padding: '4px' }}
+          >
+            <X size={20} />
+          </button>
+        </div>
+
+        {/* Layout Section */}
+        <div style={sectionBox}>
+          <div style={sectionTitle}>Layout</div>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '12px' }}>
+            {layouts.map(({ key, label, desc }) => {
+              const isActive = prefs.layout === key;
+              const cfg = LAYOUT_CONFIG[key];
+              return (
+                <button
+                  key={key}
+                  onClick={() => updatePref('layout', key)}
+                  style={{
+                    padding: '16px 12px', borderRadius: '12px', cursor: 'pointer',
+                    border: `2px solid ${isActive ? colors.primary : colors.border}`,
+                    background: isActive ? colors.primary + '15' : 'transparent',
+                    transition: 'all 0.2s', textAlign: 'center',
+                  }}
+                >
+                  {/* Thumbnail */}
+                  <div
+                    style={{
+                      width: '100%', height: '48px', borderRadius: '8px',
+                      background: colors.cardBg, border: `1px solid ${colors.border}`,
+                      marginBottom: '10px', display: 'flex', overflow: 'hidden',
+                    }}
+                  >
+                    <div style={{
+                      width: key === 'corporate' ? '35%' : key === 'modern' ? '28%' : '22%',
+                      background: isActive ? colors.primary : colors.textSecondary + '40',
+                      borderRadius: '4px', margin: '4px',
+                    }} />
+                    <div style={{ flex: 1, padding: '6px', display: 'flex', flexDirection: 'column', gap: '3px' }}>
+                      <div style={{ height: '6px', borderRadius: '3px', background: colors.border }} />
+                      <div style={{ height: '4px', borderRadius: '2px', background: colors.border, width: '70%' }} />
+                      <div style={{ height: '4px', borderRadius: '2px', background: colors.border, width: '50%' }} />
+                    </div>
+                  </div>
+                  <div style={{ color: colors.text, fontSize: '13px', fontWeight: 600 }}>{label}</div>
+                  <div style={{ color: colors.textSecondary, fontSize: '11px', marginTop: '2px' }}>{desc}</div>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* Theme Section */}
+        <div style={sectionBox}>
+          <div style={sectionTitle}>Tema</div>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+            {(['dark', 'light'] as const).map((t) => {
+              const isActive = prefs.theme === t;
+              return (
+                <button
+                  key={t}
+                  onClick={() => updatePref('theme', t)}
+                  style={{
+                    padding: '14px', borderRadius: '12px', cursor: 'pointer',
+                    border: `2px solid ${isActive ? colors.primary : colors.border}`,
+                    background: isActive ? colors.primary + '15' : 'transparent',
+                    display: 'flex', alignItems: 'center', gap: '10px',
+                    transition: 'all 0.2s',
+                  }}
+                >
+                  <div style={{
+                    width: '32px', height: '32px', borderRadius: '8px',
+                    background: t === 'dark' ? '#0a0e1a' : '#f8fafc',
+                    border: `1px solid ${t === 'dark' ? '#334155' : '#e2e8f0'}`,
+                  }} />
+                  <span style={{ color: colors.text, fontSize: '14px', fontWeight: 600 }}>
+                    {t === 'dark' ? 'Scuro' : 'Chiaro'}
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* Color Section */}
+        <div style={sectionBox}>
+          <div style={sectionTitle}>Colore Primario</div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+            <input
+              type="color"
+              value={prefs.primaryColor}
+              onChange={(e) => updatePref('primaryColor', e.target.value)}
+              style={{ width: '48px', height: '48px', border: 'none', borderRadius: '8px', cursor: 'pointer', padding: 0 }}
+            />
+            <input
+              type="text"
+              value={prefs.primaryColor}
+              onChange={(e) => updatePref('primaryColor', e.target.value)}
+              placeholder="#6366f1"
+              style={{ ...inputStyle, flex: 1 }}
+            />
+            <div
+              style={{
+                width: '48px', height: '48px', borderRadius: '8px',
+                background: prefs.primaryColor, border: `1px solid ${colors.border}`,
+              }}
+            />
+          </div>
+        </div>
+
+        {/* Brand Section */}
+        <div style={sectionBox}>
+          <div style={sectionTitle}>Brand</div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+            <div>
+              <label style={{ display: 'block', marginBottom: '6px', fontSize: '13px', fontWeight: 600, color: colors.textSecondary }}>
+                Nome Azienda
+              </label>
+              <input
+                type="text"
+                value={prefs.companyName}
+                onChange={(e) => updatePref('companyName', e.target.value)}
+                style={inputStyle}
+              />
+            </div>
+            <div>
+              <label style={{ display: 'block', marginBottom: '6px', fontSize: '13px', fontWeight: 600, color: colors.textSecondary }}>
+                URL Logo
+              </label>
+              <input
+                type="text"
+                value={prefs.logoUrl}
+                onChange={(e) => updatePref('logoUrl', e.target.value)}
+                placeholder="https://example.com/logo.png"
+                style={inputStyle}
+              />
+            </div>
+          </div>
+        </div>
+
+        {/* Password Section */}
+        <div style={sectionBox}>
+          <div style={sectionTitle}>Cambia Password</div>
+          <form onSubmit={handlePasswordChange} style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+            <input
+              type="password"
+              placeholder="Password attuale"
+              value={oldPassword}
+              onChange={(e) => setOldPassword(e.target.value)}
+              style={inputStyle}
+            />
+            <input
+              type="password"
+              placeholder="Nuova password"
+              value={newPassword}
+              onChange={(e) => setNewPassword(e.target.value)}
+              style={inputStyle}
+            />
+            <input
+              type="password"
+              placeholder="Conferma nuova password"
+              value={confirmPassword}
+              onChange={(e) => setConfirmPassword(e.target.value)}
+              style={inputStyle}
+            />
+            {passwordMsg && (
+              <div style={{
+                padding: '10px 14px', borderRadius: '8px', fontSize: '13px', fontWeight: 500,
+                background: passwordMsg.type === 'success' ? colors.success + '20' : colors.danger + '20',
+                color: passwordMsg.type === 'success' ? colors.success : colors.danger,
+              }}>
+                {passwordMsg.text}
+              </div>
+            )}
+            <button
+              type="submit"
+              disabled={changingPw}
+              style={{
+                padding: '10px 20px', borderRadius: '10px', border: 'none',
+                background: changingPw ? colors.textSecondary : colors.primary,
+                color: '#fff', fontSize: '14px', fontWeight: 600,
+                cursor: changingPw ? 'not-allowed' : 'pointer', alignSelf: 'flex-end',
+              }}
+            >
+              {changingPw ? 'Salvataggio...' : 'Cambia Password'}
+            </button>
+          </form>
+        </div>
+
+        {/* Logout */}
+        <button
+          onClick={onLogout}
+          style={{
+            width: '100%', padding: '14px', borderRadius: '12px', border: 'none',
+            background: colors.danger + '15', color: colors.danger,
+            fontSize: '15px', fontWeight: 700, cursor: 'pointer',
+            display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px',
+            transition: 'background 0.2s',
+          }}
+          onMouseEnter={(e) => { e.currentTarget.style.background = colors.danger + '30'; }}
+          onMouseLeave={(e) => { e.currentTarget.style.background = colors.danger + '15'; }}
+        >
+          <LogOut size={18} /> Logout
+        </button>
+      </div>
+    </div>
+  );
+}
+
+// ─── Login Screen ─────────────────────────────────────────────────────────────
+
+interface LoginScreenProps {
   slug: string;
-  password: string;
+  appName: string;
+  logoUrl: string;
   primaryColor: string;
-  onClose: () => void;
-  onPasswordChanged: (newPassword: string) => void;
-  onLogout: () => void;
-}) {
-  const [oldPwd, setOldPwd] = useState('');
-  const [newPwd, setNewPwd] = useState('');
-  const [confirmPwd, setConfirmPwd] = useState('');
-  const [error, setError] = useState('');
-  const [success, setSuccess] = useState('');
-  const [saving, setSaving] = useState(false);
+  onLogin: (password: string) => Promise<void>;
+}
 
-  async function handleChangePassword(e: React.FormEvent) {
+function LoginScreen({ slug, appName, logoUrl, primaryColor, onLogin }: LoginScreenProps) {
+  const [password, setPassword] = useState('');
+  const [error, setError] = useState('');
+  const [loading, setLoading] = useState(false);
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
-    setSuccess('');
+    if (!password.trim()) {
+      setError('Inserisci la password');
+      return;
+    }
+    setLoading(true);
+    try {
+      await onLogin(password);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Password errata');
+    } finally {
+      setLoading(false);
+    }
+  };
 
-    if (oldPwd !== password) {
-      setError('Password attuale non corretta');
-      return;
+  return (
+    <div
+      style={{
+        minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center',
+        background: '#0a0e1a', padding: '20px',
+      }}
+    >
+      <div
+        className="rounded-2xl"
+        style={{
+          background: '#1e293b', border: '1px solid #334155', padding: '40px',
+          width: '100%', maxWidth: '400px', textAlign: 'center',
+          boxShadow: '0 25px 50px -12px rgba(0,0,0,0.5)',
+        }}
+      >
+        {logoUrl && (
+          <img src={logoUrl} alt={appName} style={{ height: '48px', marginBottom: '16px', objectFit: 'contain' }} />
+        )}
+        <h1 style={{ color: '#ffffff', fontSize: '24px', fontWeight: 700, marginBottom: '8px' }}>{appName}</h1>
+        <p style={{ color: '#94a3b8', fontSize: '14px', marginBottom: '28px' }}>Inserisci la password per accedere</p>
+
+        <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+          <input
+            type="password"
+            placeholder="Password"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            style={{
+              width: '100%', padding: '12px 16px', borderRadius: '10px',
+              border: '1px solid #334155', background: '#0f172a',
+              color: '#ffffff', fontSize: '15px', outline: 'none',
+              boxSizing: 'border-box',
+            }}
+            autoFocus
+          />
+          {error && (
+            <div style={{
+              padding: '10px 14px', borderRadius: '8px', fontSize: '13px',
+              background: '#ef444420', color: '#ef4444',
+            }}>
+              {error}
+            </div>
+          )}
+          <button
+            type="submit"
+            disabled={loading}
+            style={{
+              padding: '12px', borderRadius: '10px', border: 'none',
+              background: loading ? '#64748b' : primaryColor,
+              color: '#fff', fontSize: '15px', fontWeight: 600,
+              cursor: loading ? 'not-allowed' : 'pointer',
+            }}
+          >
+            {loading ? 'Verifica...' : 'Accedi'}
+          </button>
+        </form>
+      </div>
+    </div>
+  );
+}
+
+// ─── Main App Component ───────────────────────────────────────────────────────
+
+export default function ViewerProFinal() {
+  const slug = useMemo(() => {
+    if (typeof window !== 'undefined') {
+      const path = window.location.pathname;
+      const match = path.match(/\/a\/([^/]+)/);
+      return match?.[1] || '';
     }
-    if (newPwd.length < 6) {
-      setError('La nuova password deve avere almeno 6 caratteri');
-      return;
+    return '';
+  }, []);
+
+  const sessionKey = `app_session_${slug}`;
+  const prefsKey = `${sessionKey}_prefs`;
+
+  // State
+  const [session, setSession] = useState<AppSession | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [showLogin, setShowLogin] = useState(false);
+  const [activeView, setActiveView] = useState<'dashboard' | string>('dashboard');
+  const [records, setRecords] = useState<Record[]>([]);
+  const [recordsLoading, setRecordsLoading] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [modalRecord, setModalRecord] = useState<Record | null | 'new'>(null);
+  const [saving, setSaving] = useState(false);
+  const [showSettings, setShowSettings] = useState(false);
+  const [sidebarOpen, setSidebarOpen] = useState(true);
+
+  const [prefs, setPrefs] = useState<UserPrefs>({
+    layout: 'modern',
+    theme: 'dark',
+    primaryColor: '#6366f1',
+    companyName: '',
+    logoUrl: '',
+  });
+
+  // Derived values
+  const appInfo = session?.appInfo;
+  const config = appInfo;
+  const tables = config?.blueprint?.tables || [];
+  const activeTable = tables.find((t) => t.name === activeView) || null;
+
+  const companyName = prefs.companyName
+    || config?.branding?.company_name
+    || config?.appName
+    || 'App';
+
+  const logoUrl = prefs.logoUrl
+    || config?.branding?.logo_url
+    || config?.logo
+    || '';
+
+  const primaryColor = prefs.primaryColor
+    || config?.branding?.primary_color
+    || '#6366f1';
+
+  const theme = prefs.theme || config?.branding?.theme || 'dark';
+  const colors = useMemo(() => getThemeVars(theme, primaryColor), [theme, primaryColor]);
+  const layoutCfg = LAYOUT_CONFIG[prefs.layout];
+
+  // ─── Load preferences from localStorage ──────────────────────────────────
+
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem(prefsKey);
+      if (saved) {
+        const parsed = JSON.parse(saved) as Partial<UserPrefs>;
+        setPrefs((prev) => ({ ...prev, ...parsed }));
+      }
+    } catch { /* ignore */ }
+  }, [prefsKey]);
+
+  // ─── Save preferences to localStorage ────────────────────────────────────
+
+  useEffect(() => {
+    try {
+      localStorage.setItem(prefsKey, JSON.stringify(prefs));
+    } catch { /* ignore */ }
+  }, [prefs, prefsKey]);
+
+  // ─── Check session on mount ──────────────────────────────────────────────
+
+  useEffect(() => {
+    const checkSession = () => {
+      try {
+        const raw = localStorage.getItem(sessionKey);
+        if (raw) {
+          const parsed: AppSession = JSON.parse(raw);
+          if (parsed.appInfo?.blocked) {
+            window.location.href = `/a/${slug}/blocked`;
+            return;
+          }
+          setSession(parsed);
+          setShowLogin(false);
+        } else {
+          setShowLogin(true);
+        }
+      } catch {
+        setShowLogin(true);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    checkSession();
+  }, [sessionKey, slug]);
+
+  // ─── Load records when table changes ─────────────────────────────────────
+
+  const loadRecords = useCallback(async (tableName: string, password: string, appId: string) => {
+    setRecordsLoading(true);
+    try {
+      const res = await fetch(`${BACKEND_URL}/api/apps/${appId}/records?table=${tableName}`, {
+        headers: { Authorization: `Bearer ${password}` },
+      });
+      if (!res.ok) throw new Error('Failed to load records');
+      const data = await res.json();
+      setRecords(Array.isArray(data) ? data : data.records || data.data || []);
+    } catch (err) {
+      console.error('Error loading records:', err);
+      setRecords([]);
+    } finally {
+      setRecordsLoading(false);
     }
-    if (newPwd !== confirmPwd) {
-      setError('Le password non coincidono');
+  }, []);
+
+  useEffect(() => {
+    if (activeTable && session) {
+      loadRecords(activeTable.name, session.password, session.appInfo.id);
+    } else {
+      setRecords([]);
+    }
+    setSearchQuery('');
+  }, [activeTable, session, loadRecords]);
+
+  // ─── Login handler ──────────────────────────────────────────────────────
+
+  const handleLogin = useCallback(async (password: string) => {
+    // Fetch app config from backend to validate password
+    const res = await fetch(`${BACKEND_URL}/api/a/${slug}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ password }),
+    });
+
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.message || 'Password errata');
+    }
+
+    const data = await res.json();
+
+    if (data.blocked) {
+      window.location.href = `/a/${slug}/blocked`;
       return;
     }
 
+    const appSession: AppSession = {
+      slug,
+      password,
+      appInfo: data.appInfo || data,
+    };
+
+    localStorage.setItem(sessionKey, JSON.stringify(appSession));
+    setSession(appSession);
+    setShowLogin(false);
+  }, [slug, sessionKey]);
+
+  // ─── CRUD handlers ──────────────────────────────────────────────────────
+
+  const handleCreateRecord = useCallback(async (formData: Record<string, unknown>) => {
+    if (!session || !activeTable) return;
     setSaving(true);
     try {
-      const res = await fetch(`/api/a/${slug}/change-password`, {
+      const res = await fetch(`${BACKEND_URL}/api/apps/${session.appInfo.id}/records`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ oldPassword: oldPwd, newPassword: newPwd }),
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${session.password}`,
+        },
+        body: JSON.stringify({ table: activeTable.name, data: formData }),
       });
-
-      if (!res.ok) {
-        const data = await res.json();
-        setError(data.error || 'Errore durante il cambio password');
-        return;
-      }
-
-      setSuccess('Password cambiata con successo!');
-      onPasswordChanged(newPwd);
-    } catch {
-      setError('Errore di connessione');
+      if (!res.ok) throw new Error('Errore nella creazione');
+      setModalRecord(null);
+      await loadRecords(activeTable.name, session.password, session.appInfo.id);
+    } catch (err) {
+      alert(err instanceof Error ? err.message : 'Errore');
     } finally {
       setSaving(false);
     }
+  }, [session, activeTable, loadRecords]);
+
+  const handleUpdateRecord = useCallback(async (formData: Record<string, unknown>) => {
+    if (!session || !activeTable || !modalRecord || modalRecord === 'new') return;
+    setSaving(true);
+    try {
+      const res = await fetch(`${BACKEND_URL}/api/apps/${session.appInfo.id}/records/${modalRecord.id}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${session.password}`,
+        },
+        body: JSON.stringify({ data: formData }),
+      });
+      if (!res.ok) throw new Error('Errore nella modifica');
+      setModalRecord(null);
+      await loadRecords(activeTable.name, session.password, session.appInfo.id);
+    } catch (err) {
+      alert(err instanceof Error ? err.message : 'Errore');
+    } finally {
+      setSaving(false);
+    }
+  }, [session, activeTable, modalRecord, loadRecords]);
+
+  const handleDeleteRecord = useCallback(async (recordId: string) => {
+    if (!session || !activeTable) return;
+    if (!confirm('Sei sicuro di voler eliminare questo record?')) return;
+    try {
+      const res = await fetch(`${BACKEND_URL}/api/apps/${session.appInfo.id}/records/${recordId}`, {
+        method: 'DELETE',
+        headers: { Authorization: `Bearer ${session.password}` },
+      });
+      if (!res.ok) throw new Error('Errore nella eliminazione');
+      await loadRecords(activeTable.name, session.password, session.appInfo.id);
+    } catch (err) {
+      alert(err instanceof Error ? err.message : 'Errore');
+    }
+  }, [session, activeTable, loadRecords]);
+
+  const handleChangePassword = useCallback(async (oldPw: string, newPw: string) => {
+    const res = await fetch(`/api/a/${slug}/change-password`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ oldPassword: oldPw, newPassword: newPw }),
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.message || 'Errore nel cambio password');
+    }
+    // Update session with new password
+    if (session) {
+      const updated = { ...session, password: newPw };
+      localStorage.setItem(sessionKey, JSON.stringify(updated));
+      setSession(updated);
+    }
+  }, [slug, session, sessionKey]);
+
+  const handleLogout = useCallback(() => {
+    localStorage.removeItem(sessionKey);
+    localStorage.removeItem(prefsKey);
+    setSession(null);
+    setShowLogin(true);
+    setActiveView('dashboard');
+    setRecords([]);
+  }, [sessionKey, prefsKey]);
+
+  // ─── Record modal save dispatcher ───────────────────────────────────────
+
+  const handleModalSave = useCallback((data: Record<string, unknown>) => {
+    if (modalRecord === 'new') {
+      handleCreateRecord(data);
+    } else {
+      handleUpdateRecord(data);
+    }
+  }, [modalRecord, handleCreateRecord, handleUpdateRecord]);
+
+  // ─── Loading state ──────────────────────────────────────────────────────
+
+  if (loading) {
+    return (
+      <div style={{
+        minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center',
+        background: '#0a0e1a',
+      }}>
+        <div style={{ color: '#94a3b8', fontSize: '16px' }}>Caricamento...</div>
+      </div>
+    );
   }
 
+  // ─── Login screen ───────────────────────────────────────────────────────
+
+  if (showLogin || !session) {
+    return (
+      <LoginScreen
+        slug={slug}
+        appName={companyName}
+        logoUrl={logoUrl}
+        primaryColor={primaryColor}
+        onLogin={handleLogin}
+      />
+    );
+  }
+
+  // ─── Main layout ────────────────────────────────────────────────────────
+
   return (
-    <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4" onClick={onClose}>
-      <div className="bg-slate-900 rounded-xl border border-slate-700 max-w-md w-full" onClick={(e) => e.stopPropagation()}>
-        <div className="p-5 border-b border-slate-800 flex items-center justify-between">
-          <h3 className="text-xl font-bold">Impostazioni</h3>
-          <button onClick={onClose} className="p-1.5 rounded-lg hover:bg-slate-800 text-slate-400 transition">
-            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
-          </button>
+    <div style={{ display: 'flex', minHeight: '100vh', background: colors.bg, transition: 'background 0.3s' }}>
+      {/* Sidebar */}
+      <aside
+        className={`${layoutCfg.sidebarWidth}`}
+        style={{
+          background: colors.sidebarBg,
+          borderRight: `1px solid ${colors.border}`,
+          display: 'flex',
+          flexDirection: 'column',
+          transition: 'width 0.3s, transform 0.3s',
+          position: 'relative',
+          zIndex: 20,
+          flexShrink: 0,
+        }}
+      >
+        {/* Logo + Company */}
+        <div style={{
+          padding: '24px 20px', borderBottom: `1px solid ${colors.border}`,
+          display: 'flex', alignItems: 'center', gap: '12px',
+        }}>
+          {logoUrl ? (
+            <img src={logoUrl} alt={companyName} style={{ height: '36px', width: '36px', borderRadius: '8px', objectFit: 'cover' }} />
+          ) : (
+            <div style={{
+              width: '36px', height: '36px', borderRadius: '8px',
+              background: primaryColor, display: 'flex', alignItems: 'center', justifyContent: 'center',
+              color: '#fff', fontWeight: 700, fontSize: '16px',
+            }}>
+              {companyName.charAt(0).toUpperCase()}
+            </div>
+          )}
+          <span style={{ color: colors.sidebarText, fontSize: '16px', fontWeight: 700, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+            {companyName}
+          </span>
         </div>
 
-        <div className="p-5 space-y-5">
-          {/* Change Password */}
-          <div>
-            <h4 className="text-sm font-semibold text-slate-300 mb-3">Cambia password</h4>
+        {/* Nav Items */}
+        <nav style={{ flex: 1, padding: '12px 10px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '4px' }}>
+          {/* Dashboard */}
+          <SidebarItem
+            icon={<LayoutDashboard size={18} />}
+            label="Dashboard"
+            active={activeView === 'dashboard'}
+            onClick={() => setActiveView('dashboard')}
+            colors={colors}
+            primaryColor={primaryColor}
+          />
 
-            {error && (
-              <div className="mb-3 rounded-lg border border-red-500/30 bg-red-500/10 p-2.5 text-sm text-red-400">{error}</div>
-            )}
-            {success && (
-              <div className="mb-3 rounded-lg border border-emerald-500/30 bg-emerald-500/10 p-2.5 text-sm text-emerald-400">{success}</div>
-            )}
+          {/* Tables */}
+          {tables.map((table) => (
+            <SidebarItem
+              key={table.name}
+              icon={resolveIcon(table.icon)}
+              label={table.labelPlural}
+              active={activeView === table.name}
+              onClick={() => setActiveView(table.name)}
+              colors={colors}
+              primaryColor={primaryColor}
+            />
+          ))}
+        </nav>
 
-            <form onSubmit={handleChangePassword} className="space-y-3">
-              <div>
-                <label className="block text-xs font-medium text-slate-400 mb-1">Password attuale</label>
-                <input
-                  type="password"
-                  required
-                  value={oldPwd}
-                  onChange={(e) => setOldPwd(e.target.value)}
-                  className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-sm text-white focus:border-indigo-500 focus:outline-none transition"
-                />
-              </div>
-              <div>
-                <label className="block text-xs font-medium text-slate-400 mb-1">Nuova password</label>
-                <input
-                  type="password"
-                  required
-                  value={newPwd}
-                  onChange={(e) => setNewPwd(e.target.value)}
-                  className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-sm text-white focus:border-indigo-500 focus:outline-none transition"
-                />
-              </div>
-              <div>
-                <label className="block text-xs font-medium text-slate-400 mb-1">Conferma nuova password</label>
-                <input
-                  type="password"
-                  required
-                  value={confirmPwd}
-                  onChange={(e) => setConfirmPwd(e.target.value)}
-                  className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-sm text-white focus:border-indigo-500 focus:outline-none transition"
-                />
-              </div>
-              <button
-                type="submit"
-                disabled={saving}
-                className="w-full px-4 py-2.5 rounded-lg text-sm font-semibold text-white transition hover:opacity-90 disabled:opacity-50"
-                style={{ backgroundColor: primaryColor }}
-              >
-                {saving ? 'Salvataggio...' : 'Cambia password'}
-              </button>
-            </form>
-          </div>
+        {/* Bottom actions */}
+        <div style={{ padding: '12px 10px', borderTop: `1px solid ${colors.border}`, display: 'flex', flexDirection: 'column', gap: '4px' }}>
+          <SidebarItem
+            icon={<Settings size={18} />}
+            label="Impostazioni"
+            active={false}
+            onClick={() => setShowSettings(true)}
+            colors={colors}
+            primaryColor={primaryColor}
+          />
+          <SidebarItem
+            icon={<LogOut size={18} />}
+            label="Logout"
+            active={false}
+            onClick={handleLogout}
+            colors={colors}
+            primaryColor={colors.danger}
+          />
+        </div>
+      </aside>
 
-          <hr className="border-slate-800" />
-
-          {/* Logout */}
+      {/* Main Content */}
+      <main style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+        {/* Top bar (mobile toggle) */}
+        <header style={{
+          padding: '16px 24px', borderBottom: `1px solid ${colors.border}`,
+          display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+          background: colors.cardBg,
+        }}>
           <button
-            onClick={onLogout}
-            className="w-full px-4 py-2.5 rounded-lg text-sm font-semibold text-red-400 border border-red-500/30 hover:bg-red-500/10 transition"
+            onClick={() => setSidebarOpen(!sidebarOpen)}
+            style={{
+              background: 'none', border: 'none', cursor: 'pointer',
+              color: colors.textSecondary, padding: '4px',
+              display: 'none', // shown via media query in real app
+            }}
           >
-            Esci dall&apos;app
+            <Menu size={22} />
           </button>
+          <div style={{ color: colors.textSecondary, fontSize: '13px' }}>
+            {activeView === 'dashboard' ? 'Dashboard' : activeTable?.labelPlural || ''}
+          </div>
+          <div style={{ width: '30px' }} />
+        </header>
+
+        {/* Content area */}
+        <div style={{ flex: 1, overflowY: 'auto' }}>
+          <div style={{ padding: prefs.layout === 'corporate' ? '32px' : prefs.layout === 'modern' ? '24px' : '16px' }}>
+            {activeView === 'dashboard' ? (
+              <Dashboard
+                colors={colors}
+                radius={layoutCfg.radius}
+                shadow={layoutCfg.shadow}
+                companyName={companyName}
+              />
+            ) : activeTable ? (
+              <DataTable
+                table={activeTable}
+                records={records}
+                loading={recordsLoading}
+                searchQuery={searchQuery}
+                onSearchChange={setSearchQuery}
+                onEdit={(r) => setModalRecord(r)}
+                onDelete={handleDeleteRecord}
+                onAddNew={() => setModalRecord('new')}
+                colors={colors}
+                radius={layoutCfg.radius}
+                shadow={layoutCfg.shadow}
+              />
+            ) : (
+              <div style={{ color: colors.textSecondary, textAlign: 'center', padding: '60px' }}>
+                Seleziona una voce dal menu
+              </div>
+            )}
+          </div>
         </div>
-      </div>
+      </main>
+
+      {/* Record Modal */}
+      {modalRecord !== null && activeTable && (
+        <RecordModal
+          table={activeTable}
+          record={modalRecord === 'new' ? null : modalRecord}
+          onSave={handleModalSave}
+          onClose={() => setModalRecord(null)}
+          saving={saving}
+          colors={colors}
+        />
+      )}
+
+      {/* Settings Modal */}
+      {showSettings && (
+        <SettingsModal
+          prefs={prefs}
+          onPrefsChange={setPrefs}
+          onClose={() => setShowSettings(false)}
+          onLogout={handleLogout}
+          onChangePassword={handleChangePassword}
+          colors={colors}
+          slug={slug}
+        />
+      )}
     </div>
+  );
+}
+
+// ─── SidebarItem Component ────────────────────────────────────────────────────
+
+interface SidebarItemProps {
+  icon: React.ReactNode;
+  label: string;
+  active: boolean;
+  onClick: () => void;
+  colors: ReturnType<typeof getThemeVars>;
+  primaryColor: string;
+}
+
+function SidebarItem({ icon, label, active, onClick, colors, primaryColor }: SidebarItemProps) {
+  const [hovered, setHovered] = useState(false);
+
+  return (
+    <button
+      onClick={onClick}
+      onMouseEnter={() => setHovered(true)}
+      onMouseLeave={() => setHovered(false)}
+      style={{
+        display: 'flex', alignItems: 'center', gap: '10px',
+        padding: '10px 14px', borderRadius: '10px', border: 'none',
+        background: active
+          ? primaryColor + '25'
+          : hovered
+            ? colors.sidebarHover
+            : 'transparent',
+        color: active ? primaryColor : colors.sidebarText,
+        fontSize: '14px', fontWeight: active ? 600 : 500,
+        cursor: 'pointer', width: '100%', textAlign: 'left',
+        transition: 'all 0.15s',
+        position: 'relative',
+      }}
+    >
+      {active && (
+        <div style={{
+          position: 'absolute', left: 0, top: '50%', transform: 'translateY(-50%)',
+          width: '3px', height: '20px', borderRadius: '0 3px 3px 0',
+          background: primaryColor,
+        }} />
+      )}
+      <span style={{ display: 'flex', alignItems: 'center', flexShrink: 0 }}>{icon}</span>
+      <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{label}</span>
+    </button>
   );
 }
