@@ -37,13 +37,41 @@ export async function POST(req: NextRequest) {
     }
 
     // Trova il tenant dell'utente
+    let tenantId: string | null = null;
+
+    // Prima prova: cerca nelle membership
     const { data: memberships, error: membershipError } = await supabase
       .from('tenant_members')
       .select('tenant_id')
       .eq('user_id', user.id)
       .limit(1);
 
-    let tenantId = memberships?.[0]?.tenant_id;
+    if (membershipError) {
+      console.error('[Checkout] Errore query membership:', membershipError);
+    }
+
+    tenantId = memberships?.[0]?.tenant_id || null;
+
+    // Seconda prova: cerca direttamente nei tenants come owner
+    if (!tenantId) {
+      console.log('[Checkout] Nessun tenant da membership, cerco per owner_id...');
+      const { data: tenantAsOwner } = await supabase
+        .from('tenants')
+        .select('id')
+        .eq('owner_id', user.id)
+        .limit(1)
+        .single();
+
+      if (tenantAsOwner) {
+        tenantId = tenantAsOwner.id;
+        // Associo l'utente alle membership
+        await supabase.from('tenant_members').insert({
+          tenant_id: tenantId,
+          user_id: user.id,
+          role: 'owner',
+        }).throwOnError();
+      }
+    }
 
     // Se non ha un tenant, creane uno
     if (!tenantId) {
