@@ -111,10 +111,10 @@ export async function POST(req: NextRequest) {
     });
     const customerId = customer.id;
 
-    // Crea la sessione di checkout
+    // Crea la sessione di checkout (pagamento singolo)
     const session = await stripe.checkout.sessions.create({
       customer: customerId,
-      mode: 'subscription',
+      mode: 'payment',
       payment_method_types: ['card'],
       line_items: [
         {
