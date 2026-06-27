@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { supabase } from '@/src/lib/supabase';
+import { Trash2, X } from 'lucide-react';
 
 interface App {
   id: string;
@@ -20,6 +21,12 @@ export default function ProjectsPage() {
   const [apps, setApps] = useState<App[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [deleteModal, setDeleteModal] = useState<{ open: boolean; appId: string; appName: string }>({
+    open: false,
+    appId: '',
+    appName: '',
+  });
+  const [deleting, setDeleting] = useState(false);
 
   useEffect(() => {
     async function loadApps() {
@@ -68,6 +75,36 @@ export default function ProjectsPage() {
 
     loadApps();
   }, []);
+
+  const handleDeleteApp = async () => {
+    setDeleting(true);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      const token = session?.access_token;
+
+      if (!token) {
+        setError('Sessione scaduta');
+        return;
+      }
+
+      const res = await fetch(`/api/apps/${deleteModal.appId}`, {
+        method: 'DELETE',
+        headers: { Authorization: `Bearer ${token}` },
+      });
+
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data.error || 'Errore durante l\'eliminazione');
+      }
+
+      setApps(apps.filter(a => a.id !== deleteModal.appId));
+      setDeleteModal({ open: false, appId: '', appName: '' });
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Errore durante l\'eliminazione');
+    } finally {
+      setDeleting(false);
+    }
+  };
 
   const formatDate = (iso: string) => {
     if (!iso) return '-';
@@ -188,6 +225,16 @@ export default function ProjectsPage() {
                           >
                             Apri App →
                           </button>
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setDeleteModal({ open: true, appId: app.id, appName: app.name });
+                            }}
+                            className="text-red-400 hover:text-red-300 transition"
+                            title="Elimina app"
+                          >
+                            <Trash2 size={16} />
+                          </button>
                         </div>
                       </td>
                     </tr>
@@ -198,6 +245,51 @@ export default function ProjectsPage() {
           </table>
         </div>
       </div>
+
+      {/* Delete Confirmation Modal */}
+      {deleteModal.open && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 max-w-md w-full">
+            <div className="flex justify-between items-center mb-4">
+              <h3 className="text-xl font-bold">Elimina App</h3>
+              <button
+                onClick={() => setDeleteModal({ open: false, appId: '', appName: '' })}
+                className="text-slate-400 hover:text-white transition"
+              >
+                <X size={20} />
+              </button>
+            </div>
+
+            <p className="text-slate-400 mb-2">
+              Sei sicuro di voler eliminare l&apos;app
+            </p>
+            <p className="text-white font-semibold mb-6">
+              &quot;{deleteModal.appName}&quot;?
+            </p>
+
+            <p className="text-red-400 text-sm mb-6">
+              ️ Questa azione è irreversibile. Tutti i dati dell&apos;app verranno persi.
+            </p>
+
+            <div className="flex gap-3">
+              <button
+                onClick={() => setDeleteModal({ open: false, appId: '', appName: '' })}
+                disabled={deleting}
+                className="flex-1 px-4 py-3 bg-slate-800 hover:bg-slate-700 rounded-lg font-medium transition disabled:opacity-50"
+              >
+                Annulla
+              </button>
+              <button
+                onClick={handleDeleteApp}
+                disabled={deleting}
+                className="flex-1 px-4 py-3 bg-red-600 hover:bg-red-700 rounded-lg font-medium transition disabled:opacity-50"
+              >
+                {deleting ? 'Eliminazione...' : 'Elimina'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

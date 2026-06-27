@@ -118,8 +118,9 @@ export const UIConfigSchema = z.object({
     .default('#6366f1'),
   sidebar: z.union([
     z.array(SidebarItemSchema),
-    z.record(z.unknown()).transform((obj) => Object.keys(obj)),
-    z.object({}).transform(() => []),
+    z.boolean().transform(() => []),
+    z.record(z.any()).transform((obj) => Object.keys(obj)),
+    z.any().transform(() => []),
   ]).default([]),
   dashboardCards: z.union([
     z.array(DashboardCardSchema),
