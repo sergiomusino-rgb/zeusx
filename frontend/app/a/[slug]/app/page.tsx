@@ -52,7 +52,7 @@ interface AppSession {
   appInfo: AppConfig;
 }
 
-interface Record {
+interface AppRecord {
   id: string;
   [key: string]: unknown;
 }
@@ -271,7 +271,7 @@ function Dashboard({ colors, radius, shadow, companyName }: DashboardProps) {
                   borderRadius: '8px',
                   color: colors.text,
                 }}
-                formatter={(value: number) => [`EUR ${value.toLocaleString()}`, 'Fatturato']}
+                formatter={(value) => [`EUR ${(Number(value) || 0).toLocaleString()}`, 'Fatturato']}
               />
               <Line
                 type="monotone"
@@ -407,11 +407,11 @@ function Dashboard({ colors, radius, shadow, companyName }: DashboardProps) {
 
 interface DataTableProps {
   table: TableDef;
-  records: Record[];
+  records: AppRecord[];
   loading: boolean;
   searchQuery: string;
   onSearchChange: (q: string) => void;
-  onEdit: (record: Record) => void;
+  onEdit: (record: AppRecord) => void;
   onDelete: (recordId: string) => void;
   onAddNew: () => void;
   colors: ReturnType<typeof getThemeVars>;
@@ -631,7 +631,7 @@ function DataTable({
 
 interface RecordModalProps {
   table: TableDef;
-  record: Record | null; // null = new record
+  record: AppRecord | null; // null = new record
   onSave: (data: Record<string, unknown>) => void;
   onClose: () => void;
   saving: boolean;
@@ -654,7 +654,7 @@ function RecordModal({ table, record, onSave, onClose, saving, colors }: RecordM
   });
 
   const handleChange = (fieldName: string, value: unknown) => {
-    setFormData((prev) => ({ ...prev, [fieldName]: value }));
+    setFormData((prev: Record<string, any>) => ({ ...prev, [fieldName]: value }));
   };
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -1251,10 +1251,10 @@ export default function ViewerProFinal() {
   const [loading, setLoading] = useState(true);
   const [showLogin, setShowLogin] = useState(false);
   const [activeView, setActiveView] = useState<'dashboard' | string>('dashboard');
-  const [records, setRecords] = useState<Record[]>([]);
+  const [records, setRecords] = useState<AppRecord[]>([]);
   const [recordsLoading, setRecordsLoading] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
-  const [modalRecord, setModalRecord] = useState<Record | null | 'new'>(null);
+  const [modalRecord, setModalRecord] = useState<AppRecord | null | 'new'>(null);
   const [saving, setSaving] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(true);
