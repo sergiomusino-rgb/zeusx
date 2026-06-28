@@ -2,7 +2,7 @@
 
 import { useEffect, useState, Suspense } from 'react';
 import { useRouter } from 'next/navigation';
-import { Copy, ExternalLink, ArrowLeft } from 'lucide-react';
+import { Copy, ExternalLink, ArrowLeft, Eye, EyeOff } from 'lucide-react';
 
 function SuccessContent() {
   const router = useRouter();
@@ -13,6 +13,7 @@ function SuccessContent() {
   const [clientEmail, setClientEmail] = useState('');
   const [savingEmail, setSavingEmail] = useState(false);
   const [emailSaved, setEmailSaved] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -124,9 +125,18 @@ function SuccessContent() {
           <div className="space-y-2">
             <label className="text-sm font-medium text-slate-400">Password Iniziale</label>
             <div className="flex items-center gap-3">
-              <div className="flex-1 bg-slate-950 border border-slate-700 rounded-lg px-4 py-3 text-sm text-slate-300 font-mono">
-                {password}
+              <div className="flex-1 bg-slate-950 border border-slate-700 rounded-lg px-4 py-3 text-sm font-mono">
+                <span className={showPassword ? 'text-slate-300' : 'text-slate-500'}>
+                  {showPassword ? password : '•'.repeat(password.length)}
+                </span>
               </div>
+              <button
+                onClick={() => setShowPassword(!showPassword)}
+                className="p-3 bg-slate-800 hover:bg-slate-700 rounded-lg transition text-slate-400"
+                title={showPassword ? 'Nascondi password' : 'Mostra password'}
+              >
+                {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+              </button>
               <button
                 onClick={() => handleCopy(password, 'password')}
                 className="px-4 py-3 bg-slate-800 hover:bg-slate-700 rounded-lg transition flex items-center gap-2 text-sm"
