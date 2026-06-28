@@ -1591,6 +1591,9 @@ export default function ViewerProFinal() {
     || config?.tables 
     || [];
   
+  console.log('[Viewer] Config:', config);
+  console.log('[Viewer] Config keys:', config ? Object.keys(config) : 'null');
+  console.log('[Viewer] Blueprint:', config?.blueprint);
   console.log('[Viewer] Tables found:', tables.length, tables);
   
   const activeTable = tables.find((t) => t.name === activeView) || null;
