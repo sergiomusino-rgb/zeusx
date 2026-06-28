@@ -43,12 +43,20 @@ export default function AppViewerPage() {
         return;
       }
 
+      console.log('[AppViewer] Raw config from DB:', JSON.stringify(appData.config).slice(0, 500));
+
       // Il blueprint è salvato in app.config
       const sanitized = sanitizeBlueprint(appData.config);
+      console.log('[AppViewer] Sanitized blueprint:', sanitized ? `${sanitized.schema.tables.length} tabelle` : 'NULL');
+      
+      if (!sanitized) {
+        console.error('[AppViewer] sanitizeBlueprint returned null for config:', appData.config);
+      }
+      
       setBlueprint(sanitized);
 
       // Seleziona prima tabella di default
-      if (sanitized.schema?.tables?.[0]) {
+      if (sanitized?.schema?.tables?.[0]) {
         setSelectedTable(sanitized.schema.tables[0].name);
       }
     } catch (err) {

@@ -187,10 +187,14 @@ export async function POST(req: Request) {
     }
 
     const rawBlueprint = await blueprintRes.json();
+    console.log('[API /apps] Raw blueprint from backend:', JSON.stringify(rawBlueprint).slice(0, 500));
+    
     const blueprintPayload = rawBlueprint.blueprint || rawBlueprint;
     blueprintPayload.sector = normalizeSector(sector);
     if (logo) blueprintPayload.logo = logo;
+    
     const blueprint = sanitizeBlueprint(blueprintPayload);
+    console.log('[API /apps] Sanitized blueprint:', blueprint ? `${blueprint.schema?.tables?.length || 0} tabelle` : 'NULL');
 
     // Salva o recupera blueprint
     const normalizedSector = blueprint.sector;
