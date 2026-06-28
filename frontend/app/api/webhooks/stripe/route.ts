@@ -61,7 +61,7 @@ export async function POST(req: NextRequest) {
     // Verifica se il tenant esiste
     const { data: tenant, error: tenantError } = await supabase
       .from('tenants')
-      .select('id, plan')
+      .select('id, plan, app_limit, total_apps_created')
       .eq('id', tenantId)
       .single();
 
@@ -70,7 +70,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Tenant non trovato' }, { status: 404 });
     }
 
-    // Mappa plan_id → piano e slot (usiamo plan_id come chiave principale)
+    // Mappa plan_id → piano e slot aggiuntivi
     const planToConfig: Record<string, { plan: string; slots: number }> = {
       'starter': { plan: 'starter', slots: 1 },
       'pro': { plan: 'pro', slots: 5 },
@@ -79,13 +79,23 @@ export async function POST(req: NextRequest) {
 
     const planConfig = planToConfig[planId] || { plan: 'pro', slots: 5 };
 
-    // Aggiorna piano e resetta il contatore app create
+    // Logica upgrade: somma slot al limite attuale
+    const currentSlots = tenant.app_limit || 0;
+    const totalCreated = tenant.total_apps_created || 0;
+    const newSlotsTotal = currentSlots + planConfig.slots;
+    
+    // Determina il piano finale (quello più alto tra attuale e nuovo)
+    const planRank: Record<string, number> = { 'free': 0, 'starter': 1, 'pro': 2, 'business': 3 };
+    const currentRank = planRank[tenant.plan] || 0;
+    const newRank = planRank[planConfig.plan] || 0;
+    const finalPlan = newRank > currentRank ? planConfig.plan : tenant.plan;
+
+    // Aggiorna piano e somma slot (NON resettare il contatore)
     const { error: updateError } = await supabase
       .from('tenants')
       .update({ 
-        plan: planConfig.plan,
-        total_apps_created: 0,
-        app_limit: planConfig.slots
+        plan: finalPlan,
+        app_limit: newSlotsTotal
       })
       .eq('id', tenantId);
 
@@ -94,7 +104,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Errore aggiornamento' }, { status: 500 });
     }
 
-    console.log('[Webhook] Piano aggiornato a:', planConfig.plan, 'slots:', planConfig.slots, 'tenant:', tenantId);
+    console.log('[Webhook] Piano aggiornato a:', finalPlan, 'slot totali:', newSlotsTotal, 'slot aggiunti:', planConfig.slots, 'tenant:', tenantId);
   }
 
   return NextResponse.json({ received: true });

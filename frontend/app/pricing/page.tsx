@@ -262,14 +262,12 @@ export default function PricingPage() {
               <button
                 onClick={() => handleUpgrade(plan.id)}
                 className={`w-full py-4 rounded-xl font-bold transition-all ${
-                  currentPlan === plan.id
-                    ? 'bg-emerald-600 hover:bg-emerald-700 text-white'
-                    : plan.highlighted
+                  plan.highlighted
                     ? 'bg-indigo-600 hover:bg-indigo-700 text-white'
                     : 'bg-slate-800 hover:bg-slate-700 text-white'
                 }`}
               >
-                {currentPlan === plan.id ? 'Rigenera Slot' : 'Acquista Piano'}
+                {currentPlan === plan.id ? `Aggiungi ${plan.slots} Slot` : 'Acquista Piano'}
               </button>
             </div>
           ))}
