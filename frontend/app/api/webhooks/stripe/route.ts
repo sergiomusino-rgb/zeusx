@@ -82,13 +82,24 @@ export async function POST(req: NextRequest) {
     // Logica upgrade: somma slot al limite attuale
     const currentSlots = tenant.app_limit || 0;
     const totalCreated = tenant.total_apps_created || 0;
-    const newSlotsTotal = currentSlots + planConfig.slots;
     
-    // Determina il piano finale (quello più alto tra attuale e nuovo)
-    const planRank: Record<string, number> = { 'free': 0, 'starter': 1, 'pro': 2, 'business': 3 };
-    const currentRank = planRank[tenant.plan] || 0;
-    const newRank = planRank[planConfig.plan] || 0;
-    const finalPlan = newRank > currentRank ? planConfig.plan : tenant.plan;
+    let newSlotsTotal: number;
+    let finalPlan: string;
+
+    if (planId === 'extra_slot') {
+      // Acquisto slot extra: somma solo al limite, non cambia piano
+      const qty = parseInt(session.metadata?.quantity || '1', 10);
+      newSlotsTotal = currentSlots + qty;
+      finalPlan = tenant.plan; // Mantieni il piano attuale
+      console.log('[Webhook] Extra slots:', qty, 'new total:', newSlotsTotal);
+    } else {
+      // Acquisto piano: somma slot e aggiorna piano se superiore
+      newSlotsTotal = currentSlots + planConfig.slots;
+      const planRank: Record<string, number> = { 'free': 0, 'starter': 1, 'pro': 2, 'business': 3 };
+      const currentRank = planRank[tenant.plan] || 0;
+      const newRank = planRank[planConfig.plan] || 0;
+      finalPlan = newRank > currentRank ? planConfig.plan : tenant.plan;
+    }
 
     // Aggiorna piano e somma slot (NON resettare il contatore)
     const { error: updateError } = await supabase
@@ -104,7 +115,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Errore aggiornamento' }, { status: 500 });
     }
 
-    console.log('[Webhook] Piano aggiornato a:', finalPlan, 'slot totali:', newSlotsTotal, 'slot aggiunti:', planConfig.slots, 'tenant:', tenantId);
+    console.log('[Webhook] Piano aggiornato a:', finalPlan, 'slot totali:', newSlotsTotal, 'tenant:', tenantId);
   }
 
   return NextResponse.json({ received: true });

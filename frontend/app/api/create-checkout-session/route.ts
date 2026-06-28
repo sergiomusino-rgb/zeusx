@@ -22,9 +22,9 @@ const dbClient = createClient(
 
 export async function POST(req: NextRequest) {
   try {
-    const { priceId, planId } = await req.json();
+    const { priceId, planId, quantity = 1 } = await req.json();
 
-    if (!priceId || !planId) {
+    if (!planId) {
       return NextResponse.json({ error: 'Parametri mancanti' }, { status: 400 });
     }
 
@@ -101,6 +101,15 @@ export async function POST(req: NextRequest) {
       });
     }
 
+    // Gestione slot extra (15€ per slot)
+    const EXTRA_SLOT_PRICE_ID = process.env.NEXT_PUBLIC_EXTRA_SLOT_PRICE_ID || 'price_extra_slot_15';
+    const effectivePriceId = planId === 'extra_slot' ? (priceId || EXTRA_SLOT_PRICE_ID) : priceId;
+    const effectiveQuantity = planId === 'extra_slot' ? (quantity || 1) : 1;
+
+    if (!effectivePriceId) {
+      return NextResponse.json({ error: 'Price ID mancante' }, { status: 400 });
+    }
+
     // Crea il cliente Stripe (non salviamo stripe_customer_id nel DB perché la colonna non esiste)
     const customer = await stripe.customers.create({
       email: user.email,
@@ -118,8 +127,8 @@ export async function POST(req: NextRequest) {
       payment_method_types: ['card'],
       line_items: [
         {
-          price: priceId,
-          quantity: 1,
+          price: effectivePriceId,
+          quantity: effectiveQuantity,
         },
       ],
       success_url: `${req.nextUrl.origin}/dashboard?upgrade=success`,
@@ -127,7 +136,8 @@ export async function POST(req: NextRequest) {
       metadata: {
         tenant_id: tenant.id,
         plan_id: planId,
-        price_id: priceId,
+        price_id: effectivePriceId,
+        quantity: effectiveQuantity.toString(),
         supabase_user_id: user.id,
       },
     });

@@ -113,7 +113,7 @@ export default function PricingPage() {
     },
   ];
 
-  const handleUpgrade = async (planId: string) => {
+  const handleUpgrade = async (planId: string, quantity: number = 1) => {
     if (!userId) {
       alert('Devi effettuare il login per procedere');
       return;
@@ -144,7 +144,8 @@ export default function PricingPage() {
         },
         body: JSON.stringify({ 
           priceId: selectedPlan.priceId,
-          planId: planId
+          planId: planId,
+          quantity: quantity
         }),
       });
 
@@ -276,6 +277,32 @@ export default function PricingPage() {
           ))}
         </div>
 
+        {/* Slot Extra */}
+        {userId && (
+          <div className="mt-12 p-8 bg-gradient-to-br from-emerald-950/30 to-teal-950/30 rounded-2xl border border-emerald-800/50">
+            <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-6">
+              <div>
+                <h3 className="text-2xl font-bold text-emerald-400 mb-2">Slot Extra</h3>
+                <p className="text-slate-400">
+                  Hai finito gli slot? Aggiungine altri singolarmente senza cambiare piano.
+                </p>
+              </div>
+              <div className="flex items-center gap-4">
+                <div className="text-right">
+                  <div className="text-3xl font-bold text-white">€15</div>
+                  <div className="text-sm text-slate-400">per slot</div>
+                </div>
+                <button
+                  onClick={() => handleUpgrade('extra_slot', 1)}
+                  className="px-6 py-3 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-xl transition-all"
+                >
+                  + 1 Slot
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* Info fee mensili */}
         <div className="mt-16 p-8 bg-slate-900 rounded-2xl border border-slate-800">
           <h3 className="text-2xl font-bold mb-4">Come funziona il billing?</h3>
@@ -289,8 +316,8 @@ export default function PricingPage() {
               <p>Ogni app attiva costa il fee mensile del piano (dopo 30gg trial).</p>
             </div>
             <div>
-              <div className="font-semibold text-white mb-2">3. Rinnova quando serve</div>
-              <p>Esauriti gli slot, acquista un nuovo piano per crearne altre.</p>
+              <div className="font-semibold text-white mb-2">3. Slot extra</div>
+              <p>Esauriti gli slot, puoi aggiungerne altri singolarmente o acquistare un piano superiore.</p>
             </div>
           </div>
         </div>
