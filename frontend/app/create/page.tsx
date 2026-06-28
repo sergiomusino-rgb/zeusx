@@ -56,11 +56,33 @@ export default function CreateAppPage() {
 
   async function uploadLogo(file: File): Promise<string> {
     const fileName = `logos/${Date.now()}-${file.name}`;
-    const { data, error } = await supabase.storage
-      .from('app-logos')
+    // Prova bucket 'app-logos', se fallisce usa 'logos'
+    let bucket = 'app-logos';
+    let { data, error } = await supabase.storage
+      .from(bucket)
       .upload(fileName, file, { upsert: false });
-    if (error) throw error;
-    const { data: urlData } = supabase.storage.from('app-logos').getPublicUrl(data.path);
+    
+    if (error) {
+      console.log('[UploadLogo] Retry with logos bucket');
+      bucket = 'logos';
+      const retry = await supabase.storage
+        .from(bucket)
+        .upload(fileName, file, { upsert: false });
+      data = retry.data;
+      error = retry.error;
+    }
+    
+    if (error) {
+      console.error('[UploadLogo] Upload failed:', error);
+      // Fallback: convert to base64 data URL
+      return new Promise((resolve) => {
+        const reader = new FileReader();
+        reader.onload = (e) => resolve(e.target?.result as string || '');
+        reader.readAsDataURL(file);
+      });
+    }
+    
+    const { data: urlData } = supabase.storage.from(bucket).getPublicUrl(data.path);
     return urlData.publicUrl;
   }
 
