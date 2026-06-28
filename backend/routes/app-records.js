@@ -170,6 +170,9 @@ router.post('/apps', authMiddleware, async (req, res) => {
       prompt: prompt || '',
     };
 
+    console.log('[CreateApp] Blueprint schema tables:', blueprint.schema?.tables?.length || 0);
+    console.log('[CreateApp] Config schema tables:', config.schema?.tables?.length || 0);
+
     // Crea app
     console.log('[CreateApp] Inserimento app nel database...');
     const { data: app, error: appError } = await supabaseAdmin

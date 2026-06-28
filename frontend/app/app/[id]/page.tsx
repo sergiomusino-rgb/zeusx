@@ -43,11 +43,13 @@ export default function AppViewerPage() {
         return;
       }
 
-      console.log('[AppViewer] Raw config from DB:', JSON.stringify(appData.config).slice(0, 500));
+      console.log('[AppViewer] Raw config from DB:', JSON.stringify(appData.config));
+      console.log('[AppViewer] Config keys:', Object.keys(appData.config || {}));
 
       // Il blueprint è salvato in app.config
       const sanitized = sanitizeBlueprint(appData.config);
-      console.log('[AppViewer] Sanitized blueprint:', sanitized ? `${sanitized.schema.tables.length} tabelle` : 'NULL');
+      console.log('[AppViewer] Sanitized blueprint:', sanitized);
+      console.log('[AppViewer] Tables count:', sanitized?.schema?.tables?.length || 0);
       
       if (!sanitized) {
         console.error('[AppViewer] sanitizeBlueprint returned null for config:', appData.config);
