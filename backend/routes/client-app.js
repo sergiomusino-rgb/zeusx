@@ -60,8 +60,10 @@ router.post('/a/:slug', async (req, res) => {
     console.log('[/api/a/:slug] appConfig.schema:', appConfig.schema);
     console.log('[/api/a/:slug] appConfig.blueprint:', appConfig.blueprint);
     
-    // Estrai le tabelle dal blueprint salvato
-    const tables = appConfig.schema?.tables || appConfig.blueprint?.schema?.tables || appConfig.tables || [];
+    // Estrai le tabelle dal blueprint salvato (usa il primo array non vuoto)
+    const tables = (appConfig.schema?.tables?.length ? appConfig.schema.tables : null)
+      || (appConfig.blueprint?.schema?.tables?.length ? appConfig.blueprint.schema.tables : null)
+      || (appConfig.tables?.length ? appConfig.tables : []);
     
     console.log('[/api/a/:slug] tables extracted:', tables.length, tables);
     
