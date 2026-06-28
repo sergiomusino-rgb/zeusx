@@ -260,14 +260,17 @@ export default function PricingPage() {
               </ul>
 
               <button
-                onClick={() => handleUpgrade(plan.id)}
+                onClick={() => plan.id !== 'starter' && handleUpgrade(plan.id)}
+                disabled={plan.id === 'starter'}
                 className={`w-full py-4 rounded-xl font-bold transition-all ${
-                  plan.highlighted
+                  plan.id === 'starter'
+                    ? 'bg-slate-800 text-slate-500 cursor-not-allowed'
+                    : plan.highlighted
                     ? 'bg-indigo-600 hover:bg-indigo-700 text-white'
                     : 'bg-slate-800 hover:bg-slate-700 text-white'
                 }`}
               >
-                {currentPlan === plan.id ? `Aggiungi ${plan.slots} Slot` : 'Acquista Piano'}
+                {plan.id === 'starter' ? 'Già incluso' : 'Acquista Piano'}
               </button>
             </div>
           ))}
