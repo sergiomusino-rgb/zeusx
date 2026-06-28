@@ -276,6 +276,8 @@ export default function PricingPage() {
                       ? 'bg-emerald-600 text-white cursor-default'
                       : plan.id === 'starter'
                       ? 'bg-slate-800 text-slate-500 cursor-not-allowed'
+                      : plan.id === 'business'
+                      ? 'bg-amber-600 hover:bg-amber-500 text-white'
                       : plan.highlighted
                       ? 'bg-indigo-600 hover:bg-indigo-700 text-white'
                       : 'bg-slate-800 hover:bg-slate-700 text-white'
