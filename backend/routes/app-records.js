@@ -77,11 +77,14 @@ async function tenantMiddleware(req, res, next) {
 router.post('/apps', authMiddleware, async (req, res) => {
   try {
     const { sector, name, prompt, logo } = req.body;
+    console.log('[CreateApp] Ricevuta richiesta:', { sector, name, hasPrompt: !!prompt, hasLogo: !!logo });
+    
     if (!sector || !name) {
       return res.status(400).json({ error: 'Settore e nome obbligatori' });
     }
 
     const supabaseAdmin = getSupabase();
+    console.log('[CreateApp] Supabase admin creato');
     
     // Recupera tenant dell'utente
     const { data: membership, error: memberError } = await supabaseAdmin
@@ -91,11 +94,14 @@ router.post('/apps', authMiddleware, async (req, res) => {
       .limit(1)
       .single();
 
+    console.log('[CreateApp] Membership query:', { memberError, hasMembership: !!membership });
+
     if (memberError || !membership) {
       return res.status(403).json({ error: 'Nessun tenant associato' });
     }
 
     const tenantId = membership.tenant_id;
+    console.log('[CreateApp] Tenant ID:', tenantId);
     
     // Recupera blueprint dal settore
     const { data: blueprint, error: blueprintError } = await supabaseAdmin
@@ -103,6 +109,8 @@ router.post('/apps', authMiddleware, async (req, res) => {
       .select('*')
       .eq('sector', sector)
       .single();
+
+    console.log('[CreateApp] Blueprint query:', { blueprintError, hasBlueprint: !!blueprint });
 
     if (blueprintError || !blueprint) {
       return res.status(404).json({ error: 'Settore non trovato' });
@@ -115,6 +123,8 @@ router.post('/apps', authMiddleware, async (req, res) => {
       .eq('id', tenantId)
       .single();
 
+    console.log('[CreateApp] Tenant query:', { tenantError, hasTenant: !!tenant });
+
     if (tenantError || !tenant) {
       return res.status(404).json({ error: 'Tenant non trovato' });
     }
@@ -125,6 +135,8 @@ router.post('/apps', authMiddleware, async (req, res) => {
       .select('*', { count: 'exact', head: true })
       .eq('tenant_id', tenantId)
       .eq('is_active', true);
+
+    console.log('[CreateApp] Count query:', { count, countError });
 
     if (countError) {
       console.error('Count apps error:', countError);
@@ -159,6 +171,7 @@ router.post('/apps', authMiddleware, async (req, res) => {
     };
 
     // Crea app
+    console.log('[CreateApp] Inserimento app nel database...');
     const { data: app, error: appError } = await supabaseAdmin
       .from('apps')
       .insert({
@@ -174,8 +187,10 @@ router.post('/apps', authMiddleware, async (req, res) => {
       .select()
       .single();
 
+    console.log('[CreateApp] Insert result:', { appError, hasApp: !!app });
+
     if (appError) {
-      console.error('Create app error:', appError);
+      console.error('[CreateApp] Errore inserimento:', appError);
       return res.status(500).json({ error: appError.message || 'Errore creazione app' });
     }
 
