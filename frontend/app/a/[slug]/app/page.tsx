@@ -1644,6 +1644,13 @@ export default function ViewerProFinal() {
         const raw = localStorage.getItem(sessionKey);
         if (raw) {
           const parsed: AppSession = JSON.parse(raw);
+          // Verifica che la sessione abbia appInfo (struttura nuova)
+          if (!parsed.appInfo) {
+            // Sessione vecchia, pulisci e mostra login
+            localStorage.removeItem(sessionKey);
+            setShowLogin(true);
+            return;
+          }
           if (parsed.appInfo?.blocked) {
             window.location.href = `/a/${slug}/blocked`;
             return;
