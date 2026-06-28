@@ -15,7 +15,8 @@ import {
 // ─── Interfaces ───────────────────────────────────────────────────────────────
 
 interface FieldDef {
-  name: string;
+  name?: string;
+  id?: string;
   label: string;
   type: string;
   options?: string[];
@@ -28,6 +29,11 @@ interface TableDef {
   labelPlural: string;
   icon: string;
   fields: FieldDef[];
+}
+
+// Helper per ottenere il nome del campo (supporta sia name che id)
+function fieldName(f: FieldDef): string {
+  return f.name || f.id || '';
 }
 
 interface AppConfig {
@@ -496,7 +502,8 @@ function DataTable({
     const q = searchQuery.toLowerCase();
     return records.filter((r) =>
       table.fields.some((f) => {
-        const val = r[f.name];
+        const fn = fieldName(f);
+        const val = r.data?.[fn];
         return val != null && String(val).toLowerCase().includes(q);
       })
     );
@@ -568,7 +575,7 @@ function DataTable({
               <tr style={{ background: colors.cardBgAlt }}>
                 {table.fields.map((field) => (
                   <th
-                    key={field.name}
+                    key={fieldName(field)}
                     style={{
                       textAlign: 'left', padding: '12px 16px',
                       borderBottom: `2px solid ${colors.border}`,
@@ -625,7 +632,7 @@ function DataTable({
                   >
                     {table.fields.map((field) => (
                       <td
-                        key={field.name}
+                        key={fieldName(field)}
                         style={{
                           padding: '12px 16px', color: colors.text,
                           fontSize: '14px', whiteSpace: 'nowrap',
@@ -634,10 +641,10 @@ function DataTable({
                         }}
                       >
                         {field.type === 'checkbox'
-                          ? (record[field.name] ? 'Si' : 'No')
+                          ? ((record.data?.[fieldName(field)]) ? 'Si' : 'No')
                           : field.type === 'select'
-                            ? String(record[field.name] ?? '')
-                            : String(record[field.name] ?? '')}
+                            ? String(record.data?.[fieldName(field)] ?? '')
+                            : String(record.data?.[fieldName(field)] ?? '')}
                       </td>
                     ))}
                     <td style={{ padding: '12px 16px', textAlign: 'center' }}>
@@ -711,12 +718,12 @@ function RecordModal({ table, record, onSave, onClose, saving, colors }: RecordM
   const [formData, setFormData] = useState<Record<string, unknown>>(() => {
     if (record) {
       const data: Record<string, unknown> = {};
-      table.fields.forEach((f) => { data[f.name] = record[f.name] ?? ''; });
+      table.fields.forEach((f) => { const fn = fieldName(f); data[fn] = record.data?.[fn] ?? ''; });
       return data;
     }
     const data: Record<string, unknown> = {};
     table.fields.forEach((f) => {
-      data[f.name] = f.type === 'checkbox' ? false : '';
+      data[fieldName(f)] = f.type === 'checkbox' ? false : '';
     });
     return data;
   });
@@ -778,8 +785,10 @@ function RecordModal({ table, record, onSave, onClose, saving, colors }: RecordM
 
         {/* Form */}
         <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '18px' }}>
-          {table.fields.map((field) => (
-            <div key={field.name}>
+          {table.fields.map((field) => {
+            const fn = fieldName(field);
+            return (
+            <div key={fn}>
               <label style={labelStyle}>
                 {field.label}
                 {field.required && <span style={{ color: colors.danger, marginLeft: '4px' }}>*</span>}
@@ -787,8 +796,8 @@ function RecordModal({ table, record, onSave, onClose, saving, colors }: RecordM
 
               {field.type === 'textarea' ? (
                 <textarea
-                  value={String(formData[field.name] ?? '')}
-                  onChange={(e) => handleChange(field.name, e.target.value)}
+                  value={String(formData[fn] ?? '')}
+                  onChange={(e) => handleChange(fn, e.target.value)}
                   rows={3}
                   style={{ ...inputStyle, resize: 'vertical' }}
                   onFocus={(e) => { e.currentTarget.style.borderColor = colors.primary; }}
@@ -797,8 +806,8 @@ function RecordModal({ table, record, onSave, onClose, saving, colors }: RecordM
               ) : field.type === 'select' ? (
                 <div style={{ position: 'relative' }}>
                   <select
-                    value={String(formData[field.name] ?? '')}
-                    onChange={(e) => handleChange(field.name, e.target.value)}
+                    value={String(formData[fn] ?? '')}
+                    onChange={(e) => handleChange(fn, e.target.value)}
                     style={{ ...inputStyle, appearance: 'none', paddingRight: '36px' }}
                     onFocus={(e) => { e.currentTarget.style.borderColor = colors.primary; }}
                     onBlur={(e) => { e.currentTarget.style.borderColor = colors.inputBorder; }}
@@ -821,19 +830,19 @@ function RecordModal({ table, record, onSave, onClose, saving, colors }: RecordM
                 <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer' }}>
                   <input
                     type="checkbox"
-                    checked={Boolean(formData[field.name])}
-                    onChange={(e) => handleChange(field.name, e.target.checked)}
+                    checked={Boolean(formData[fn])}
+                    onChange={(e) => handleChange(fn, e.target.checked)}
                     style={{ width: '18px', height: '18px', accentColor: colors.primary }}
                   />
                   <span style={{ color: colors.text, fontSize: '14px' }}>
-                    {formData[field.name] ? 'Attivo' : 'Non attivo'}
+                    {formData[fn] ? 'Attivo' : 'Non attivo'}
                   </span>
                 </label>
               ) : field.type === 'number' ? (
                 <input
                   type="number"
-                  value={String(formData[field.name] ?? '')}
-                  onChange={(e) => handleChange(field.name, e.target.value)}
+                  value={String(formData[fn] ?? '')}
+                  onChange={(e) => handleChange(fn, e.target.value)}
                   style={inputStyle}
                   onFocus={(e) => { e.currentTarget.style.borderColor = colors.primary; }}
                   onBlur={(e) => { e.currentTarget.style.borderColor = colors.inputBorder; }}
@@ -841,8 +850,8 @@ function RecordModal({ table, record, onSave, onClose, saving, colors }: RecordM
               ) : field.type === 'date' ? (
                 <input
                   type="date"
-                  value={String(formData[field.name] ?? '')}
-                  onChange={(e) => handleChange(field.name, e.target.value)}
+                  value={String(formData[fn] ?? '')}
+                  onChange={(e) => handleChange(fn, e.target.value)}
                   style={inputStyle}
                   onFocus={(e) => { e.currentTarget.style.borderColor = colors.primary; }}
                   onBlur={(e) => { e.currentTarget.style.borderColor = colors.inputBorder; }}
@@ -850,15 +859,16 @@ function RecordModal({ table, record, onSave, onClose, saving, colors }: RecordM
               ) : (
                 <input
                   type="text"
-                  value={String(formData[field.name] ?? '')}
-                  onChange={(e) => handleChange(field.name, e.target.value)}
+                  value={String(formData[fn] ?? '')}
+                  onChange={(e) => handleChange(fn, e.target.value)}
                   style={inputStyle}
                   onFocus={(e) => { e.currentTarget.style.borderColor = colors.primary; }}
                   onBlur={(e) => { e.currentTarget.style.borderColor = colors.inputBorder; }}
                 />
               )}
             </div>
-          ))}
+            );
+          })}
 
           {/* Buttons */}
           <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '12px', marginTop: '8px' }}>
