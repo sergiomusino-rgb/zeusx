@@ -18,6 +18,10 @@ export default function ClientLoginPage() {
   const [email, setEmail] = useState('');
   const [error, setError] = useState('');
   const [submitting, setSubmitting] = useState(false);
+  const [showReset, setShowReset] = useState(false);
+  const [resetEmail, setResetEmail] = useState('');
+  const [resetMessage, setResetMessage] = useState('');
+  const [resetting, setResetting] = useState(false);
 
   useEffect(() => {
     async function loadApp() {
@@ -93,6 +97,34 @@ export default function ClientLoginPage() {
     }
   }
 
+  async function handleReset(e: React.FormEvent) {
+    e.preventDefault();
+    setResetMessage('');
+    setResetting(true);
+
+    try {
+      const res = await fetch(`/api/a/${slug}/reset-password`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: resetEmail }),
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        setResetMessage(`Errore: ${data.error}`);
+        setResetting(false);
+        return;
+      }
+
+      setResetMessage(`Nuova password generata: ${data.new_password}`);
+      setResetting(false);
+    } catch {
+      setResetMessage('Errore di connessione');
+      setResetting(false);
+    }
+  }
+
   if (loading) {
     return (
       <div className="min-h-screen bg-slate-950 text-white flex items-center justify-center">
@@ -147,6 +179,19 @@ export default function ClientLoginPage() {
             />
           </div>
 
+          {app?.client_email && (
+            <button
+              type="button"
+              onClick={() => {
+                setShowReset(true);
+                setResetEmail(app.client_email || '');
+              }}
+              className="text-xs text-slate-400 hover:text-indigo-400 transition underline"
+            >
+              Password dimenticata?
+            </button>
+          )}
+
           <button
             type="submit"
             disabled={submitting}
@@ -155,6 +200,57 @@ export default function ClientLoginPage() {
             {submitting ? 'Verifica...' : 'Accedi'}
           </button>
         </form>
+
+        {showReset && (
+          <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50">
+            <div className="bg-slate-900 border border-slate-800 rounded-2xl p-8 max-w-md w-full mx-4">
+              <h3 className="text-2xl font-bold mb-4">Recupera Password</h3>
+              <p className="text-sm text-slate-400 mb-6">
+                Inserisci la tua email per generare una nuova password
+              </p>
+              
+              <form onSubmit={handleReset} className="space-y-4">
+                <div>
+                  <label className="text-xs font-semibold text-slate-400">Email</label>
+                  <input
+                    type="email"
+                    required
+                    value={resetEmail}
+                    onChange={(e) => setResetEmail(e.target.value)}
+                    placeholder="nome@esempio.com"
+                    className="mt-1 w-full rounded-xl border border-slate-800 bg-slate-950 p-3 text-sm text-white placeholder-slate-600 focus:border-indigo-500 focus:outline-none transition"
+                  />
+                </div>
+
+                {resetMessage && (
+                  <div className="rounded-xl border border-emerald-500/30 bg-emerald-500/10 p-3 text-sm text-emerald-400">
+                    {resetMessage}
+                  </div>
+                )}
+
+                <div className="flex gap-3">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setShowReset(false);
+                      setResetMessage('');
+                    }}
+                    className="flex-1 rounded-xl border border-slate-800 py-3 text-sm font-medium text-slate-400 hover:bg-slate-800 transition"
+                  >
+                    Annulla
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={resetting}
+                    className="flex-1 rounded-xl bg-indigo-600 py-3 text-sm font-bold text-white hover:bg-indigo-500 transition disabled:opacity-50"
+                  >
+                    {resetting ? 'Generazione...' : 'Genera Password'}
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );
