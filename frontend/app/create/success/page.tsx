@@ -192,8 +192,8 @@ function SuccessContent() {
           <div className="bg-amber-500/10 border border-amber-500/30 rounded-lg p-4 text-sm text-amber-300">
             <p className="font-semibold mb-1">Importante:</p>
             <p>
-              Comunica queste credenziali al tuo cliente. Al primo accesso dovrà inserire la sua email, 
-              poi potrà usare solo la password. Il cliente potrà cambiare la password in qualsiasi momento.
+              Comunica link e password al tuo cliente. L&apos;accesso richiede sempre email e password. 
+              Il cliente potrà cambiare la password in qualsiasi momento dall&apos;interno dell&apos;app.
             </p>
           </div>
         </div>
