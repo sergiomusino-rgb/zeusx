@@ -168,20 +168,19 @@ export default function ClientLoginPage() {
           </div>
         )}
 
-        <form onSubmit={handleLogin} className="space-y-6">
-          {!app?.client_email && (
-            <div>
-              <label className="text-xs font-semibold text-slate-400">Email</label>
-              <input
-                type="email"
-                required
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                placeholder="nome@esempio.com"
-                className="mt-1 w-full rounded-xl border border-slate-800 bg-slate-950 p-3 text-sm text-white placeholder-slate-600 focus:border-indigo-500 focus:outline-none transition"
-              />
-            </div>
-          )}
+        <form onSubmit={handleLogin} className="space-y-6" autoComplete="off">
+          <div>
+            <label className="text-xs font-semibold text-slate-400">Email</label>
+            <input
+              type="email"
+              required
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              placeholder="nome@esempio.com"
+              autoComplete="off"
+              className="mt-1 w-full rounded-xl border border-slate-800 bg-slate-950 p-3 text-sm text-white placeholder-slate-600 focus:border-indigo-500 focus:outline-none transition"
+            />
+          </div>
 
           <div>
             <label className="text-xs font-semibold text-slate-400">Password</label>

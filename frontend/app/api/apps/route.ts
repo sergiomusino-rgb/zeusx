@@ -248,11 +248,12 @@ export async function POST(req: Request) {
         expires_at: expiresAt.toISOString(),
         slug,
         client_password: clientPassword,
+        client_email: user.email, // Email di default dell'utente ZeusX
         client_active: true,
         expiry_warning_sent: false,
         is_active: true,
       })
-      .select('id, name, trial_ends_at, expires_at, slug, client_password')
+      .select('id, name, trial_ends_at, expires_at, slug, client_password, client_email')
       .single();
 
     if (appError || !app) {
