@@ -73,6 +73,111 @@ async function tenantMiddleware(req, res, next) {
   next();
 }
 
+// POST /api/apps - Crea nuova app
+router.post('/apps', authMiddleware, tenantMiddleware, async (req, res) => {
+  try {
+    const { sector, name, prompt, logo } = req.body;
+    if (!sector || !name) {
+      return res.status(400).json({ error: 'Settore e nome obbligatori' });
+    }
+
+    const supabaseAdmin = getSupabase();
+    
+    // Recupera blueprint dal settore
+    const { data: blueprint, error: blueprintError } = await supabaseAdmin
+      .from('blueprints')
+      .select('*')
+      .eq('sector', sector)
+      .single();
+
+    if (blueprintError || !blueprint) {
+      return res.status(404).json({ error: 'Settore non trovato' });
+    }
+
+    // Verifica limite app per il tenant
+    const { data: tenant, error: tenantError } = await supabaseAdmin
+      .from('tenants')
+      .select('app_limit, plan')
+      .eq('id', req.tenantId)
+      .single();
+
+    if (tenantError || !tenant) {
+      return res.status(404).json({ error: 'Tenant non trovato' });
+    }
+
+    // Conta app attive del tenant
+    const { count, error: countError } = await supabaseAdmin
+      .from('apps')
+      .select('*', { count: 'exact', head: true })
+      .eq('tenant_id', req.tenantId)
+      .eq('is_active', true);
+
+    if (countError) {
+      console.error('Count apps error:', countError);
+      return res.status(500).json({ error: 'Errore verifica limite app' });
+    }
+
+    if (count !== null && count >= tenant.app_limit) {
+      return res.status(403).json({ 
+        error: 'UpgradeToProRequired',
+        message: 'Hai raggiunto il limite di app. Esegui l\'upgrade per continuare.'
+      });
+    }
+
+    // Genera slug univoco
+    const slug = `${name.toLowerCase().replace(/[^a-z0-9]+/g, '-')}-${Date.now().toString(36)}`;
+    
+    // Genera password casuale per accesso client
+    const clientPassword = Math.random().toString(36).slice(-8);
+
+    // Costruisci config con blueprint
+    const config = {
+      schema: blueprint.schema,
+      ui: blueprint.ui_config,
+      blueprint: {
+        sector,
+        name: blueprint.display_name,
+        description: blueprint.description,
+      },
+      appName: name,
+      logo: logo || '',
+      prompt: prompt || '',
+    };
+
+    // Crea app
+    const { data: app, error: appError } = await supabaseAdmin
+      .from('apps')
+      .insert({
+        tenant_id: req.tenantId,
+        blueprint_id: blueprint.id,
+        name,
+        slug,
+        config,
+        client_password: clientPassword,
+        trial_ends_at: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
+        is_active: true,
+      })
+      .select()
+      .single();
+
+    if (appError) {
+      console.error('Create app error:', appError);
+      return res.status(500).json({ error: appError.message || 'Errore creazione app' });
+    }
+
+    console.log(`[CreateApp] App creata: ${app.id} per tenant ${req.tenantId}`);
+    
+    res.status(201).json({ 
+      app,
+      clientPassword,
+      accessUrl: `${process.env.APP_URL || 'https://zeusx-zwu8.vercel.app'}/a/${slug}`
+    });
+  } catch (err) {
+    console.error('Create app exception:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // GET /api/apps/:appId/records?table=clients
 router.get('/apps/:appId/records', authMiddleware, tenantMiddleware, async (req, res) => {
   try {
