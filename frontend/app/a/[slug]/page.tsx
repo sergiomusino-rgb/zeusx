@@ -88,8 +88,20 @@ export default function ClientLoginPage() {
         }
       }
 
-      // Salva sessione
-      localStorage.setItem(`app_session_${slug}`, JSON.stringify({ slug, password }));
+      // Carica le info dell'app per la sessione
+      const { data: appInfoData } = await supabase
+        .from('apps')
+        .select('config')
+        .eq('id', appData.id)
+        .single();
+
+      // Salva sessione con appInfo
+      const sessionData = {
+        slug,
+        password,
+        appInfo: appInfoData?.config || {},
+      };
+      localStorage.setItem(`app_session_${slug}`, JSON.stringify(sessionData));
       window.location.href = `/a/${slug}/app`;
     } catch {
       setError('Errore di connessione');
