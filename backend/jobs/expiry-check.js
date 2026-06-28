@@ -16,7 +16,6 @@ const supabase = createClient(
   process.env.SUPABASE_SERVICE_KEY
 );
 
-const resend = new Resend(process.env.RESEND_API_KEY);
 const FROM_EMAIL = process.env.RESEND_FROM_EMAIL || 'noreply@zeusx.com';
 
 // Esegui controllo ogni giorno alle 9:00 AM
