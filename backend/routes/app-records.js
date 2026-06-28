@@ -123,7 +123,7 @@ router.post('/apps', authMiddleware, async (req, res) => {
     const { count, error: countError } = await supabaseAdmin
       .from('apps')
       .select('*', { count: 'exact', head: true })
-      .eq('tenant_id', req.tenantId)
+      .eq('tenant_id', tenantId)
       .eq('is_active', true);
 
     if (countError) {
