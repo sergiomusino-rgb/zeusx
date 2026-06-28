@@ -69,7 +69,7 @@ export default function PricingPage() {
       monthlyFee: '50',
       slots: '1',
       features: [
-        '1 slot app',
+        '1 slot app incluso',
         'Fee mensile: 50€/app (dopo 1 mese gratis)',
         'Trial 30 giorni inclusi',
         'Supporto email'
@@ -130,9 +130,19 @@ export default function PricingPage() {
       return;
     }
 
-    // Trova il piano selezionato
-    const selectedPlan = plans.find(p => p.id === planId);
-    if (!selectedPlan) return;
+    let priceId: string;
+    if (planId === 'extra_slot') {
+      priceId = process.env.NEXT_PUBLIC_EXTRA_SLOT_PRICE_ID || '';
+      if (!priceId) {
+        alert('Slot extra non disponibili al momento. Riprova più tardi.');
+        return;
+      }
+    } else {
+      // Trova il piano selezionato
+      const selectedPlan = plans.find(p => p.id === planId);
+      if (!selectedPlan) return;
+      priceId = selectedPlan.priceId;
+    }
 
     try {
       const res = await fetch('/api/create-checkout-session', {
@@ -142,7 +152,7 @@ export default function PricingPage() {
           'Authorization': `Bearer ${token}`,
         },
         body: JSON.stringify({ 
-          priceId: selectedPlan.priceId,
+          priceId,
           planId: planId,
           quantity: quantity
         }),
@@ -250,10 +260,10 @@ export default function PricingPage() {
 
                 <div className="mb-6 p-4 bg-slate-800/50 rounded-xl">
                   <div className="text-sm font-semibold text-slate-300 mb-1">
-                    {plan.slots} slot app inclusi
+                    {plan.slots} slot app {plan.id === 'starter' ? 'incluso' : 'inclusi'}
                   </div>
                   <div className="text-xs text-slate-400">
-                    Crea fino a {plan.slots} gestionali
+                    Crea fino a {plan.slots} {plan.id === 'starter' ? 'gestionale' : 'gestionali'}
                   </div>
                 </div>
 
