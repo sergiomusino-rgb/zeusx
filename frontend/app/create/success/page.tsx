@@ -10,6 +10,9 @@ function SuccessContent() {
   const [password, setPassword] = useState('');
   const [appName, setAppName] = useState('');
   const [copied, setCopied] = useState<'link' | 'password' | null>(null);
+  const [clientEmail, setClientEmail] = useState('');
+  const [savingEmail, setSavingEmail] = useState(false);
+  const [emailSaved, setEmailSaved] = useState(false);
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
