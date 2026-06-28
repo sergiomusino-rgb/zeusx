@@ -212,68 +212,80 @@ export default function PricingPage() {
         )}
 
         <div className="grid md:grid-cols-3 gap-8">
-          {plans.map((plan) => (
-            <div 
-              key={plan.id}
-              className={`relative p-8 rounded-2xl border transition-all ${
-                plan.highlighted 
-                  ? 'border-indigo-500 bg-gradient-to-br from-indigo-950/50 to-purple-950/50 shadow-2xl shadow-indigo-500/20 scale-105' 
-                  : 'border-slate-800 bg-slate-900 hover:border-slate-700'
-              }`}
-            >
-              {plan.highlighted && (
-                <div className="absolute -top-4 left-1/2 -translate-x-1/2 bg-indigo-600 px-4 py-1 rounded-full text-sm font-bold">
-                  PIÙ POPOLARE
-                </div>
-              )}
-
-              <h2 className="text-3xl font-black mb-4">{plan.name}</h2>
-              
-              <div className="mb-6">
-                <div className="flex items-baseline gap-2">
-                  <span className="text-5xl font-bold">€{plan.setupPrice}</span>
-                  <span className="text-slate-400">setup</span>
-                </div>
-                <div className="text-sm text-slate-400 mt-2">
-                  + {plan.monthlyFee}€/mese per app attiva
-                </div>
-              </div>
-
-              <div className="mb-6 p-4 bg-slate-800/50 rounded-xl">
-                <div className="text-sm font-semibold text-slate-300 mb-1">
-                  {plan.slots} slot app inclusi
-                </div>
-                <div className="text-xs text-slate-400">
-                  Crea fino a {plan.slots} gestionali
-                </div>
-              </div>
-
-              <ul className="space-y-3 mb-8">
-                {plan.features.map((feature, idx) => (
-                  <li key={idx} className="flex items-start gap-2 text-sm text-slate-300">
-                    <svg className="w-5 h-5 text-emerald-400 flex-shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                    </svg>
-                    {feature}
-                  </li>
-                ))}
-              </ul>
-
-              <button
-                onClick={() => plan.id !== 'starter' && handleUpgrade(plan.id)}
-                disabled={plan.id === 'starter'}
-                className={`w-full py-4 rounded-xl font-bold transition-all ${
-                  plan.id === 'starter'
-                    ? 'bg-slate-800 text-slate-500 cursor-not-allowed'
-                    : plan.highlighted
-                    ? 'bg-indigo-600 hover:bg-indigo-700 text-white'
-                    : 'bg-slate-800 hover:bg-slate-700 text-white'
+          {plans.map((plan) => {
+            const isCurrentPlan = currentPlan === plan.id;
+            return (
+              <div 
+                key={plan.id}
+                className={`relative p-8 rounded-2xl border transition-all ${
+                  isCurrentPlan
+                    ? 'border-emerald-500 bg-gradient-to-br from-emerald-950/30 to-green-950/30 shadow-2xl shadow-emerald-500/20' 
+                    : plan.highlighted 
+                    ? 'border-indigo-500 bg-gradient-to-br from-indigo-950/50 to-purple-950/50 shadow-2xl shadow-indigo-500/20 scale-105' 
+                    : 'border-slate-800 bg-slate-900 hover:border-slate-700'
                 }`}
               >
-                {plan.id === 'starter' ? 'Già incluso' : 'Acquista Piano'}
-              </button>
-            </div>
-          ))}
+                {isCurrentPlan && (
+                  <div className="absolute -top-4 left-1/2 -translate-x-1/2 bg-emerald-600 px-4 py-1 rounded-full text-sm font-bold">
+                    IL TUO PIANO
+                  </div>
+                )}
+                {!isCurrentPlan && plan.highlighted && (
+                  <div className="absolute -top-4 left-1/2 -translate-x-1/2 bg-indigo-600 px-4 py-1 rounded-full text-sm font-bold">
+                    PIÙ POPOLARE
+                  </div>
+                )}
+
+                <h2 className="text-3xl font-black mb-4">{plan.name}</h2>
+                
+                <div className="mb-6">
+                  <div className="flex items-baseline gap-2">
+                    <span className="text-5xl font-bold">€{plan.setupPrice}</span>
+                    <span className="text-slate-400">setup</span>
+                  </div>
+                  <div className="text-sm text-slate-400 mt-2">
+                    + {plan.monthlyFee}€/mese per app attiva
+                  </div>
+                </div>
+
+                <div className="mb-6 p-4 bg-slate-800/50 rounded-xl">
+                  <div className="text-sm font-semibold text-slate-300 mb-1">
+                    {plan.slots} slot app inclusi
+                  </div>
+                  <div className="text-xs text-slate-400">
+                    Crea fino a {plan.slots} gestionali
+                  </div>
+                </div>
+
+                <ul className="space-y-3 mb-8">
+                  {plan.features.map((feature, idx) => (
+                    <li key={idx} className="flex items-start gap-2 text-sm text-slate-300">
+                      <svg className="w-5 h-5 text-emerald-400 flex-shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                      </svg>
+                      {feature}
+                    </li>
+                  ))}
+                </ul>
+
+                <button
+                  onClick={() => !isCurrentPlan && plan.id !== 'starter' && handleUpgrade(plan.id)}
+                  disabled={isCurrentPlan || plan.id === 'starter'}
+                  className={`w-full py-4 rounded-xl font-bold transition-all ${
+                    isCurrentPlan
+                      ? 'bg-emerald-600 text-white cursor-default'
+                      : plan.id === 'starter'
+                      ? 'bg-slate-800 text-slate-500 cursor-not-allowed'
+                      : plan.highlighted
+                      ? 'bg-indigo-600 hover:bg-indigo-700 text-white'
+                      : 'bg-slate-800 hover:bg-slate-700 text-white'
+                  }`}
+                >
+                  {isCurrentPlan ? '✓ Piano Attuale' : plan.id === 'starter' ? 'Già incluso' : 'Acquista Piano'}
+                </button>
+              </div>
+            );
+          })}
         </div>
 
         {/* Slot Extra */}
