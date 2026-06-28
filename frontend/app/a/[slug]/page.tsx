@@ -34,6 +34,8 @@ export default function ClientLoginPage() {
         .eq('client_active', true)
         .single();
 
+      console.log('[Login] loadApp:', { data, error: error?.message });
+
       if (error || !data) {
         // App non trovata o bloccata
         window.location.href = `/a/${slug}/blocked`;
