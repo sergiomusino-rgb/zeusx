@@ -36,14 +36,16 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ tenant: existingTenant }, { status: 200 });
     }
 
-    // Crea il tenant
+    // Crea il tenant con piano starter (1 slot gratuito)
     const { data: tenant, error: tenantError } = await supabase
       .from('tenants')
       .insert({
         owner_id: user.id,
         name,
         slug,
-        plan: 'free',
+        plan: 'starter',
+        app_limit: 1,
+        total_apps_created: 0,
       })
       .select()
       .single();
