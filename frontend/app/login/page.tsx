@@ -22,10 +22,56 @@ export default function LoginPage() {
     try {
       if (isRegistering) {
         // Registrazione nuovo utente
-        const { error } = await supabase.auth.signUp({ email, password });
-        if (error) throw error;
-        alert('Registrazione completata con successo! Ora puoi accedere.');
-        setIsRegistering(false);
+        const { data: signUpData, error: signUpError } = await supabase.auth.signUp({ 
+          email, 
+          password,
+          options: {
+            emailRedirectTo: `${window.location.origin}/dashboard`,
+          }
+        });
+        if (signUpError) throw signUpError;
+
+        // Login automatico dopo registrazione (senza richiedere conferma email)
+        if (signUpData.user && !signUpData.session) {
+          const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({ email, password });
+          if (signInError) {
+            // Se il login automatico fallisce, probabilmente serve conferma email
+            alert('Registrazione completata! Controlla la tua email per confermare l\'account, poi accedi.');
+            setIsRegistering(false);
+            setLoading(false);
+            return;
+          }
+        }
+
+        // Crea tenant per il nuovo utente
+        if (signUpData.user) {
+          const userId = signUpData.user.id;
+          try {
+            // Usa un token per autenticare la richiesta
+            const { data: { session: currentSession } } = await supabase.auth.getSession();
+            const token = currentSession?.access_token;
+            
+            if (token) {
+              // Crea tenant tramite API
+              await fetch('/api/tenants/create', {
+                method: 'POST',
+                headers: {
+                  'Content-Type': 'application/json',
+                  'Authorization': `Bearer ${token}`,
+                },
+                body: JSON.stringify({ 
+                  name: email.split('@')[0] + "'s Team",
+                  slug: `tenant-${userId.slice(0, 8)}` 
+                }),
+              });
+            }
+          } catch (tenantErr) {
+            console.warn('[Login] Errore creazione tenant (non bloccante):', tenantErr);
+          }
+        }
+
+        // Redirect alla dashboard
+        window.location.href = '/dashboard';
       } else {
         // Accesso utente esistente
         const { error, data } = await supabase.auth.signInWithPassword({ email, password });
