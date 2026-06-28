@@ -11,15 +11,24 @@ try {
   console.log('[Cron] Resend non configurato - invio email disabilitato');
 }
 
-const supabase = createClient(
-  process.env.SUPABASE_URL,
-  process.env.SUPABASE_SERVICE_KEY
-);
+let supabase = null;
+if (process.env.SUPABASE_URL && process.env.SUPABASE_SERVICE_ROLE_KEY) {
+  supabase = createClient(
+    process.env.SUPABASE_URL,
+    process.env.SUPABASE_SERVICE_ROLE_KEY
+  );
+} else {
+  console.log('[Cron] Supabase non configurato - controllo scadenze disabilitato');
+}
 
 const FROM_EMAIL = process.env.RESEND_FROM_EMAIL || 'noreply@zeusx.com';
 
 // Esegui controllo ogni giorno alle 9:00 AM
-cron.schedule('0 9 * * *', async () => {
+if (!supabase) {
+  console.log('[Cron] Supabase non disponibile, job non avviato');
+  module.exports = { startExpiryCheck: () => console.log('[Cron] Expiry check job skipped - Supabase not configured') };
+} else {
+  cron.schedule('0 9 * * *', async () => {
   console.log('[Cron] Avvio controllo scadenze app...');
   
   try {
@@ -82,7 +91,8 @@ cron.schedule('0 9 * * *', async () => {
   } catch (err) {
     console.error('[Cron] Errore generale:', err);
   }
-});
+  });
+}
 
 async function sendExpiryWarningEmail(app) {
   const expiresInDays = Math.ceil((new Date(app.expires_at).getTime() - Date.now()) / (1000 * 60 * 60 * 24));

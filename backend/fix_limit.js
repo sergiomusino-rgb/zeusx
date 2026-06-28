@@ -1,7 +1,7 @@
 const { createClient } = require('@supabase/supabase-js');
 require('dotenv').config();
 
-const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_KEY);
+const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY);
 
 async function fix() {
   const tenantId = 'd3eda57f-692a-4904-ac5f-93bdaaec8ce5';

@@ -14,8 +14,8 @@ function getSupabase() {
   );
 }
 
-// POST /api/a/:slug - Client login with password
-router.post('/api/a/:slug', async (req, res) => {
+// POST /a/:slug - Client login with password
+router.post('/a/:slug', async (req, res) => {
   try {
     const { slug } = req.params;
     const { password } = req.body;
@@ -129,8 +129,8 @@ async function clientAuthMiddleware(req, res, next) {
   next();
 }
 
-// GET /api/client/apps/:appId/records?table=clients
-router.get('/api/client/apps/:appId/records', clientAuthMiddleware, async (req, res) => {
+// GET /client/apps/:appId/records?table=clients
+router.get('/client/apps/:appId/records', clientAuthMiddleware, async (req, res) => {
   try {
     const { table } = req.query;
     if (!table) {
@@ -158,8 +158,8 @@ router.get('/api/client/apps/:appId/records', clientAuthMiddleware, async (req, 
   }
 });
 
-// POST /api/client/apps/:appId/records
-router.post('/api/client/apps/:appId/records', clientAuthMiddleware, async (req, res) => {
+// POST /client/apps/:appId/records
+router.post('/client/apps/:appId/records', clientAuthMiddleware, async (req, res) => {
   try {
     const { table, data } = req.body;
     if (!table || !data) {
@@ -190,8 +190,8 @@ router.post('/api/client/apps/:appId/records', clientAuthMiddleware, async (req,
   }
 });
 
-// PUT /api/client/apps/:appId/records/:recordId
-router.put('/api/client/apps/:appId/records/:recordId', clientAuthMiddleware, async (req, res) => {
+// PUT /client/apps/:appId/records/:recordId
+router.put('/client/apps/:appId/records/:recordId', clientAuthMiddleware, async (req, res) => {
   try {
     const { recordId } = req.params;
     const { data } = req.body;
@@ -225,8 +225,8 @@ router.put('/api/client/apps/:appId/records/:recordId', clientAuthMiddleware, as
   }
 });
 
-// DELETE /api/client/apps/:appId/records/:recordId
-router.delete('/api/client/apps/:appId/records/:recordId', clientAuthMiddleware, async (req, res) => {
+// DELETE /client/apps/:appId/records/:recordId
+router.delete('/client/apps/:appId/records/:recordId', clientAuthMiddleware, async (req, res) => {
   try {
     const { recordId } = req.params;
     const supabase = getSupabase();
