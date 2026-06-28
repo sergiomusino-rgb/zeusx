@@ -119,8 +119,14 @@ export default function CreateAppPage() {
         throw new Error(data.error || data.message || `Errore ${res.status}`);
       }
 
-      console.log('[CreateApp] Success, redirecting to client app');
-      router.push(`/a/${data.app.slug}`);
+      // Redirect to success page with credentials
+      console.log('[CreateApp] Success, showing credentials');
+      const params = new URLSearchParams({
+        slug: data.app.slug,
+        password: data.app.client_password,
+        name: data.app.name || appName
+      });
+      router.push(`/create/success?${params.toString()}`);
     } catch (err) {
       console.error('[CreateApp] Errore:', err);
       const errorMsg = err instanceof Error ? err.message : 'Errore durante la creazione';
