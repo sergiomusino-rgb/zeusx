@@ -9,7 +9,7 @@ import {
   LayoutDashboard, Settings, LogOut, Search, Plus, Pencil, Trash2,
   X, ChevronDown, Users, ShoppingCart, Package, DollarSign, TrendingUp,
   AlertTriangle, Calendar, CheckCircle, Clock, XCircle, Menu,
-  Download, Upload,
+  Download, Upload, Download as InstallIcon,
 } from 'lucide-react';
 
 // ─── Interfaces ───────────────────────────────────────────────────────────────
@@ -1650,6 +1650,19 @@ export default function ViewerProFinal() {
       localStorage.setItem(prefsKey, JSON.stringify(prefs));
     } catch { /* ignore */ }
   }, [prefs, prefsKey]);
+
+  // ─── Register service worker on mount ───────────────────────────────────
+
+  useEffect(() => {
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.register('/sw.js').catch(() => {});
+    }
+    // Aggiungi link manifest dinamicamente
+    const link = document.createElement('link');
+    link.rel = 'manifest';
+    link.href = `/a/${slug}/manifest`;
+    document.head.appendChild(link);
+  }, [slug]);
 
   // ─── Check session on mount ──────────────────────────────────────────────
 

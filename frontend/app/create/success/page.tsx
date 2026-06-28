@@ -2,7 +2,8 @@
 
 import { useEffect, useState, Suspense } from 'react';
 import { useRouter } from 'next/navigation';
-import { Copy, ExternalLink, ArrowLeft, Eye, EyeOff } from 'lucide-react';
+import { Copy, ExternalLink, ArrowLeft, Eye, EyeOff, Smartphone } from 'lucide-react';
+import { QRCodeSVG } from 'qrcode.react';
 
 function SuccessContent() {
   const router = useRouter();
@@ -196,6 +197,34 @@ function SuccessContent() {
               Il cliente potrà cambiare la password in qualsiasi momento dall&apos;interno dell&apos;app.
             </p>
           </div>
+        </div>
+
+        {/* QR Code per installazione mobile */}
+        <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6">
+          <div className="flex items-center gap-3 mb-4">
+            <Smartphone size={20} className="text-indigo-400" />
+            <h2 className="text-lg font-bold">Installa sul telefono</h2>
+          </div>
+          <p className="text-slate-400 text-sm mb-5">
+            Scansiona il QR code per aprire l'app sul telefono. 
+            Su Android: apri con Chrome e premi "Installa". 
+            Su iPhone: apri con Safari e premi il pulsante Condividi → "Aggiungi a Home".
+          </p>
+          <div className="flex justify-center">
+            <div className="bg-white p-4 rounded-xl">
+              <QRCodeSVG
+                value={fullLink}
+                size={180}
+                bgColor="#ffffff"
+                fgColor="#000000"
+                level="M"
+                includeMargin={false}
+              />
+            </div>
+          </div>
+          <p className="text-center text-xs text-slate-500 mt-4">
+            Inquadra il QR code con la fotocamera del telefono
+          </p>
         </div>
 
         {/* Actions */}

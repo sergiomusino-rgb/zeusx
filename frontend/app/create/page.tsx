@@ -267,6 +267,44 @@ export default function CreateAppPage() {
                 />
               </div>
 
+              {/* Logo */}
+              <div>
+                <label className="block text-sm font-medium mb-2 text-slate-300">
+                  Logo azienda
+                </label>
+                <div className="flex items-center gap-4">
+                  <label className="flex items-center gap-2 px-5 py-3 rounded-xl bg-slate-900 border border-slate-700 cursor-pointer hover:border-indigo-500 transition">
+                    <span className="text-lg">📁</span>
+                    <span className="text-slate-300 text-sm font-medium">
+                      {logoFile ? logoFile.name : 'Scegli file...'}
+                    </span>
+                    <input
+                      type="file"
+                      accept="image/*"
+                      onChange={(e) => setLogoFile(e.target.files?.[0] || null)}
+                      className="hidden"
+                    />
+                  </label>
+                  {logoFile && (
+                    <button
+                      onClick={() => setLogoFile(null)}
+                      className="text-sm text-red-400 hover:text-red-300 transition"
+                    >
+                      Rimuovi
+                    </button>
+                  )}
+                </div>
+                {logoFile && (
+                  <div className="mt-3">
+                    <img
+                      src={URL.createObjectURL(logoFile)}
+                      alt="Anteprima logo"
+                      className="w-20 h-20 rounded-xl object-contain border border-slate-700 bg-slate-900"
+                    />
+                  </div>
+                )}
+              </div>
+
               {/* Preview settore selezionato */}
               <div className="bg-slate-900/50 border border-slate-800 rounded-xl p-6">
                 <h3 className="text-sm font-bold text-slate-400 uppercase tracking-wider mb-4">
