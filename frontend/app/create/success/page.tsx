@@ -121,7 +121,7 @@ function SuccessContent() {
             className="flex-1 px-6 py-3 bg-slate-800 hover:bg-slate-700 rounded-lg font-medium transition flex items-center justify-center gap-2"
           >
             <ArrowLeft size={18} />
-            Torna alle App
+            Torna alla lista app
           </button>
           <a
             href={fullLink}
@@ -130,7 +130,7 @@ function SuccessContent() {
             className="flex-1 px-6 py-3 bg-indigo-600 hover:bg-indigo-500 rounded-lg font-medium transition flex items-center justify-center gap-2"
           >
             <ExternalLink size={18} />
-            Apri App Cliente
+            Vai all'app
           </a>
         </div>
       </div>
