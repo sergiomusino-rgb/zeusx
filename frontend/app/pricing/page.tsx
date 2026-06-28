@@ -50,8 +50,7 @@ export default function PricingPage() {
 
         if (tenant) {
           setCurrentPlan(tenant.plan || 'free');
-          const planLimits: Record<string, number> = { free: 0, starter: 1, pro: 5, business: 250 };
-          setSlotsTotal(planLimits[tenant.plan] ?? tenant.app_limit ?? 1);
+          setSlotsTotal(tenant.app_limit ?? 1);
           setSlotsUsed(tenant.total_apps_created || 0);
         }
       }
