@@ -39,6 +39,36 @@ function SuccessContent() {
     }
   };
 
+  const handleSaveEmail = async () => {
+    if (!clientEmail) {
+      alert('Inserisci un\'email valida');
+      return;
+    }
+    
+    setSavingEmail(true);
+    try {
+      const res = await fetch(`/api/a/${slug}/save-email`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: clientEmail, password }),
+      });
+
+      const data = await res.json();
+      
+      if (!res.ok) {
+        alert(`Errore: ${data.error || 'Impossibile salvare l\'email'}`);
+        setSavingEmail(false);
+        return;
+      }
+
+      setEmailSaved(true);
+    } catch (err) {
+      alert('Errore di connessione');
+    } finally {
+      setSavingEmail(false);
+    }
+  };
+
   if (!slug || !password) {
     return (
       <div className="min-h-screen bg-slate-950 text-white flex items-center justify-center">
@@ -105,6 +135,47 @@ function SuccessContent() {
                 {copied === 'password' ? 'Copiato!' : 'Copia'}
               </button>
             </div>
+          </div>
+
+          {/* Email Cliente */}
+          <div className="space-y-2">
+            <label className="text-sm font-medium text-slate-400">
+              Email del Cliente {emailSaved && <span className="text-emerald-400 ml-2">✓ Salvata</span>}
+            </label>
+            <div className="flex items-center gap-3">
+              <input
+                type="email"
+                value={clientEmail}
+                onChange={(e) => setClientEmail(e.target.value)}
+                placeholder="email@cliente.com (opzionale)"
+                disabled={emailSaved}
+                className="flex-1 bg-slate-950 border border-slate-700 rounded-lg px-4 py-3 text-sm text-white placeholder-slate-600 focus:border-indigo-500 focus:outline-none transition disabled:opacity-50"
+              />
+              {!emailSaved ? (
+                <button
+                  onClick={handleSaveEmail}
+                  disabled={savingEmail || !clientEmail}
+                  className="px-4 py-3 bg-emerald-600 hover:bg-emerald-500 text-white font-medium rounded-lg transition text-sm disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {savingEmail ? 'Salvataggio...' : 'Salva Email'}
+                </button>
+              ) : (
+                <button
+                  onClick={() => {
+                    setEmailSaved(false);
+                    setClientEmail('');
+                  }}
+                  className="px-4 py-3 bg-slate-700 hover:bg-slate-600 text-white font-medium rounded-lg transition text-sm"
+                >
+                  Modifica
+                </button>
+              )}
+            </div>
+            <p className="text-xs text-slate-500">
+              {emailSaved 
+                ? 'Il cliente potrà accedere direttamente con la password' 
+                : 'Se impostata, il cliente non dovrà inserirla al primo accesso'}
+            </p>
           </div>
 
           {/* Warning */}
