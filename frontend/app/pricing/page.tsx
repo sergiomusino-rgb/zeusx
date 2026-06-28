@@ -211,17 +211,17 @@ export default function PricingPage() {
           </div>
         )}
 
-        <div className="grid md:grid-cols-3 gap-8">
+        <div className="grid md:grid-cols-3 gap-8 items-stretch">
           {plans.map((plan) => {
             const isCurrentPlan = currentPlan === plan.id;
             return (
               <div 
                 key={plan.id}
-                className={`relative p-8 rounded-2xl border transition-all ${
+                className={`relative p-8 rounded-2xl border transition-all flex flex-col ${
                   isCurrentPlan
                     ? 'border-emerald-500 bg-gradient-to-br from-emerald-950/30 to-green-950/30 shadow-2xl shadow-emerald-500/20' 
                     : plan.highlighted 
-                    ? 'border-indigo-500 bg-gradient-to-br from-indigo-950/50 to-purple-950/50 shadow-2xl shadow-indigo-500/20 scale-105' 
+                    ? 'border-indigo-500 bg-gradient-to-br from-indigo-950/50 to-purple-950/50 shadow-2xl shadow-indigo-500/20' 
                     : 'border-slate-800 bg-slate-900 hover:border-slate-700'
                 }`}
               >
@@ -257,7 +257,7 @@ export default function PricingPage() {
                   </div>
                 </div>
 
-                <ul className="space-y-3 mb-8">
+                <ul className="space-y-3 flex-grow">
                   {plan.features.map((feature, idx) => (
                     <li key={idx} className="flex items-start gap-2 text-sm text-slate-300">
                       <svg className="w-5 h-5 text-emerald-400 flex-shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -271,7 +271,7 @@ export default function PricingPage() {
                 <button
                   onClick={() => !isCurrentPlan && plan.id !== 'starter' && handleUpgrade(plan.id)}
                   disabled={isCurrentPlan || plan.id === 'starter'}
-                  className={`w-full py-4 rounded-xl font-bold transition-all ${
+                  className={`w-full py-4 rounded-xl font-bold transition-all mt-6 ${
                     isCurrentPlan
                       ? 'bg-emerald-600 text-white cursor-default'
                       : plan.id === 'starter'
