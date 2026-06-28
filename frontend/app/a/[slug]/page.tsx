@@ -99,11 +99,15 @@ export default function ClientLoginPage() {
         .eq('id', appData.id)
         .single();
 
-      // Salva sessione con appInfo
+      // Salva sessione con appInfo completo (id + config)
       const sessionData = {
         slug,
         password,
-        appInfo: appInfoData?.config || {},
+        appInfo: {
+          id: appData.id,
+          slug,
+          ...(appInfoData?.config || {}),
+        },
       };
       localStorage.setItem(`app_session_${slug}`, JSON.stringify(sessionData));
       window.location.href = `/a/${slug}/app`;

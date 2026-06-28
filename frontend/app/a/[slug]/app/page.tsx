@@ -35,6 +35,9 @@ interface AppConfig {
   slug: string;
   appName: string;
   logo?: string;
+  schema?: {
+    tables: TableDef[];
+  };
   branding?: {
     company_name?: string;
     logo_url?: string;
@@ -47,6 +50,7 @@ interface AppConfig {
     };
     tables?: TableDef[]; // fallback per compatibilità
   };
+  tables?: TableDef[]; // altro fallback
   blocked?: boolean;
 }
 
@@ -1586,7 +1590,8 @@ export default function ViewerProFinal() {
   const config = appInfo;
   
   // Estrai tabelle da blueprint (supporta sia schema.tables che tables diretto)
-  const tables = config?.blueprint?.schema?.tables 
+  const tables = config?.schema?.tables 
+    || config?.blueprint?.schema?.tables 
     || config?.blueprint?.tables 
     || config?.tables 
     || [];
