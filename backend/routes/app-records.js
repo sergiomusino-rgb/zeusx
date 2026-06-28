@@ -74,7 +74,7 @@ async function tenantMiddleware(req, res, next) {
 }
 
 // POST /api/apps - Crea nuova app
-router.post('/apps', authMiddleware, tenantMiddleware, async (req, res) => {
+router.post('/apps', authMiddleware, async (req, res) => {
   try {
     const { sector, name, prompt, logo } = req.body;
     if (!sector || !name) {
@@ -82,6 +82,20 @@ router.post('/apps', authMiddleware, tenantMiddleware, async (req, res) => {
     }
 
     const supabaseAdmin = getSupabase();
+    
+    // Recupera tenant dell'utente
+    const { data: membership, error: memberError } = await supabaseAdmin
+      .from('tenant_members')
+      .select('tenant_id')
+      .eq('user_id', req.user.id)
+      .limit(1)
+      .single();
+
+    if (memberError || !membership) {
+      return res.status(403).json({ error: 'Nessun tenant associato' });
+    }
+
+    const tenantId = membership.tenant_id;
     
     // Recupera blueprint dal settore
     const { data: blueprint, error: blueprintError } = await supabaseAdmin
@@ -98,7 +112,7 @@ router.post('/apps', authMiddleware, tenantMiddleware, async (req, res) => {
     const { data: tenant, error: tenantError } = await supabaseAdmin
       .from('tenants')
       .select('app_limit, plan')
-      .eq('id', req.tenantId)
+      .eq('id', tenantId)
       .single();
 
     if (tenantError || !tenant) {
@@ -148,7 +162,7 @@ router.post('/apps', authMiddleware, tenantMiddleware, async (req, res) => {
     const { data: app, error: appError } = await supabaseAdmin
       .from('apps')
       .insert({
-        tenant_id: req.tenantId,
+        tenant_id: tenantId,
         blueprint_id: blueprint.id,
         name,
         slug,
@@ -165,7 +179,7 @@ router.post('/apps', authMiddleware, tenantMiddleware, async (req, res) => {
       return res.status(500).json({ error: appError.message || 'Errore creazione app' });
     }
 
-    console.log(`[CreateApp] App creata: ${app.id} per tenant ${req.tenantId}`);
+    console.log(`[CreateApp] App creata: ${app.id} per tenant ${tenantId}`);
     
     res.status(201).json({ 
       app,
