@@ -1,13 +1,8 @@
 'use client';
 
-// Disabilita TUTTA la cache per questa pagina
-export const dynamic = 'force-dynamic';
-export const revalidate = 0;
-export const fetchCache = 'force-no-store';
-
 import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { usePathname, useRouter } from 'next/navigation';
+import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { supabase } from '@/src/lib/supabase';
 
 export default function DashboardLayout({
@@ -26,30 +21,52 @@ export default function DashboardLayout({
   // Controlla se siamo in una pagina secondaria della dashboard
   const isSubPage = pathname.startsWith('/dashboard/') && pathname !== '/dashboard';
 
-  // Legge la sessione da localStorage in modo sincrono all'avvio
+  // Forza un caricamento fresco se arriviamo da un login
   useEffect(() => {
+    const searchParams = new URLSearchParams(window.location.search);
+    const isFreshLogin = searchParams.has('t');
+    
+    if (isFreshLogin) {
+      // Siamo appena arrivati dal login - pulisci il parametro e forza reload se necessario
+      const cleanUrl = window.location.pathname;
+      window.history.replaceState({}, '', cleanUrl);
+    }
+
     // Prima lettura sincrona da localStorage
+    let localUser = null;
     try {
       const raw = localStorage.getItem('sb-zeusx-auth-token');
       if (raw) {
         const parsed = JSON.parse(raw);
         if (parsed.access_token) {
-          setUser({ id: parsed.user?.id });
+          localUser = { id: parsed.user?.id };
         }
       }
-    } catch (e) {
-      // Ignora errori di parsing
+    } catch (e) {}
+
+    // Se abbiamo un utente in localStorage, mostra subito la sidebar
+    if (localUser) {
+      setUser(localUser);
+      setLoading(false);
     }
 
-    // Poi verifica asincrona con Supabase
+    // Verifica asincrona con Supabase
     supabase.auth.getSession().then(({ data: { session } }) => {
-      setUser(session?.user ?? null);
+      if (session?.user) {
+        setUser(session.user);
+      } else if (isFreshLogin && !localUser) {
+        // Siamo arrivati da un login ma Supabase non vede la sessione - forza reload
+        window.location.reload();
+        return;
+      }
       setLoading(false);
     });
 
     // Ascolta i cambiamenti di autenticazione
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
-      setUser(session?.user ?? null);
+      if (session?.user) {
+        setUser(session.user);
+      }
       setLoading(false);
     });
 
