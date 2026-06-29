@@ -73,7 +73,7 @@ export default function LoginPage() {
         }
 
         // Redirect alla dashboard
-        router.push('/dashboard');
+        window.location.href = '/dashboard';
       } else {
         // Accesso utente esistente
         const { error, data } = await supabase.auth.signInWithPassword({ email, password });
@@ -82,8 +82,8 @@ export default function LoginPage() {
 
         // Usa direttamente la sessione restituita da signInWithPassword
         if (data.session) {
-          // Navigazione client-side per evitare race condition con i cookie
-          router.push('/dashboard');
+          // Full page reload per assicurare che i cookie siano disponibili al server
+          window.location.href = '/dashboard';
         } else {
           setError('Sessione non stabilita. Riprova.');
           setLoading(false);
