@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { usePathname, useRouter, useSearchParams } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 import { supabase } from '@/src/lib/supabase';
 
 export default function DashboardLayout({
@@ -85,7 +85,12 @@ export default function DashboardLayout({
   ];
 
   return (
-    <div className="flex h-screen bg-slate-950 text-white font-sans overflow-hidden">
+    <>
+      {/* Meta tag per disabilitare cache browser */}
+      <meta httpEquiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
+      <meta httpEquiv="Pragma" content="no-cache" />
+      <meta httpEquiv="Expires" content="0" />
+      <div className="flex h-screen bg-slate-950 text-white font-sans overflow-hidden">
       
       {/* SIDEBAR FISSA - Mostrata su tutte le pagine della dashboard tranne il generatore */}
       {showSidebar && (
@@ -164,5 +169,6 @@ export default function DashboardLayout({
 
       </div>
     </div>
+    </>
   );
 }
