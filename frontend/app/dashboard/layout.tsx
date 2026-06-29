@@ -15,8 +15,11 @@ export default function DashboardLayout({
   const [user, setUser] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   
-  // Controlla se siamo nella pagina del generatore
-  const isGeneratorPage = pathname.startsWith('/dashboard/generator');
+  // Controlla se siamo nella pagina principale della dashboard
+  const isDashboardHome = pathname === '/dashboard';
+  
+  // Controlla se siamo in una pagina secondaria della dashboard
+  const isSubPage = pathname.startsWith('/dashboard/') && !isDashboardHome;
 
   // Sincronizza lo stato di autenticazione
   useEffect(() => {
@@ -63,8 +66,8 @@ export default function DashboardLayout({
   return (
     <div className="flex h-screen bg-slate-950 text-white font-sans overflow-hidden">
       
-      {/* SIDEBAR FISSA - Mostrata solo se NON siamo nel generatore */}
-      {!isGeneratorPage && user && (
+      {/* SIDEBAR FISSA - Mostrata solo nella home della dashboard */}
+      {isDashboardHome && user && (
         <aside className="w-64 bg-slate-900 border-r border-slate-800 flex flex-col justify-between">
           <div>
             {/* Logo */}
@@ -114,8 +117,8 @@ export default function DashboardLayout({
         {/* HEADER SUPERIORE */}
         <header className="h-16 border-b border-slate-800 bg-slate-900/40 backdrop-blur px-6 flex items-center justify-between z-10">
           <div className="flex items-center gap-4">
-            {/* Pulsante "Torna alla Dashboard" aggiunto se siamo nel generatore */}
-            {isGeneratorPage ? (
+            {/* Pulsante "Torna alla Dashboard" aggiunto se siamo in una pagina secondaria */}
+            {isSubPage ? (
               <Link href="/dashboard" className="text-sm font-medium text-slate-400 hover:text-white flex items-center gap-2 transition">
                 ← Torna alla Dashboard
               </Link>
@@ -134,7 +137,7 @@ export default function DashboardLayout({
         </header>
 
         {/* AREA DEL CONTENUTO DINAMICO */}
-        <main className={`flex-1 overflow-y-auto ${isGeneratorPage ? 'p-0' : 'p-6 lg:p-8'} bg-slate-950`}>
+        <main className={`flex-1 overflow-y-auto ${isSubPage ? 'p-0' : 'p-6 lg:p-8'} bg-slate-950`}>
           {children}
         </main>
 
