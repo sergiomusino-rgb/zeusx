@@ -72,7 +72,7 @@ export default function DashboardPage() {
     { 
       title: "Crea il tuo gestionale", 
       desc: "Seleziona un settore e lascia che ZeusX generi la tua app personalizzata",
-      link: "/generator", 
+      link: "/creator", 
       color: "bg-gradient-to-br from-indigo-600 to-purple-600",
       icon: "✨",
       highlighted: true

@@ -14,7 +14,7 @@ export default function DashboardLayout({
   // Voci del menu della Sidebar
   const navigation = [
     { name: '📊 Dashboard', href: '/dashboard' },
-    { name: '✨ Generatore AI', href: '/generator' },
+    { name: '✨ Generatore AI', href: '/creator' },
     { name: '💬 Chat AI', href: '/dashboard/chat' },
     { name: '📅 Calendario', href: '/dashboard/vision' },
     { name: '🚀 App Create', href: '/dashboard/projects' },
