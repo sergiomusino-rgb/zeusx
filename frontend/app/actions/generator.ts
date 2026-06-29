@@ -1,0 +1,263 @@
+'use server';
+
+import { createClient } from '@supabase/supabase-js';
+import { cookies } from 'next/headers';
+
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
+const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
+
+// ─── Types ────────────────────────────────────────────────────────────────────
+
+export interface GenerateAppInput {
+  prompt: string;
+  appName?: string;
+  sector?: string;
+}
+
+export interface GenerateAppResult {
+  success: boolean;
+  appId?: string;
+  slug?: string;
+  error?: string;
+}
+
+// ─── LLM Call ─────────────────────────────────────────────────────────────────
+
+async function callLLM(systemPrompt: string): Promise<string> {
+  const provider = process.env.LLM_PROVIDER || 'openai';
+  const apiKey = process.env.OPENAI_API_KEY || process.env.GROQ_API_KEY || process.env.GEMINI_API_KEY;
+
+  if (!apiKey) {
+    throw new Error('API key LLM non configurata');
+  }
+
+  if (provider === 'openai') {
+    const res = await fetch('https://api.openai.com/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${apiKey}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        model: 'gpt-4o-mini',
+        messages: [{ role: 'user', content: systemPrompt }],
+        response_format: { type: 'json_object' },
+        temperature: 0.7,
+      }),
+    });
+
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error?.message || 'Errore OpenAI');
+    return data.choices?.[0]?.message?.content || '';
+  }
+
+  if (provider === 'groq') {
+    const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${apiKey}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        model: 'llama-3.1-8b-instant',
+        messages: [{ role: 'user', content: systemPrompt }],
+        response_format: { type: 'json_object' },
+        temperature: 0.7,
+      }),
+    });
+
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error?.message || 'Errore Groq');
+    return data.choices?.[0]?.message?.content || '';
+  }
+
+  // Default: Gemini
+  const { GoogleGenerativeAI } = await import('@google/generative-ai');
+  const genAI = new GoogleGenerativeAI(apiKey);
+  const model = genAI.getGenerativeModel({ model: 'gemini-2.0-flash' });
+  const result = await model.generateContent(systemPrompt);
+  return result.response.text();
+}
+
+// ─── System Prompt ────────────────────────────────────────────────────────────
+
+function buildSystemPrompt(userPrompt: string, appName?: string, sector?: string): string {
+  const inferredSector = sector || 'gestione aziendale';
+  const inferredAppName = appName || 'Gestionale';
+
+  return `Sei l'architetto software di ZeusX. Devi produrre SOLO un oggetto JSON valido, senza testo aggiuntivo, senza markdown, senza spiegazioni.
+
+Il JSON rappresenta un gestionale SaaS per il settore: "${inferredSector}".
+${userPrompt ? `Richiesta dell'utente: ${userPrompt}` : ''}
+
+Lingua dei label: italiano.
+
+Schema obbligatorio:
+{
+  "appName": "${inferredAppName}",
+  "sector": "${inferredSector}",
+  "description": "Descrizione breve del gestionale",
+  "schema": {
+    "tables": [
+      {
+        "name": "snake_case_singolare",
+        "label": "Etichetta singolare",
+        "labelPlural": "Etichetta plurale",
+        "icon": "emoji opzionale",
+        "fields": [
+          {
+            "id": "snake_case",
+            "type": "text|number|date|datetime|boolean|email|phone|textarea|select|multiselect|relation|currency|file|image",
+            "label": "Etichetta campo",
+            "required": true|false,
+            "options": ["opzione1", "opzione2"],
+            "target": "nome_tabella_target",
+            "targetLabel": "campo_label_target"
+          }
+        ]
+      }
+    ]
+  },
+  "ui": {
+    "primaryColor": "#6366f1",
+    "sidebar": ["name_tabella_1", "name_tabella_2"],
+    "dashboardCards": [
+      { "type": "count|sum|latest|chart", "table": "name_tabella", "label": "Label", "field": "campo_numerico" }
+    ]
+  }
+}
+
+Regole:
+- Genera almeno 2-4 tabelle con relazioni logiche per il settore.
+- Usa solo snake_case per name, id, sector.
+- I campi relation devono puntare a tabelle esistenti nello schema.
+- Non includere campi id, created_at, updated_at: saranno aggiunti automaticamente.
+- Colori validi esadecimale a 6 cifre.
+- Output SOLO JSON, niente markdown, niente spiegazioni.`;
+}
+
+// ─── Server Action ────────────────────────────────────────────────────────────
+
+export async function generateAppAction(input: GenerateAppInput): Promise<GenerateAppResult> {
+  try {
+    const cookieStore = await cookies();
+    const supabase = createClient(supabaseUrl, supabaseServiceKey);
+
+    // Get current user from session
+    const { data: { user }, error: authError } = await supabase.auth.getUser(
+      cookieStore.get('sb-access-token')?.value || ''
+    );
+
+    if (authError || !user) {
+      return { success: false, error: 'Utente non autenticato' };
+    }
+
+    // Get user's tenant
+    const { data: membership, error: membershipError } = await supabase
+      .from('tenant_members')
+      .select('tenant_id')
+      .eq('user_id', user.id)
+      .single();
+
+    if (membershipError || !membership) {
+      return { success: false, error: 'Nessun tenant associato all\'utente' };
+    }
+
+    const tenantId = membership.tenant_id;
+
+    // Call LLM to generate schema
+    const systemPrompt = buildSystemPrompt(input.prompt, input.appName, input.sector);
+    const rawResponse = await callLLM(systemPrompt);
+
+    // Clean and parse JSON
+    const cleaned = rawResponse
+      .replace(/```json\s*/g, '')
+      .replace(/```\s*/g, '')
+      .trim();
+
+    let generatedSchema: Record<string, unknown>;
+    try {
+      generatedSchema = JSON.parse(cleaned);
+    } catch {
+      console.error('[generateAppAction] JSON parse error. Raw:', rawResponse);
+      return { success: false, error: 'Il modello ha restituito un JSON non valido' };
+    }
+
+    // Validate required fields
+    const schema = generatedSchema.schema as Record<string, unknown> | undefined;
+    const tables = schema?.tables as Array<Record<string, unknown>> | undefined;
+    if (!schema || !tables) {
+      return { success: false, error: 'Schema non valido: manca il campo schema.tables' };
+    }
+
+    // Create app record
+    const appName = (generatedSchema.appName as string) || input.appName || 'Nuovo Gestionale';
+    const sector = (generatedSchema.sector as string) || input.sector || 'generale';
+    const description = (generatedSchema.description as string) || '';
+
+    // Generate slug
+    const slugBase = appName
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, '-')
+      .replace(/^-+|-+$/g, '');
+    const slug = `${slugBase}-${Date.now().toString(36)}`;
+
+    // Generate random password
+    const clientPassword = Math.random().toString(36).slice(-8);
+
+    const { data: newApp, error: appError } = await supabase
+      .from('apps')
+      .insert({
+        name: appName,
+        slug,
+        tenant_id: tenantId,
+        sector,
+        description,
+        client_password: clientPassword,
+        client_active: true,
+        config: {
+          schema: generatedSchema.schema,
+          ui: generatedSchema.ui || {},
+          branding: generatedSchema.ui || {},
+          is_published: true,
+        },
+      })
+      .select('id')
+      .single();
+
+    if (appError || !newApp) {
+      console.error('[generateAppAction] Error creating app:', appError);
+      return { success: false, error: 'Errore nella creazione dell\'app' };
+    }
+
+    // Create app_definitions entry
+    const { error: definitionError } = await supabase
+      .from('app_definitions')
+      .insert({
+        app_id: newApp.id,
+        tenant_id: tenantId,
+        schema: generatedSchema.schema,
+        ui_config: generatedSchema.ui || {},
+        is_published: true,
+      });
+
+    if (definitionError) {
+      console.error('[generateAppAction] Error creating app_definitions:', definitionError);
+      // Rollback: delete the app
+      await supabase.from('apps').delete().eq('id', newApp.id);
+      return { success: false, error: 'Errore nel salvataggio della definizione' };
+    }
+
+    return {
+      success: true,
+      appId: newApp.id,
+      slug,
+    };
+  } catch (err) {
+    console.error('[generateAppAction] Unexpected error:', err);
+    return {
+      success: false,
+      error: err instanceof Error ? err.message : 'Errore sconosciuto',
+    };
+  }
+}
