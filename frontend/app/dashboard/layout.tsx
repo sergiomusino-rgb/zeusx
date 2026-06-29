@@ -24,9 +24,22 @@ export default function DashboardLayout({
   // Controlla se siamo in una pagina secondaria della dashboard
   const isSubPage = pathname.startsWith('/dashboard/') && pathname !== '/dashboard';
 
-  // Sincronizza lo stato di autenticazione
+  // Legge la sessione da localStorage in modo sincrono all'avvio
   useEffect(() => {
-    // Verifica la sessione corrente
+    // Prima lettura sincrona da localStorage
+    try {
+      const raw = localStorage.getItem('sb-zeusx-auth-token');
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        if (parsed.access_token) {
+          setUser({ id: parsed.user?.id });
+        }
+      }
+    } catch (e) {
+      // Ignora errori di parsing
+    }
+
+    // Poi verifica asincrona con Supabase
     supabase.auth.getSession().then(({ data: { session } }) => {
       setUser(session?.user ?? null);
       setLoading(false);
@@ -36,11 +49,6 @@ export default function DashboardLayout({
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
       setUser(session?.user ?? null);
       setLoading(false);
-      
-      // Forza un refresh completo della pagina per ricaricare i dati con la sessione attiva
-      if (event === 'SIGNED_IN') {
-        window.location.reload();
-      }
     });
 
     return () => subscription.unsubscribe();
