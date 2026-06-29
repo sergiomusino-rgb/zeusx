@@ -34,9 +34,9 @@ export default function DashboardLayout({
       setUser(session?.user ?? null);
       setLoading(false);
       
-      // Forza il re-render della pagina quando la sessione è disponibile
-      if (event === 'SIGNED_IN' || event === 'INITIAL_SESSION') {
-        router.refresh();
+      // Forza un refresh completo della pagina per ricaricare i dati con la sessione attiva
+      if (event === 'SIGNED_IN') {
+        window.location.reload();
       }
     });
 

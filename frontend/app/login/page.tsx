@@ -72,8 +72,8 @@ export default function LoginPage() {
           }
         }
 
-        // Redirect alla dashboard
-        window.location.href = '/dashboard';
+        // Cache busting redirect - forza un caricamento fresco
+        window.location.replace('/dashboard?t=' + Date.now());
       } else {
         // Accesso utente esistente
         const { error, data } = await supabase.auth.signInWithPassword({ email, password });
@@ -82,8 +82,8 @@ export default function LoginPage() {
 
         // Usa direttamente la sessione restituita da signInWithPassword
         if (data.session) {
-          // Full page reload per assicurare che i cookie siano disponibili al server
-          window.location.href = '/dashboard';
+          // Cache busting redirect - window.location.replace evita cache del browser
+          window.location.replace('/dashboard?t=' + Date.now());
         } else {
           setError('Sessione non stabilita. Riprova.');
           setLoading(false);
