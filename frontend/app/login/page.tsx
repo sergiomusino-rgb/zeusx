@@ -73,28 +73,21 @@ export default function LoginPage() {
         }
 
         // Redirect alla dashboard
-        window.location.href = '/dashboard';
+        router.push('/dashboard');
       } else {
         // Accesso utente esistente
         const { error, data } = await supabase.auth.signInWithPassword({ email, password });
         console.log('[Login] signIn result:', { error: error?.message, session: !!data.session, user: data.user?.id });
         if (error) throw error;
-        // Aspetta che la sessione e i cookie vengano salvati prima del redirect
-        let attempts = 0;
-        const checkSession = setInterval(async () => {
-          const { data: { session } } = await supabase.auth.getSession();
-          attempts++;
-          console.log('[Login] checkSession attempt', attempts, 'session:', !!session);
-          if (session) {
-            clearInterval(checkSession);
-            window.location.href = '/dashboard';
-          }
-          if (attempts >= 10) {
-            clearInterval(checkSession);
-            setError('Sessione non stabilita. Riprova.');
-            setLoading(false);
-          }
-        }, 300);
+
+        // Usa direttamente la sessione restituita da signInWithPassword
+        if (data.session) {
+          // Navigazione client-side per evitare race condition con i cookie
+          router.push('/dashboard');
+        } else {
+          setError('Sessione non stabilita. Riprova.');
+          setLoading(false);
+        }
       }
     } catch (err: any) {
       setError(err.message || 'Si è verificato un errore durante l\'autenticazione.');

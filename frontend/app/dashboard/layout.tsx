@@ -1,8 +1,9 @@
 'use client';
 
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { usePathname } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
+import { supabase } from '@/src/lib/supabase';
 
 export default function DashboardLayout({
   children,
@@ -10,9 +11,34 @@ export default function DashboardLayout({
   children: React.ReactNode;
 }) {
   const pathname = usePathname();
+  const router = useRouter();
+  const [user, setUser] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
   
-  // Controlla se siamo esattamente nella pagina del generatore
-  const isGeneratorPage = pathname === '/dashboard/generator';
+  // Controlla se siamo nella pagina del generatore
+  const isGeneratorPage = pathname.startsWith('/dashboard/generator');
+
+  // Sincronizza lo stato di autenticazione
+  useEffect(() => {
+    // Verifica la sessione corrente
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setUser(session?.user ?? null);
+      setLoading(false);
+    });
+
+    // Ascolta i cambiamenti di autenticazione
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      setUser(session?.user ?? null);
+      setLoading(false);
+      
+      // Forza il re-render della pagina quando la sessione è disponibile
+      if (event === 'SIGNED_IN' || event === 'INITIAL_SESSION') {
+        router.refresh();
+      }
+    });
+
+    return () => subscription.unsubscribe();
+  }, []);
 
   // Voci del menu della Sidebar
   const navigation = [
@@ -25,12 +51,21 @@ export default function DashboardLayout({
     { name: '⚙️ Impostazioni', href: '/dashboard/settings' },
   ];
 
+  // Mostra un loader mentre si verifica l'autenticazione
+  if (loading) {
+    return (
+      <div className="flex h-screen items-center justify-center bg-slate-950">
+        <div className="text-white">Caricamento...</div>
+      </div>
+    );
+  }
+
   return (
     <div className="flex h-screen bg-slate-950 text-white font-sans overflow-hidden">
       
       {/* SIDEBAR FISSA - Mostrata solo se NON siamo nel generatore */}
-      {!isGeneratorPage && (
-        <aside className="w-64 bg-slate-900 border-r border-slate-800 flex flex-col justify-between hidden md:flex">
+      {!isGeneratorPage && user && (
+        <aside className="w-64 bg-slate-900 border-r border-slate-800 flex flex-col justify-between">
           <div>
             {/* Logo */}
             <div className="h-16 flex items-center px-6 border-b border-slate-800/60">
@@ -99,7 +134,7 @@ export default function DashboardLayout({
         </header>
 
         {/* AREA DEL CONTENUTO DINAMICO */}
-        <main className="flex-1 overflow-y-auto p-6 lg:p-8 bg-slate-950">
+        <main className={`flex-1 overflow-y-auto ${isGeneratorPage ? 'p-0' : 'p-6 lg:p-8'} bg-slate-950`}>
           {children}
         </main>
 

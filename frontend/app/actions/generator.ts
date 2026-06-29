@@ -1,6 +1,6 @@
 'use server';
 
-import { createClient } from '@supabase/supabase-js';
+import { createServerClient } from '@supabase/ssr';
 import { cookies } from 'next/headers';
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
@@ -141,16 +141,34 @@ Regole:
 export async function generateAppAction(input: GenerateAppInput): Promise<GenerateAppResult> {
   try {
     const cookieStore = await cookies();
-    const supabase = createClient(supabaseUrl, supabaseServiceKey);
+    const supabase = createServerClient(supabaseUrl, supabaseServiceKey, {
+      cookies: {
+        get(name: string) {
+          return cookieStore.get(name)?.value;
+        },
+        set(name: string, value: string, options: any) {
+          try {
+            cookieStore.set({ name, value, ...options });
+          } catch (err) {
+            // Ignora errori in server action read-only
+          }
+        },
+        remove(name: string, options: any) {
+          try {
+            cookieStore.set({ name, value: '', ...options });
+          } catch (err) {
+            // Ignora errori
+          }
+        },
+      },
+    });
 
     // Get current user from session
-    const { data: { user }, error: authError } = await supabase.auth.getUser(
-      cookieStore.get('sb-access-token')?.value || ''
-    );
-
-    if (authError || !user) {
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session?.user) {
       return { success: false, error: 'Utente non autenticato' };
     }
+    const user = session.user;
 
     // Get user's tenant
     const { data: membership, error: membershipError } = await supabase

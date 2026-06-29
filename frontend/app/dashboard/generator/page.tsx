@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 import { Sparkles, Loader2, AlertCircle, CheckCircle2 } from 'lucide-react';
 import { generateAppAction, type GenerateAppInput } from '@/app/actions/generator';
 
@@ -59,6 +60,40 @@ export default function GeneratorPage() {
         width: '100%',
         boxShadow: '0 25px 50px -12px rgba(0,0,0,0.5)',
       }}>
+        {/* Back Button */}
+        <div style={{ marginBottom: '24px' }}>
+          <Link
+            href="/dashboard"
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '8px',
+              padding: '8px 16px',
+              borderRadius: '10px',
+              border: '1px solid #334155',
+              background: 'transparent',
+              color: '#94a3b8',
+              fontSize: '14px',
+              fontWeight: 500,
+              textDecoration: 'none',
+              cursor: 'pointer',
+              transition: 'all 0.2s',
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.background = '#1e293b';
+              e.currentTarget.style.color = '#e2e8f0';
+              e.currentTarget.style.borderColor = '#6366f1';
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.background = 'transparent';
+              e.currentTarget.style.color = '#94a3b8';
+              e.currentTarget.style.borderColor = '#334155';
+            }}
+          >
+            ← Torna alla Dashboard
+          </Link>
+        </div>
+
         {/* Header */}
         <div style={{ textAlign: 'center', marginBottom: '40px' }}>
           <div style={{
