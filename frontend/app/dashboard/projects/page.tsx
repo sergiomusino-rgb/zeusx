@@ -138,7 +138,7 @@ export default function ProjectsPage() {
           <p className="text-slate-400 mt-1">Gestisci le app generate con ZeusX.</p>
         </div>
         <Link
-          href="/create"
+          href="/generator"
           className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-xl text-sm font-medium transition text-center"
         >
           + Nuova App
@@ -192,7 +192,7 @@ export default function ProjectsPage() {
                 <tr>
                   <td colSpan={5} className="py-12 text-center text-slate-500">
                     Nessuna app trovata.{' '}
-                    <Link href="/create" className="text-blue-400 hover:underline">Crea la prima app</Link>
+                    <Link href="/generator" className="text-blue-400 hover:underline">Crea la prima app</Link>
                   </td>
                 </tr>
               ) : (
