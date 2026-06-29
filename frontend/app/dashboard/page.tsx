@@ -1,10 +1,5 @@
 "use client";
 
-// Disabilita TUTTA la cache per questa pagina
-export const dynamic = 'force-dynamic';
-export const revalidate = 0;
-export const fetchCache = 'force-no-store';
-
 import Link from 'next/link';
 import { Suspense, useEffect, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
