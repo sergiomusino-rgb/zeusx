@@ -15,11 +15,11 @@ export default function DashboardLayout({
   const [user, setUser] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   
-  // Controlla se siamo nella pagina principale della dashboard
-  const isDashboardHome = pathname === '/dashboard';
+  // La sidebar è visibile su tutte le pagine della dashboard tranne il generatore
+  const showSidebar = !pathname.startsWith('/dashboard/generator');
   
   // Controlla se siamo in una pagina secondaria della dashboard
-  const isSubPage = pathname.startsWith('/dashboard/') && !isDashboardHome;
+  const isSubPage = pathname.startsWith('/dashboard/') && pathname !== '/dashboard';
 
   // Sincronizza lo stato di autenticazione
   useEffect(() => {
@@ -54,20 +54,11 @@ export default function DashboardLayout({
     { name: '⚙️ Impostazioni', href: '/dashboard/settings' },
   ];
 
-  // Mostra un loader mentre si verifica l'autenticazione
-  if (loading) {
-    return (
-      <div className="flex h-screen items-center justify-center bg-slate-950">
-        <div className="text-white">Caricamento...</div>
-      </div>
-    );
-  }
-
   return (
     <div className="flex h-screen bg-slate-950 text-white font-sans overflow-hidden">
       
-      {/* SIDEBAR FISSA - Mostrata solo nella home della dashboard */}
-      {isDashboardHome && user && (
+      {/* SIDEBAR FISSA - Mostrata su tutte le pagine della dashboard tranne il generatore */}
+      {showSidebar && (
         <aside className="w-64 bg-slate-900 border-r border-slate-800 flex flex-col justify-between">
           <div>
             {/* Logo */}
@@ -123,7 +114,7 @@ export default function DashboardLayout({
                 ← Torna alla Dashboard
               </Link>
             ) : (
-              <span className="text-xl font-black md:hidden tracking-wider text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-indigo-500">
+              <span className="text-xl font-black tracking-wider text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-indigo-500">
                 ⚡ ZEUSX
               </span>
             )}
@@ -137,7 +128,7 @@ export default function DashboardLayout({
         </header>
 
         {/* AREA DEL CONTENUTO DINAMICO */}
-        <main className={`flex-1 overflow-y-auto ${isSubPage ? 'p-0' : 'p-6 lg:p-8'} bg-slate-950`}>
+        <main className={`flex-1 overflow-y-auto ${pathname.startsWith('/dashboard/generator') ? 'p-0' : 'p-6 lg:p-8'} bg-slate-950`}>
           {children}
         </main>
 

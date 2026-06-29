@@ -45,6 +45,8 @@ async function getOrCreateTenant(supabase: ReturnType<typeof createClient>, user
       name: user.email ? `Tenant di ${user.email}` : 'Tenant personale',
       slug: `tenant-${user.id.slice(0, 8)}`,
       plan: 'free',
+      app_limit: 5,
+      total_apps_created: 0,
     })
     .select('id')
     .single();
@@ -81,6 +83,7 @@ async function canCreateApp(supabase: ReturnType<typeof createClient>, tenantId:
           name: 'Admin Tenant',
           slug: `admin-${userId.slice(0, 8)}`,
           plan: 'free',
+          app_limit: 5,
           total_apps_created: 0,
         })
         .select('plan, app_limit, total_apps_created')
@@ -102,20 +105,20 @@ async function canCreateApp(supabase: ReturnType<typeof createClient>, tenantId:
 
   console.log('[canCreateApp] tenant:', tenant, 'error:', tenantError);
 
-  if (tenantError || !tenant) {
-    return { allowed: false, reason: 'Tenant non trovato' };
-  }
+    if (tenantError || !tenant) {
+      return { allowed: false, reason: 'Tenant non trovato' };
+    }
 
-  const planLimits: Record<string, number> = {
-    free: 0,
-    starter: 1,
-    pro: 5,
-    business: 250,
-  };
+    const planLimits: Record<string, number> = {
+      free: 0,
+      starter: 1,
+      pro: 5,
+      business: 250,
+    };
 
-  const appLimit = tenant.app_limit ?? planLimits[tenant.plan] ?? 1;
-  const totalCreated = tenant.total_apps_created || 0;
-  const slotsAvailable = appLimit - totalCreated;
+    const appLimit = tenant.app_limit ?? planLimits[tenant.plan] ?? 1;
+    const totalCreated = tenant.total_apps_created || 0;
+    const slotsAvailable = appLimit - totalCreated;
 
   if (slotsAvailable <= 0) {
     return { allowed: false, reason: 'SlotsExhausted', slotsAvailable: 0, tenant };
@@ -194,7 +197,10 @@ export async function POST(req: Request) {
     if (logo) blueprintPayload.logo = logo;
     
     const blueprint = sanitizeBlueprint(blueprintPayload);
-    console.log('[API /apps] Sanitized blueprint:', blueprint ? `${blueprint.schema?.tables?.length || 0} tabelle` : 'NULL');
+    if (!blueprint) {
+      return NextResponse.json({ error: 'Impossibile parsare il blueprint generato' }, { status: 500 });
+    }
+    console.log('[API /apps] Sanitized blueprint:', `${blueprint.schema?.tables?.length || 0} tabelle`);
 
     // Salva o recupera blueprint
     const normalizedSector = blueprint.sector;
