@@ -72,7 +72,8 @@ export default function LoginPage() {
           }
         }
 
-        // Cache busting redirect - forza un caricamento fresco
+        // Aspetta che i cookie vengano scritti
+        await new Promise(resolve => setTimeout(resolve, 500));
         window.location.replace('/dashboard?t=' + Date.now());
       } else {
         // Accesso utente esistente
@@ -82,7 +83,13 @@ export default function LoginPage() {
 
         // Usa direttamente la sessione restituita da signInWithPassword
         if (data.session) {
-          // Cache busting redirect - window.location.replace evita cache del browser
+          // Aspetta che i cookie vengano scritti da @supabase/ssr
+          await new Promise(resolve => setTimeout(resolve, 500));
+          
+          // Verifica che la sessione sia persistita nei cookie
+          const { data: { session: checkSession } } = await supabase.auth.getSession();
+          console.log('[Login] session check after delay:', !!checkSession);
+          
           window.location.replace('/dashboard?t=' + Date.now());
         } else {
           setError('Sessione non stabilita. Riprova.');

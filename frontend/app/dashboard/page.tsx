@@ -1,5 +1,8 @@
 "use client";
 
+// Forza rendering dinamico - impedisce a Next.js di cacheare la pagina
+export const dynamic = 'force-dynamic';
+
 import Link from 'next/link';
 import { Suspense, useEffect, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
