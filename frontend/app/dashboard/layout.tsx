@@ -1,8 +1,12 @@
-// Server Component - forza rendering dinamico per evitare pre-rendering statico di Vercel
+// Server Component - forza rendering dinamico per evitare pre-rendering statico
 export const dynamic = 'force-dynamic';
 
-import DashboardClientLayout from './DashboardClientLayout';
+import DashboardLayoutClient from './DashboardLayoutClient';
 
-export default function Layout({ children }: { children: React.ReactNode }) {
-  return <DashboardClientLayout>{children}</DashboardClientLayout>;
+export default function DashboardLayout({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
+  return <DashboardLayoutClient>{children}</DashboardLayoutClient>;
 }
