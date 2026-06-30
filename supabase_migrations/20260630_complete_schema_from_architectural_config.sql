@@ -30,24 +30,33 @@ END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
 -- Funzione per sincronizzare schema da apps.config a app_definitions
-CREATE OR REPLACE FUNCTION sync_app_definition_from_config()
+CREATE OR REPLACE FUNCTION public.handle_new_user()
 RETURNS TRIGGER AS $$
+DECLARE
+  new_tenant_id UUID;
+  user_email TEXT;
 BEGIN
-  INSERT INTO app_definitions (app_id, tenant_id, schema, ui_config, is_published)
-  VALUES (
-    NEW.id,
-    NEW.tenant_id,
-    COALESCE(NEW.config->'schema', NEW.config->'blueprint'->'schema', '{"tables": []}'::jsonb),
-    COALESCE(NEW.config->'ui', NEW.config->'branding', '{}'::jsonb),
-    COALESCE((NEW.config->>'is_published')::boolean, false)
-  )
-  ON CONFLICT (app_id) DO UPDATE SET
-    schema = EXCLUDED.schema,
-    ui_config = EXCLUDED.ui_config,
-    updated_at = NOW();
+  -- Inserisci il profilo utente
+  INSERT INTO public.profiles (user_id, email)
+  VALUES (NEW.id, NEW.email)
+  ON CONFLICT (user_id) DO NOTHING;
+
+  -- Ottieni l'email dell'utente per il nome del tenant
+  user_email := NEW.email;
+
+  -- Crea un nuovo tenant di default per l'utente
+  INSERT INTO public.tenants (owner_id, name, slug)
+  VALUES (NEW.id, user_email || '''s Workspace', REPLACE(user_email, '@', '-') || '-workspace') -- Esempio di nome e slug
+  RETURNING id INTO new_tenant_id;
+
+  -- Aggiungi l'utente come owner del nuovo tenant
+  INSERT INTO public.tenant_members (tenant_id, user_id, role)
+  VALUES (new_tenant_id, NEW.id, 'owner');
+
   RETURN NEW;
 END;
-$$ LANGUAGE plpgsql;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
 
 -- ============================================================================
 -- 1. TABELLA: profiles
