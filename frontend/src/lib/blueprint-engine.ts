@@ -10,7 +10,7 @@ interface GenerateOptions {
   sector: string;
   prompt?: string;
   lang?: string;
-  provider?: 'gemini' | 'openai' | 'groq';
+  provider?: 'gemini' | 'openai' | 'groq' | 'openrouter';
 }
 
 interface BlueprintRecord {
@@ -64,7 +64,8 @@ export class BlueprintEngine {
     let rawText = '';
 
     try {
-      if (provider === 'openai') rawText = await this.callOpenAI(systemPrompt);
+      if (provider === 'openrouter') rawText = await this.callOpenRouter(systemPrompt);
+      else if (provider === 'openai') rawText = await this.callOpenAI(systemPrompt);
       else if (provider === 'groq') rawText = await this.callGroq(systemPrompt);
       else rawText = await this.callGemini(systemPrompt);
     } catch (err) {
@@ -223,6 +224,27 @@ Regole:
 
     const data = await res.json();
     if (!res.ok) throw new Error(data.error?.message || 'Errore Groq');
+    return data.choices?.[0]?.message?.content || '';
+  }
+
+  private async callOpenRouter(prompt: string): Promise<string> {
+    const res = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${process.env.OPENROUTER_API_KEY || ''}`,
+        'Content-Type': 'application/json',
+        'HTTP-Referer': 'https://zeusx.app',
+        'X-Title': 'ZeusX',
+      },
+      body: JSON.stringify({
+        model: 'anthropic/claude-3.5-sonnet',
+        messages: [{ role: 'user', content: prompt }],
+        response_format: { type: 'json_object' },
+      }),
+    });
+
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error?.message || 'Errore OpenRouter');
     return data.choices?.[0]?.message?.content || '';
   }
 }

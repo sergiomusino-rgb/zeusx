@@ -25,11 +25,33 @@ export interface GenerateAppResult {
 // ─── LLM Call ─────────────────────────────────────────────────────────────────
 
 async function callLLM(systemPrompt: string): Promise<string> {
-  const provider = process.env.LLM_PROVIDER || 'openai';
-  const apiKey = process.env.OPENAI_API_KEY || process.env.GROQ_API_KEY || process.env.GEMINI_API_KEY;
+  const provider = process.env.LLM_PROVIDER || 'openrouter';
+  const apiKey = process.env.OPENROUTER_API_KEY || process.env.OPENAI_API_KEY || process.env.GROQ_API_KEY || process.env.GEMINI_API_KEY;
 
   if (!apiKey) {
     throw new Error('API key LLM non configurata');
+  }
+
+  if (provider === 'openrouter') {
+    const res = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${apiKey}`,
+        'Content-Type': 'application/json',
+        'HTTP-Referer': 'https://zeusx.app',
+        'X-Title': 'ZeusX',
+      },
+      body: JSON.stringify({
+        model: 'anthropic/claude-3.5-sonnet',
+        messages: [{ role: 'user', content: systemPrompt }],
+        response_format: { type: 'json_object' },
+        temperature: 0.7,
+      }),
+    });
+
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error?.message || 'Errore OpenRouter');
+    return data.choices?.[0]?.message?.content || '';
   }
 
   if (provider === 'openai') {
