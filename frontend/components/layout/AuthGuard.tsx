@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
-import { createClient } from '@supabase/supabase-js';
+import { supabaseBrowser } from '@/lib/supabase-browser';
 import { Loader2, ShieldAlert } from 'lucide-react';
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -51,9 +51,8 @@ export default function AuthGuard({
 
     async function checkAuth() {
       try {
-        const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
-        const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '';
-        const supabase = createClient(supabaseUrl, supabaseAnonKey);
+        // Use shared browser client to avoid multiple GoTrueClient instances
+        const supabase = supabaseBrowser;
 
         // ── Step 1: Verifica sessione ──────────────────────────────────
         const { data: { session }, error: sessionError } = await supabase.auth.getSession();
@@ -89,6 +88,34 @@ export default function AuthGuard({
           if (cancelled) return;
 
           if (memberError || !membership) {
+            // Prova a creare automaticamente il tenant per l'utente tramite API
+            if (userId && session?.access_token) {
+              try {
+                const response = await fetch('/api/tenants/create', {
+                  method: 'POST',
+                  headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${session.access_token}`,
+                  },
+                  body: JSON.stringify({
+                    name: session.user.email ? `Workspace di ${session.user.email}` : 'Il mio Workspace',
+                    slug: `workspace-${userId.slice(0, 8)}`,
+                  }),
+                });
+
+                if (response.ok) {
+                  // Tenant creato con successo, continua
+                  if (!cancelled) {
+                    setIsAuthorized(true);
+                    setIsLoading(false);
+                  }
+                  return;
+                }
+              } catch (createErr) {
+                console.error('[AuthGuard] Errore creazione tenant:', createErr);
+              }
+            }
+            
             setAuthError(
               'Nessun workspace trovato. Completa la registrazione o crea un nuovo tenant.'
             );
