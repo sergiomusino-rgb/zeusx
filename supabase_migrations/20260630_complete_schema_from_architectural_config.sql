@@ -21,17 +21,6 @@ $$ LANGUAGE plpgsql;
 -- Funzione per creare il profilo automatico al primo accesso
 CREATE OR REPLACE FUNCTION public.handle_new_user()
 RETURNS TRIGGER AS $$
-BEGIN
-  INSERT INTO public.profiles (user_id, email)
-  VALUES (NEW.id, NEW.email)
-  ON CONFLICT (user_id) DO NOTHING;
-  RETURN NEW;
-END;
-$$ LANGUAGE plpgsql SECURITY DEFINER;
-
--- Funzione per sincronizzare schema da apps.config a app_definitions
-CREATE OR REPLACE FUNCTION public.handle_new_user()
-RETURNS TRIGGER AS $$
 DECLARE
   new_tenant_id UUID;
   user_email TEXT;
@@ -57,6 +46,25 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
+-- Funzione per sincronizzare schema da apps.config a app_definitions
+CREATE OR REPLACE FUNCTION sync_app_definition_from_config()
+RETURNS TRIGGER AS $$
+BEGIN
+  INSERT INTO app_definitions (app_id, tenant_id, schema, ui_config, is_published)
+  VALUES (
+    NEW.id,
+    NEW.tenant_id,
+    COALESCE(NEW.config->'schema', NEW.config->'blueprint'->'schema', '{"tables": []}'::jsonb),
+    COALESCE(NEW.config->'ui', NEW.config->'branding', '{}'::jsonb),
+    COALESCE((NEW.config->>'is_published')::boolean, false)
+  )
+  ON CONFLICT (app_id) DO UPDATE SET
+    schema = EXCLUDED.schema,
+    ui_config = EXCLUDED.ui_config,
+    updated_at = NOW();
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
 
 -- ============================================================================
 -- 1. TABELLA: profiles
@@ -304,7 +312,7 @@ CREATE TABLE IF NOT EXISTS subscriptions (
   tenant_id UUID NOT NULL UNIQUE REFERENCES tenants(id) ON DELETE CASCADE,
   stripe_customer_id TEXT,
   stripe_subscription_id TEXT,
-  status TEXT NOT NULL DEFAULT 'incomplete' CHECK (status IN ('incomplete', 'active', 'past_due', 'canceled', 'trialing')),
+  status TEXT NOT NULL DEFAULT 'incomplete' CHECK (status IN ('free', 'starter', 'pro', 'business', 'incomplete', 'active', 'past_due', 'canceled', 'trialing')),
   current_period_start TIMESTAMPTZ,
   current_period_end TIMESTAMPTZ,
   created_at TIMESTAMPTZ DEFAULT now(),
@@ -507,64 +515,4 @@ CREATE POLICY "Tenant members view their subscriptions" ON subscriptions
     )
   );
 
-DROP POLICY IF EXISTS "Service role manages subscriptions" ON subscriptions;
-CREATE POLICY "Service role manages subscriptions" ON subscriptions
-  FOR ALL
-  USING (true)
-  WITH CHECK (true);
-
--- ============================================================================
--- SEED DATA: Blueprint di esempio
--- ============================================================================
-
--- Blueprint: Studio Oculistico
-INSERT INTO blueprints (sector, display_name, description, schema, ui_config)
-VALUES (
-  'oculista',
-  'Studio Oculistico',
-  'Gestionale per studi oculistici: pazienti, appuntamenti, refrazioni, prescrizioni lenti.',
-  '{"tables": [{"name": "patients", "label": "Paziente", "labelPlural": "Pazienti", "icon": "👁️", "fields": [{"id": "first_name", "type": "text", "label": "Nome", "required": true}, {"id": "last_name", "type": "text", "label": "Cognome", "required": true}, {"id": "phone", "type": "phone", "label": "Telefono", "required": false}, {"id": "email", "type": "email", "label": "Email", "required": false}, {"id": "birth_date", "type": "date", "label": "Data di nascita", "required": false}]}, {"name": "appointments", "label": "Appuntamento", "labelPlural": "Appuntamenti", "icon": "📅", "fields": [{"id": "patient_id", "type": "relation", "label": "Paziente", "target": "patients", "targetLabel": "last_name", "required": true}, {"id": "date", "type": "datetime", "label": "Data e ora", "required": true}, {"id": "type", "type": "select", "label": "Tipo visita", "options": ["Prima visita", "Controllo", "Urgenza", "Lenti a contatto"], "required": true}, {"id": "notes", "type": "textarea", "label": "Note", "required": false}]}]}',
-  '{"primaryColor": "#6366f1", "sidebar": ["patients", "appointments"], "dashboardCards": [{"type": "count", "table": "patients", "label": "Pazienti totali"}, {"type": "count", "table": "appointments", "label": "Appuntamenti oggi"}]}'
-)
-ON CONFLICT (sector) DO UPDATE SET
-  display_name = EXCLUDED.display_name,
-  description = EXCLUDED.description,
-  schema = EXCLUDED.schema,
-  ui_config = EXCLUDED.ui_config,
-  updated_at = NOW();
-
--- Blueprint: Officina Meccanica
-INSERT INTO blueprints (sector, display_name, description, schema, ui_config)
-VALUES (
-  'officina',
-  'Officina Meccanica',
-  'Gestionale per officine: clienti, veicoli, lavorazioni, preventivi, fatture.',
-  '{"tables": [{"name": "customers", "label": "Cliente", "labelPlural": "Clienti", "icon": "👤", "fields": [{"id": "name", "type": "text", "label": "Ragione Sociale", "required": true}, {"id": "phone", "type": "phone", "label": "Telefono", "required": false}, {"id": "email", "type": "email", "label": "Email", "required": false}, {"id": "address", "type": "textarea", "label": "Indirizzo", "required": false}]}, {"name": "vehicles", "label": "Veicolo", "labelPlural": "Veicoli", "icon": "🚗", "fields": [{"id": "customer_id", "type": "relation", "label": "Cliente", "target": "customers", "targetLabel": "name", "required": true}, {"id": "plate", "type": "text", "label": "Targa", "required": true}, {"id": "brand", "type": "text", "label": "Marca", "required": false}, {"id": "model", "type": "text", "label": "Modello", "required": false}, {"id": "year", "type": "number", "label": "Anno", "required": false}]}, {"name": "jobs", "label": "Lavorazione", "labelPlural": "Lavorazioni", "icon": "🔧", "fields": [{"id": "vehicle_id", "type": "relation", "label": "Veicolo", "target": "vehicles", "targetLabel": "plate", "required": true}, {"id": "description", "type": "textarea", "label": "Descrizione", "required": true}, {"id": "status", "type": "select", "label": "Stato", "options": ["In attesa", "In corso", "Completata", "Consegnata"], "required": true}, {"id": "cost", "type": "currency", "label": "Costo", "required": false}]}]}',
-  '{"primaryColor": "#f59e0b", "sidebar": ["customers", "vehicles", "jobs"], "dashboardCards": [{"type": "count", "table": "customers", "label": "Clienti"}, {"type": "count", "table": "jobs", "label": "Lavorazioni in corso"}]}'
-)
-ON CONFLICT (sector) DO UPDATE SET
-  display_name = EXCLUDED.display_name,
-  description = EXCLUDED.description,
-  schema = EXCLUDED.schema,
-  ui_config = EXCLUDED.ui_config,
-  updated_at = NOW();
-
--- Blueprint: Ristorante
-INSERT INTO blueprints (sector, display_name, description, schema, ui_config)
-VALUES (
-  'ristorante',
-  'Ristorante',
-  'Gestionale per ristoranti: menu, ordini, prenotazioni, fornitori.',
-  '{"tables": [{"name": "dishes", "label": "Piatto", "labelPlural": "Menu", "icon": "🍽️", "fields": [{"id": "name", "type": "text", "label": "Nome piatto", "required": true}, {"id": "category", "type": "select", "label": "Categoria", "options": ["Antipasti", "Primi", "Secondi", "Contorni", "Dolci", "Bevande"], "required": true}, {"id": "price", "type": "currency", "label": "Prezzo", "required": true}, {"id": "description", "type": "textarea", "label": "Descrizione", "required": false}]}, {"name": "reservations", "label": "Prenotazione", "labelPlural": "Prenotazioni", "icon": "📅", "fields": [{"id": "customer_name", "type": "text", "label": "Nome cliente", "required": true}, {"id": "phone", "type": "phone", "label": "Telefono", "required": true}, {"id": "date", "type": "datetime", "label": "Data e ora", "required": true}, {"id": "guests", "type": "number", "label": "Numero ospiti", "required": true}, {"id": "notes", "type": "textarea", "label": "Note", "required": false}]}]}',
-  '{"primaryColor": "#ef4444", "sidebar": ["dishes", "reservations"], "dashboardCards": [{"type": "count", "table": "dishes", "label": "Piatti nel menu"}, {"type": "count", "table": "reservations", "label": "Prenotazioni oggi"}]}'
-)
-ON CONFLICT (sector) DO UPDATE SET
-  display_name = EXCLUDED.display_name,
-  description = EXCLUDED.description,
-  schema = EXCLUDED.schema,
-  ui_config = EXCLUDED.ui_config,
-  updated_at = NOW();
-
--- ============================================================================
--- FINE MIGRAZIONE
--- ============================================================================
+DROP POLICY IF EXISTS "Service role manages subscriptions" ON
