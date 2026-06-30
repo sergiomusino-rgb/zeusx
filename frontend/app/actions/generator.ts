@@ -25,8 +25,8 @@ export interface GenerateAppResult {
 // ─── LLM Call ─────────────────────────────────────────────────────────────────
 
 async function callLLM(systemPrompt: string): Promise<string> {
-  const provider = process.env.LLM_PROVIDER || 'openrouter';
-  const apiKey = process.env.OPENROUTER_API_KEY || process.env.OPENAI_API_KEY || process.env.GROQ_API_KEY || process.env.GEMINI_API_KEY;
+  const provider = (process.env.LLM_PROVIDER || 'groq').toLowerCase();
+  const apiKey = process.env.GROQ_API_KEY || process.env.OPENROUTER_API_KEY || process.env.OPENAI_API_KEY || process.env.GEMINI_API_KEY;
 
   if (!apiKey) {
     throw new Error('API key LLM non configurata');
