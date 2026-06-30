@@ -164,11 +164,10 @@ export async function generateAppAction(input: GenerateAppInput): Promise<Genera
     });
 
     // Get current user from session
-    const { data: { session } } = await supabase.auth.getSession();
-    if (!session?.user) {
+    const { data: { user }, error: userError } = await supabase.auth.getUser();
+    if (userError || !user) {
       return { success: false, error: 'Utente non autenticato' };
     }
-    const user = session.user;
 
     // Get user's tenant
     const { data: membership, error: membershipError } = await supabase
