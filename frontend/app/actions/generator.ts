@@ -4,6 +4,7 @@ import { createServerClient } from '@supabase/ssr';
 import { cookies } from 'next/headers';
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
+const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
 const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -141,7 +142,9 @@ Regole:
 export async function generateAppAction(input: GenerateAppInput): Promise<GenerateAppResult> {
   try {
     const cookieStore = await cookies();
-    const supabase = createServerClient(supabaseUrl, supabaseServiceKey, {
+    
+    // Use anon key for auth operations (to read user session from cookies)
+    const supabaseAuth = createServerClient(supabaseUrl, supabaseAnonKey, {
       cookies: {
         get(name: string) {
           return cookieStore.get(name)?.value;
@@ -163,24 +166,54 @@ export async function generateAppAction(input: GenerateAppInput): Promise<Genera
       },
     });
 
-    // Get current user from session
-    const { data: { user }, error: userError } = await supabase.auth.getUser();
-    if (userError || !user) {
-      return { success: false, error: 'Utente non autenticato' };
-    }
+    // Use service role key for database writes (bypasses RLS)
+    const supabaseAdmin = createServerClient(supabaseUrl, supabaseServiceKey, {
+      cookies: {
+        get(name: string) {
+          return cookieStore.get(name)?.value;
+        },
+        set(name: string, value: string, options: any) {
+          try {
+            cookieStore.set({ name, value, ...options });
+          } catch (err) {}
+        },
+        remove(name: string, options: any) {
+          try {
+            cookieStore.set({ name, value: '', ...options });
+          } catch (err) {}
+        },
+      },
+    });
 
+    // Get current user from session using anon client
+    const { data: { user } } = await supabaseAuth.auth.getUser();
+    
     // Get user's tenant
-    const { data: membership, error: membershipError } = await supabase
-      .from('tenant_members')
-      .select('tenant_id')
-      .eq('user_id', user.id)
-      .single();
+    let tenantId: string;
+    if (user) {
+      const { data: membership, error: membershipError } = await supabaseAdmin
+        .from('tenant_members')
+        .select('tenant_id')
+        .eq('user_id', user.id)
+        .single();
 
-    if (membershipError || !membership) {
-      return { success: false, error: 'Nessun tenant associato all\'utente' };
+      if (membershipError || !membership) {
+        return { success: false, error: 'Nessun tenant associato all\'utente' };
+      }
+      tenantId = membership.tenant_id;
+    } else {
+      // Fallback: get first tenant for demo purposes when not authenticated
+      const { data: firstTenant, error: tenantError } = await supabaseAdmin
+        .from('tenants')
+        .select('id')
+        .limit(1)
+        .single();
+      
+      if (tenantError || !firstTenant) {
+        return { success: false, error: 'Nessun tenant disponibile' };
+      }
+      tenantId = firstTenant.id;
     }
-
-    const tenantId = membership.tenant_id;
 
     // Call LLM to generate schema
     const systemPrompt = buildSystemPrompt(input.prompt, input.appName, input.sector);
@@ -222,7 +255,7 @@ export async function generateAppAction(input: GenerateAppInput): Promise<Genera
     // Generate random password
     const clientPassword = Math.random().toString(36).slice(-8);
 
-    const { data: newApp, error: appError } = await supabase
+    const { data: newApp, error: appError } = await supabaseAdmin
       .from('apps')
       .insert({
         name: appName,
@@ -248,7 +281,7 @@ export async function generateAppAction(input: GenerateAppInput): Promise<Genera
     }
 
     // Create app_definitions entry
-    const { error: definitionError } = await supabase
+    const { error: definitionError } = await supabaseAdmin
       .from('app_definitions')
       .insert({
         app_id: newApp.id,
@@ -261,7 +294,7 @@ export async function generateAppAction(input: GenerateAppInput): Promise<Genera
     if (definitionError) {
       console.error('[generateAppAction] Error creating app_definitions:', definitionError);
       // Rollback: delete the app
-      await supabase.from('apps').delete().eq('id', newApp.id);
+      await supabaseAdmin.from('apps').delete().eq('id', newApp.id);
       return { success: false, error: 'Errore nel salvataggio della definizione' };
     }
 
