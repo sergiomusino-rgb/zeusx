@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { supabaseBrowser } from '@/src/lib/supabase-browser';
+import { supabase, getAccessTokenFromStorage } from '@/src/lib/supabase';
 
 export default function PricingPage() {
   const [userId, setUserId] = useState<string | null>(null);
