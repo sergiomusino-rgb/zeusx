@@ -81,7 +81,7 @@ interface UserPrefs {
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
-const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:3001';
+const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || 'https://zeusx-backend.onrender.com';
 
 const ICON_MAP: Record<string, React.ReactNode> = {
   users: <Users size={18} />,

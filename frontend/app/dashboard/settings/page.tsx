@@ -9,6 +9,11 @@ export default function SettingsPage() {
   const [plan, setPlan] = useState<string>('free');
   const [loading, setLoading] = useState(true);
   const [portalLoading, setPortalLoading] = useState(false);
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [passwordError, setPasswordError] = useState('');
+  const [passwordSuccess, setPasswordSuccess] = useState('');
+  const [passwordLoading, setPasswordLoading] = useState(false);
 
   useEffect(() => {
     async function loadPlan() {
@@ -85,6 +90,37 @@ export default function SettingsPage() {
     }
   }
 
+  async function handleChangePassword(e: React.FormEvent) {
+    e.preventDefault();
+    setPasswordError('');
+    setPasswordSuccess('');
+
+    if (newPassword.length < 6) {
+      setPasswordError('La password deve essere di almeno 6 caratteri');
+      return;
+    }
+    if (newPassword !== confirmPassword) {
+      setPasswordError('Le password non coincidono');
+      return;
+    }
+
+    setPasswordLoading(true);
+    try {
+      const { error } = await supabase.auth.updateUser({ password: newPassword });
+      if (error) {
+        setPasswordError(error.message);
+      } else {
+        setPasswordSuccess('Password cambiata con successo!');
+        setNewPassword('');
+        setConfirmPassword('');
+      }
+    } catch (err: any) {
+      setPasswordError(err.message || 'Errore durante il cambio password');
+    } finally {
+      setPasswordLoading(false);
+    }
+  }
+
   return (
     <div className="max-w-4xl mx-auto space-y-8">
       <div>
@@ -116,7 +152,53 @@ export default function SettingsPage() {
           </div>
         </div>
 
-        {/* SEZIONE 2: PIANO E FATTURAZIONE */}
+        {/* SEZIONE 2: CAMBIO PASSWORD */}
+        <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 space-y-4">
+          <h3 className="text-base font-bold text-slate-200 border-b border-slate-800/60 pb-2">Cambia Password</h3>
+          <form onSubmit={handleChangePassword} className="space-y-4">
+            <div>
+              <label className="block text-xs text-slate-400 uppercase tracking-wider font-semibold mb-2">Nuova Password</label>
+              <input 
+                type="password" 
+                value={newPassword}
+                onChange={(e) => setNewPassword(e.target.value)}
+                placeholder="Inserisci nuova password"
+                className="w-full bg-slate-950 border border-slate-800 text-white rounded-xl px-4 py-2.5 text-sm focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 outline-none transition"
+              />
+            </div>
+            <div>
+              <label className="block text-xs text-slate-400 uppercase tracking-wider font-semibold mb-2">Conferma Password</label>
+              <input 
+                type="password" 
+                value={confirmPassword}
+                onChange={(e) => setConfirmPassword(e.target.value)}
+                placeholder="Conferma nuova password"
+                className="w-full bg-slate-950 border border-slate-800 text-white rounded-xl px-4 py-2.5 text-sm focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 outline-none transition"
+              />
+            </div>
+
+            {passwordError && (
+              <div className="text-red-400 text-sm bg-red-500/10 border border-red-500/20 rounded-xl px-4 py-2">
+                {passwordError}
+              </div>
+            )}
+            {passwordSuccess && (
+              <div className="text-emerald-400 text-sm bg-emerald-500/10 border border-emerald-500/20 rounded-xl px-4 py-2">
+                {passwordSuccess}
+              </div>
+            )}
+
+            <button
+              type="submit"
+              disabled={passwordLoading || !newPassword || !confirmPassword}
+              className="bg-indigo-600 hover:bg-indigo-700 disabled:bg-slate-800 disabled:text-slate-500 text-white px-6 py-2.5 rounded-xl font-medium text-sm transition"
+            >
+              {passwordLoading ? 'Cambio in corso...' : 'Cambia Password'}
+            </button>
+          </form>
+        </div>
+
+        {/* SEZIONE 3: PIANO E FATTURAZIONE */}
         <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 space-y-4">
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 border-b border-slate-800/60 pb-2">
             <h3 className="text-base font-bold text-slate-200">Piano & Abbonamento</h3>
@@ -140,7 +222,7 @@ export default function SettingsPage() {
           </div>
         </div>
 
-        {/* SEZIONE 3: SVILUPPO & CHIAVI (SUPABASE INTEGRAZIONE PREVISTA) */}
+        {/* SEZIONE 4: SVILUPPO & CHIAVI (SUPABASE INTEGRAZIONE PREVISTA) */}
         <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 space-y-4">
           <h3 className="text-base font-bold text-slate-200 border-b border-slate-800/60 pb-2">Integrazione di Sistema</h3>
           <div className="space-y-2">
