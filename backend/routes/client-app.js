@@ -334,4 +334,54 @@ router.get('/client/apps/:appId/export', clientAuthMiddleware, async (req, res) 
   }
 });
 
+// POST /a/:slug/change-password - Change client password
+router.post('/a/:slug/change-password', async (req, res) => {
+  try {
+    const { slug } = req.params;
+    const { oldPassword, newPassword } = req.body;
+
+    if (!oldPassword || !newPassword) {
+      return res.status(400).json({ error: 'Password vecchia e nuova richieste' });
+    }
+
+    if (newPassword.length < 6) {
+      return res.status(400).json({ error: 'La nuova password deve avere almeno 6 caratteri' });
+    }
+
+    const supabase = getSupabase();
+
+    // Find app by slug
+    const { data: app, error: appError } = await supabase
+      .from('apps')
+      .select('id, tenant_id, client_password')
+      .eq('slug', slug)
+      .single();
+
+    if (appError || !app) {
+      return res.status(404).json({ error: 'App non trovata' });
+    }
+
+    // Verify old password
+    if (app.client_password !== oldPassword) {
+      return res.status(401).json({ error: 'Password attuale errata' });
+    }
+
+    // Update password
+    const { error: updateError } = await supabase
+      .from('apps')
+      .update({ client_password: newPassword })
+      .eq('id', app.id);
+
+    if (updateError) {
+      console.error('Change password error:', updateError);
+      return res.status(500).json({ error: updateError.message });
+    }
+
+    res.json({ success: true, message: 'Password cambiata con successo' });
+  } catch (err) {
+    console.error('Change password exception:', err);
+    res.status(500).json({ error: err.message || 'Errore interno' });
+  }
+});
+
 module.exports = router;
