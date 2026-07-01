@@ -1963,7 +1963,7 @@ export default function ViewerProFinal() {
               icon={<Mail size={18} />}
               label="Email"
               active={false}
-              onClick={() => window.open('mailto:info@zeusx.it', '_blank')}
+              onClick={() => window.open('https://mail.google.com', '_blank')}
               colors={colors}
               primaryColor={primaryColor}
             />
