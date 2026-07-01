@@ -72,7 +72,7 @@ interface AppRecord {
 }
 
 interface UserPrefs {
-  layout: 'corporate' | 'modern' | 'compact';
+  layout: 'corporate' | 'modern' | 'compact' | 'smartphone';
   theme: 'dark' | 'light';
   primaryColor: string;
   companyName: string;
@@ -95,6 +95,7 @@ const LAYOUT_CONFIG = {
   corporate: { sidebarWidth: 'w-72', padding: 'p-8', radius: 'rounded-2xl', shadow: 'shadow-2xl' },
   modern:    { sidebarWidth: 'w-64', padding: 'p-6', radius: 'rounded-xl',  shadow: 'shadow-xl' },
   compact:   { sidebarWidth: 'w-56', padding: 'p-4', radius: 'rounded-lg',  shadow: 'shadow-lg' },
+  smartphone:{ sidebarWidth: 'w-full', padding: 'p-3', radius: 'rounded-none', shadow: 'none' },
 };
 
 const CHART_COLORS = ['#6366f1', '#22c55e', '#f59e0b', '#ef4444', '#06b6d4', '#8b5cf6'];
@@ -1209,6 +1210,7 @@ function SettingsModal({ prefs, onPrefsChange, onClose, onLogout, onChangePasswo
     { key: 'corporate', label: 'Corporate', desc: 'Ampio e spazioso' },
     { key: 'modern', label: 'Modern', desc: 'Bilanciato' },
     { key: 'compact', label: 'Compact', desc: 'Compatto e denso' },
+    { key: 'smartphone', label: 'Smartphone', desc: 'Schermo mobile' },
   ];
 
   return (
@@ -1243,7 +1245,7 @@ function SettingsModal({ prefs, onPrefsChange, onClose, onLogout, onChangePasswo
         {/* Layout Section */}
         <div style={sectionBox}>
           <div style={sectionTitle}>Layout</div>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '12px' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '12px' }}>
             {layouts.map(({ key, label, desc }) => {
               const isActive = prefs.layout === key;
               const cfg = LAYOUT_CONFIG[key];
@@ -1267,7 +1269,7 @@ function SettingsModal({ prefs, onPrefsChange, onClose, onLogout, onChangePasswo
                     }}
                   >
                     <div style={{
-                      width: key === 'corporate' ? '35%' : key === 'modern' ? '28%' : '22%',
+                      width: key === 'corporate' ? '35%' : key === 'modern' ? '28%' : key === 'compact' ? '22%' : '18%',
                       background: isActive ? colors.primary : colors.textSecondary + '40',
                       borderRadius: '4px', margin: '4px',
                     }} />
