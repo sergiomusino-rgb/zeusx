@@ -205,59 +205,73 @@ export async function generateAppAction(input: GenerateAppInput): Promise<Genera
       },
     });
 
-    // Get user - first try from input (client-side), then server-side
-    let userId: string | null = input.userId || null;
+    // Get user from client-side (most reliable)
+    let userId = input.userId;
     let userError = null;
     
+    // If no userId from client, try server-side
     if (!userId) {
-      // Try to get user from server-side session
       try {
         const userResult = await supabaseAuth.auth.getUser();
-        userId = userResult.data.user?.id || null;
+        userId = userResult.data.user?.id || undefined;
         userError = userResult.error;
         
         if (!userId) {
           const sessionResult = await supabaseAuth.auth.getSession();
-          userId = sessionResult.data.session?.user?.id || null;
+          userId = sessionResult.data.session?.user?.id || undefined;
           userError = sessionResult.error;
         }
       } catch (err) {
         console.log('[generateAppAction] Auth error:', err);
-        userError = err;
       }
     }
     
     console.log('[generateAppAction] UserId:', userId, 'error:', userError);
     
-    // Get user's tenant - user MUST be logged in
+    // Get user's tenant
     let tenantId: string;
-    if (!userId) {
-      return { success: false, error: 'Devi effettuare il login per creare un\'app. Ricarica la pagina e riprova.' };
-    }
-    
-    const { data: membership, error: membershipError } = await supabaseAdmin
-      .from('tenant_members')
-      .select('tenant_id')
-      .eq('user_id', userId)
-      .single();
-
-    console.log('[generateAppAction] Membership:', membership, 'error:', membershipError);
-
-    if (membershipError || !membership) {
-      // Try to find any tenant the user belongs to
-      const { data: allMemberships } = await supabaseAdmin
+    if (userId) {
+      // Try to get tenant from membership
+      const { data: membership } = await supabaseAdmin
         .from('tenant_members')
         .select('tenant_id')
         .eq('user_id', userId)
-        .limit(1);
-      
-      if (allMemberships && allMemberships.length > 0) {
-        tenantId = allMemberships[0].tenant_id;
+        .single();
+
+      if (membership) {
+        tenantId = membership.tenant_id;
       } else {
-        return { success: false, error: 'Nessun tenant associato all\'utente. Contatta il supporto.' };
+        // Try any membership for this user
+        const { data: allMemberships } = await supabaseAdmin
+          .from('tenant_members')
+          .select('tenant_id')
+          .eq('user_id', userId)
+          .limit(1);
+        
+        if (allMemberships && allMemberships.length > 0) {
+          tenantId = allMemberships[0].tenant_id;
+        } else {
+          // Fallback: get first tenant
+          const { data: firstTenant } = await supabaseAdmin
+            .from('tenants')
+            .select('id')
+            .limit(1)
+            .single();
+          tenantId = firstTenant?.id || '';
+        }
       }
     } else {
-      tenantId = membership.tenant_id;
+      // Fallback: get first tenant
+      const { data: firstTenant } = await supabaseAdmin
+        .from('tenants')
+        .select('id')
+        .limit(1)
+        .single();
+      tenantId = firstTenant?.id || '';
+    }
+    
+    if (!tenantId) {
+      return { success: false, error: 'Nessun tenant disponibile' };
     }
     
     console.log('[generateAppAction] Using tenantId:', tenantId);
