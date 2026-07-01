@@ -300,17 +300,17 @@ export async function generateAppAction(input: GenerateAppInput): Promise<Genera
       return { success: false, error: 'Errore nella creazione dell\'app: ' + (appError?.message || 'unknown') };
     }
 
-    // Create app_definitions entry
+    // Create app_definitions entry (use upsert to handle duplicates)
     console.log('[generateAppAction] Creating app_definitions:', { app_id: newApp.id, tenant_id: tenantId });
     const { error: definitionError } = await supabaseAdmin
       .from('app_definitions')
-      .insert({
+      .upsert({
         app_id: newApp.id,
         tenant_id: tenantId,
         schema: generatedSchema.schema,
         ui_config: generatedSchema.ui || {},
         is_published: true,
-      });
+      }, { onConflict: 'app_id' });
 
     console.log('[generateAppAction] app_definitions created:', { definitionError });
 
