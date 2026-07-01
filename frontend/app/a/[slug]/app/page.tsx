@@ -1893,7 +1893,7 @@ export default function ViewerProFinal() {
       <aside
         className={`${layoutCfg.sidebarWidth}`}
         style={{
-          background: colors.sidebarBg,
+          background: colors.primary,
           borderRight: `1px solid ${colors.border}`,
           display: 'flex',
           flexDirection: 'column',
@@ -1905,7 +1905,7 @@ export default function ViewerProFinal() {
       >
         {/* Logo + Company */}
         <div style={{
-          padding: '24px 20px', borderBottom: `1px solid ${colors.border}`,
+          padding: '24px 20px', borderBottom: `1px solid rgba(255,255,255,0.2)`,
           display: 'flex', alignItems: 'center', gap: '12px',
         }}>
           {logoUrl ? (
@@ -1913,13 +1913,13 @@ export default function ViewerProFinal() {
           ) : (
             <div style={{
               width: '48px', height: '48px', borderRadius: '10px',
-              background: primaryColor, display: 'flex', alignItems: 'center', justifyContent: 'center',
+              background: 'rgba(255,255,255,0.2)', display: 'flex', alignItems: 'center', justifyContent: 'center',
               color: '#fff', fontWeight: 700, fontSize: '20px',
             }}>
               {companyName.charAt(0).toUpperCase()}
             </div>
           )}
-          <span style={{ color: colors.sidebarText, fontSize: '18px', fontWeight: 700, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+          <span style={{ color: '#ffffff', fontSize: '18px', fontWeight: 700, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
             {companyName}
           </span>
         </div>
@@ -1951,7 +1951,7 @@ export default function ViewerProFinal() {
         </nav>
 
         {/* Bottom actions */}
-        <div style={{ padding: '12px 10px', borderTop: `1px solid ${colors.border}`, display: 'flex', flexDirection: 'column', gap: '4px' }}>
+        <div style={{ padding: '12px 10px', borderTop: `1px solid rgba(255,255,255,0.2)`, display: 'flex', flexDirection: 'column', gap: '4px' }}>
           <SidebarItem
             icon={<Settings size={18} />}
             label="Impostazioni"
@@ -1971,9 +1971,9 @@ export default function ViewerProFinal() {
         </div>
 
         {/* Brand Footer */}
-        <div style={{ padding: '16px 20px', borderTop: `1px solid ${colors.border}`, textAlign: 'center' }}>
-          <p style={{ color: colors.textSecondary, fontSize: '11px', fontWeight: 600, margin: 0 }}>
-            ZeusX <span style={{ color: colors.textSecondary, opacity: 0.7 }}>by</span> <span style={{ color: colors.primary, fontWeight: 700 }}>MUSINO</span>
+        <div style={{ padding: '16px 20px', borderTop: `1px solid rgba(255,255,255,0.2)`, textAlign: 'center' }}>
+          <p style={{ color: 'rgba(255,255,255,0.8)', fontSize: '11px', fontWeight: 600, margin: 0 }}>
+            ZeusX <span style={{ color: 'rgba(255,255,255,0.6)' }}>by</span> <span style={{ color: '#ffffff', fontWeight: 700 }}>MUSINO</span>
           </p>
         </div>
       </aside>
@@ -1982,7 +1982,7 @@ export default function ViewerProFinal() {
       <main style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
         {/* Top bar (mobile toggle) */}
         <header style={{
-          padding: '16px 24px', borderBottom: `1px solid ${colors.border}`,
+          padding: '16px 24px', borderBottom: `2px solid ${colors.primary}`,
           display: 'flex', alignItems: 'center', justifyContent: 'space-between',
           background: colors.cardBg,
         }}>
