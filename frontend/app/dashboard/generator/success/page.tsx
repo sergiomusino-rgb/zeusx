@@ -4,6 +4,7 @@ import { useState, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { CheckCircle2, Copy, ArrowRight } from 'lucide-react';
+import QRCode from 'qrcode.react';
 
 function SuccessContent() {
   const router = useRouter();
@@ -199,6 +200,33 @@ function SuccessContent() {
               Link copiato!
             </p>
           )}
+        </div>
+
+        {/* QR Code */}
+        <div style={{ marginBottom: '24px', textAlign: 'center' }}>
+          <label style={{
+            display: 'block',
+            color: '#94a3b8',
+            fontSize: '13px',
+            fontWeight: 600,
+            marginBottom: '12px',
+            textTransform: 'uppercase',
+            letterSpacing: '0.05em',
+          }}>
+            QR Code per accesso smartphone
+          </label>
+          <div style={{
+            display: 'inline-block',
+            padding: '16px',
+            background: '#ffffff',
+            borderRadius: '16px',
+            boxShadow: '0 4px 12px rgba(0,0,0,0.3)',
+          }}>
+            <QRCode value={appUrl} size={180} level="H" />
+          </div>
+          <p style={{ color: '#94a3b8', fontSize: '12px', marginTop: '8px' }}>
+            Scannerizza con la fotocamera del telefono
+          </p>
         </div>
 
         {/* Password */}
