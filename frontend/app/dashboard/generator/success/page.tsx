@@ -4,7 +4,7 @@ import { useState, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { CheckCircle2, Copy, ArrowRight } from 'lucide-react';
-import QRCode from 'qrcode.react';
+import { QRCodeCanvas } from 'qrcode.react';
 
 function SuccessContent() {
   const router = useRouter();
@@ -222,7 +222,7 @@ function SuccessContent() {
             borderRadius: '16px',
             boxShadow: '0 4px 12px rgba(0,0,0,0.3)',
           }}>
-            <QRCode value={appUrl} size={180} level="H" />
+            <QRCodeCanvas value={appUrl} size={180} level="H" />
           </div>
           <p style={{ color: '#94a3b8', fontSize: '12px', marginTop: '8px' }}>
             Scannerizza con la fotocamera del telefono
