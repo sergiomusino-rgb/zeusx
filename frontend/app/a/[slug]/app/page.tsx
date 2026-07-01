@@ -914,7 +914,7 @@ interface ColorPickerProps {
   onChange: (color: string) => void;
 }
 
-function ColorPicker({ value, onChange }: ColorPickerProps) {
+function ColorPicker({ value, onChange, colors }: ColorPickerProps & { colors?: ReturnType<typeof getThemeVars> }) {
   const [hue, setHue] = useState(0);
   const [saturation, setSaturation] = useState(100);
   const [lightness, setLightness] = useState(50);
@@ -1323,6 +1323,7 @@ function SettingsModal({ prefs, onPrefsChange, onClose, onLogout, onChangePasswo
           <ColorPicker 
             value={prefs.primaryColor} 
             onChange={(color) => updatePref('primaryColor', color)} 
+            colors={colors}
           />
         </div>
 
