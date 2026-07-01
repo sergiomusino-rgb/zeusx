@@ -19,6 +19,7 @@ export interface GenerateAppResult {
   success: boolean;
   appId?: string;
   slug?: string;
+  password?: string;
   error?: string;
 }
 
@@ -328,6 +329,7 @@ export async function generateAppAction(input: GenerateAppInput): Promise<Genera
       success: true,
       appId: newApp.id,
       slug,
+      password: clientPassword,
     };
   } catch (err) {
     console.error('[generateAppAction] Unexpected error:', err);
