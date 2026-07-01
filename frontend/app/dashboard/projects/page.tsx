@@ -4,16 +4,18 @@ import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { supabase } from '@/src/lib/supabase';
-import { Trash2, X } from 'lucide-react';
+import { Trash2, Plus, Loader2, AlertCircle, ExternalLink, Settings, Clock } from 'lucide-react';
 
 interface App {
   id: string;
   name: string;
+  slug: string;
   sector: string;
-  trial_ends_at: string;
+  trial_ends_at: string | null;
   is_active: boolean;
   created_at: string;
-  blueprint_id: string;
+  client_active: boolean;
+  expires_at: string | null;
 }
 
 export default function ProjectsPage() {
@@ -29,18 +31,31 @@ export default function ProjectsPage() {
   const [deleting, setDeleting] = useState(false);
 
   useEffect(() => {
-    async function loadApps() {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) {
+    loadApps();
+  }, []);
+
+  async function loadApps() {
+    setLoading(true);
+    setError('');
+    
+    try {
+      // Get current user
+      const { data: { user }, error: userError } = await supabase.auth.getUser();
+      
+      if (userError || !user) {
+        console.log('[Projects] User not logged in');
+        setError('Effettua il login per vedere i tuoi progetti');
         setLoading(false);
         return;
       }
 
+      console.log('[Projects] User:', user.id);
+
+      // Get user's tenant
       const { data: memberships, error: membershipError } = await supabase
         .from('tenant_members')
         .select('tenant_id')
-        .eq('user_id', user.id)
-        .limit(1);
+        .eq('user_id', user.id);
 
       if (membershipError) {
         console.error('[Projects] membership error:', membershipError);
@@ -49,32 +64,39 @@ export default function ProjectsPage() {
         return;
       }
 
+      console.log('[Projects] Memberships:', memberships);
+
       const tenantId = memberships?.[0]?.tenant_id;
       if (!tenantId) {
+        console.log('[Projects] No tenant found for user');
+        setError('Nessun tenant associato all\'utente');
         setLoading(false);
         return;
       }
 
+      console.log('[Projects] TenantId:', tenantId);
+
+      // Get apps for this tenant
       const { data: appsData, error: appsError } = await supabase
         .from('apps')
-        .select('id, name, trial_ends_at, is_active, created_at, blueprint_id, blueprints(sector)')
-        .eq('tenant_id', tenantId);
+        .select('id, name, slug, sector, trial_ends_at, is_active, created_at, client_active, expires_at')
+        .eq('tenant_id', tenantId)
+        .order('created_at', { ascending: false });
 
       if (appsError) {
         console.error('[Projects] load apps error:', appsError);
-        setError('Errore caricamento app');
+        setError('Errore caricamento app: ' + appsError.message);
       } else {
-        setApps((appsData || []).map((a: any) => ({
-          ...a,
-          sector: a.blueprints?.sector || 'custom',
-        })));
+        console.log('[Projects] Apps loaded:', appsData?.length);
+        setApps(appsData || []);
       }
-
-      setLoading(false);
+    } catch (err) {
+      console.error('[Projects] Unexpected error:', err);
+      setError('Errore imprevisto: ' + (err instanceof Error ? err.message : 'Errore sconosciuto'));
     }
 
-    loadApps();
-  }, []);
+    setLoading(false);
+  }
 
   const handleDeleteApp = async () => {
     setDeleting(true);
@@ -106,184 +128,198 @@ export default function ProjectsPage() {
     }
   };
 
-  const formatDate = (iso: string) => {
-    if (!iso) return '-';
-    return new Date(iso).toLocaleDateString('it-IT');
+  const formatDate = (dateStr: string | null) => {
+    if (!dateStr) return 'Illimitato';
+    const date = new Date(dateStr);
+    return date.toLocaleDateString('it-IT', { day: '2-digit', month: '2-digit', year: 'numeric' });
   };
 
-  const isTrialExpired = (iso: string) => {
-    if (!iso) return false;
-    return new Date(iso) < new Date();
+  const getStatusBadge = (app: App) => {
+    if (app.expires_at && new Date(app.expires_at) < new Date()) {
+      return <span style={{ background: '#ef444420', color: '#ef4444', padding: '4px 10px', borderRadius: '9999px', fontSize: '12px', fontWeight: 600 }}>Scaduto</span>;
+    }
+    if (app.client_active === false) {
+      return <span style={{ background: '#ef444420', color: '#ef4444', padding: '4px 10px', borderRadius: '9999px', fontSize: '12px', fontWeight: 600 }}>Disattivato</span>;
+    }
+    return <span style={{ background: '#22c55e20', color: '#22c55e', padding: '4px 10px', borderRadius: '9999px', fontSize: '12px', fontWeight: 600 }}>Attivo</span>;
   };
 
-  const daysUntilTrialEnds = (iso: string) => {
-    if (!iso) return null;
-    const end = new Date(iso);
-    const diff = end.getTime() - new Date().getTime();
-    return Math.ceil(diff / (1000 * 60 * 60 * 24));
-  };
-
-  const nearestTrialDays = apps.length > 0
-    ? Math.min(...apps.map((a) => daysUntilTrialEnds(a.trial_ends_at) ?? Infinity))
-    : null;
-
-  const showTrialWarning = nearestTrialDays !== null && nearestTrialDays >= 0 && nearestTrialDays <= 3;
-  const hasExpiredApp = apps.some((a) => isTrialExpired(a.trial_ends_at));
+  if (loading) {
+    return (
+      <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#0a0e1a' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '12px', color: '#94a3b8' }}>
+          <Loader2 size={24} style={{ animation: 'spin 1s linear infinite' }} />
+          <span>Caricamento progetti...</span>
+        </div>
+        <style jsx global>{`
+          @keyframes spin {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+          }
+        `}</style>
+      </div>
+    );
+  }
 
   return (
-    <div className="max-w-6xl mx-auto space-y-6">
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight">Le tue App</h1>
-          <p className="text-slate-400 mt-1">Gestisci le app generate con ZeusX.</p>
+    <div style={{ minHeight: '100vh', background: '#0a0e1a', padding: '24px' }}>
+      {/* Header */}
+      <div style={{ maxWidth: '1200px', margin: '0 auto', marginBottom: '32px' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+          <h1 style={{ color: '#ffffff', fontSize: '32px', fontWeight: 700, margin: 0 }}>I tuoi progetti</h1>
+          <Link
+            href="/dashboard/generator"
+            style={{
+              display: 'flex', alignItems: 'center', gap: '8px',
+              padding: '12px 24px', borderRadius: '12px', border: 'none',
+              background: 'linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%)',
+              color: '#fff', fontSize: '15px', fontWeight: 600,
+              cursor: 'pointer', textDecoration: 'none',
+            }}
+          >
+            <Plus size={18} />
+            Nuovo progetto
+          </Link>
         </div>
-        <Link
-          href="/dashboard/generator"
-          className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-xl text-sm font-medium transition text-center"
-        >
-          + Nuova App
-        </Link>
+        <p style={{ color: '#94a3b8', fontSize: '15px', margin: 0 }}>
+          Gestisci le tue app create con ZeusX
+        </p>
       </div>
 
-      {hasExpiredApp && (
-        <div className="p-4 rounded-xl bg-red-500/10 border border-red-500/30 text-red-300 text-sm flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-          <span>⚠️ Hai app con il trial scaduto. Rinnova il piano per continuare ad usarle.</span>
-          <Link href="/pricing" className="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg text-xs font-medium transition text-center">
-            Vai ai Piani
-          </Link>
-        </div>
-      )}
-
-      {showTrialWarning && !hasExpiredApp && nearestTrialDays !== null && (
-        <div className="p-4 rounded-xl bg-amber-500/10 border border-amber-500/30 text-amber-300 text-sm flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-          <span>
-            ⏳ Il trial della tua app più vicina scade tra {nearestTrialDays} {nearestTrialDays === 1 ? 'giorno' : 'giorni'}. Rinnova per non perdere l'accesso.
-          </span>
-          <Link href="/pricing" className="bg-amber-600 hover:bg-amber-700 text-white px-4 py-2 rounded-lg text-xs font-medium transition text-center">
-            Rinnova Ora
-          </Link>
-        </div>
-      )}
-
+      {/* Error */}
       {error && (
-        <div className="p-4 rounded-xl bg-red-500/10 border border-red-500/30 text-red-300 text-sm">
-          {error}
+        <div style={{ maxWidth: '1200px', margin: '0 auto', marginBottom: '24px', padding: '16px', borderRadius: '12px', background: '#ef444415', border: '1px solid #ef444440', display: 'flex', alignItems: 'center', gap: '12px' }}>
+          <AlertCircle size={20} style={{ color: '#ef4444' }} />
+          <span style={{ color: '#ef4444' }}>{error}</span>
         </div>
       )}
 
-      <div className="bg-slate-900 border border-slate-800 rounded-2xl overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="w-full text-left border-collapse">
-            <thead>
-              <tr className="border-b border-slate-800 bg-slate-950/40 text-xs font-semibold uppercase tracking-wider text-slate-400">
-                <th className="py-4 px-6">Nome App</th>
-                <th className="py-4 px-6">Settore</th>
-                <th className="py-4 px-6">Creata il</th>
-                <th className="py-4 px-6">Trial fino al</th>
-                <th className="py-4 px-6">Stato</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-800/50 text-sm">
-              {loading ? (
-                <tr>
-                  <td colSpan={5} className="py-12 text-center text-slate-500">Caricamento...</td>
-                </tr>
-              ) : apps.length === 0 ? (
-                <tr>
-                  <td colSpan={5} className="py-12 text-center text-slate-500">
-                    Nessuna app trovata.{' '}
-                    <Link href="/dashboard/generator" className="text-blue-400 hover:underline">Crea la prima app</Link>
-                  </td>
-                </tr>
-              ) : (
-                apps.map((app) => {
-                  const expired = isTrialExpired(app.trial_ends_at);
-                  return (
-                    <tr
-                      key={app.id}
-                      onClick={() => router.push(`/dashboard/projects/${app.id}`)}
-                      className="hover:bg-slate-800/30 transition group cursor-pointer"
-                    >
-                      <td className="py-4 px-6 font-medium text-slate-200 group-hover:text-blue-400 transition">
-                        {app.name}
-                      </td>
-                      <td className="py-4 px-6 text-slate-400 capitalize">{app.sector}</td>
-                      <td className="py-4 px-6 text-slate-400">{formatDate(app.created_at)}</td>
-                      <td className="py-4 px-6 text-slate-400">{formatDate(app.trial_ends_at)}</td>
-                      <td className="py-4 px-6">
-                        <div className="flex items-center gap-3">
-                          <span className={`flex items-center gap-1.5 ${expired ? 'text-red-400' : 'text-emerald-400'}`}>
-                            <span className={`w-1.5 h-1.5 rounded-full ${expired ? 'bg-red-500' : 'bg-emerald-500'}`} />
-                            {app.is_active ? (expired ? 'Trial scaduto' : 'Attiva') : 'Disattivata'}
-                          </span>
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              router.push(`/app/${app.id}`);
-                            }}
-                            className="text-xs text-blue-400 hover:text-blue-300 underline"
-                          >
-                            Apri App →
-                          </button>
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              setDeleteModal({ open: true, appId: app.id, appName: app.name });
-                            }}
-                            className={`transition ${expired ? 'text-red-400 hover:text-red-300' : 'text-slate-600 cursor-not-allowed'}`}
-                            title={expired ? 'Elimina app' : 'Puoi eliminare solo app dismesse o scadute'}
-                            disabled={!expired}
-                          >
-                            <Trash2 size={16} />
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-                  );
-                })
-              )}
-            </tbody>
-          </table>
-        </div>
+      {/* Projects Grid */}
+      <div style={{ maxWidth: '1200px', margin: '0 auto' }}>
+        {apps.length === 0 ? (
+          <div style={{ textAlign: 'center', padding: '60px 20px', background: '#1e293b', borderRadius: '16px', border: '1px solid #334155' }}>
+            <div style={{ fontSize: '48px', marginBottom: '16px' }}>📱</div>
+            <h2 style={{ color: '#ffffff', fontSize: '20px', fontWeight: 600, marginBottom: '8px' }}>Nessun progetto ancora</h2>
+            <p style={{ color: '#94a3b8', fontSize: '15px', marginBottom: '24px' }}>Crea la tua prima app con l'AI generator</p>
+            <Link
+              href="/dashboard/generator"
+              style={{
+                display: 'inline-flex', alignItems: 'center', gap: '8px',
+                padding: '12px 24px', borderRadius: '12px', border: 'none',
+                background: 'linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%)',
+                color: '#fff', fontSize: '15px', fontWeight: 600,
+                cursor: 'pointer', textDecoration: 'none',
+              }}
+            >
+              <Plus size={18} />
+              Crea la tua prima app
+            </Link>
+          </div>
+        ) : (
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(340px, 1fr))', gap: '20px' }}>
+            {apps.map((app) => (
+              <div
+                key={app.id}
+                style={{
+                  background: '#1e293b', borderRadius: '16px', border: '1px solid #334155',
+                  padding: '24px', transition: 'all 0.2s',
+                }}
+                onMouseEnter={(e) => { e.currentTarget.style.borderColor = '#6366f1'; }}
+                onMouseLeave={(e) => { e.currentTarget.style.borderColor = '#334155'; }}
+              >
+                {/* Header */}
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '16px' }}>
+                  <div>
+                    <h3 style={{ color: '#ffffff', fontSize: '18px', fontWeight: 600, margin: '0 0 4px 0' }}>{app.name}</h3>
+                    <p style={{ color: '#94a3b8', fontSize: '13px', margin: 0 }}>{app.sector || 'Custom app'}</p>
+                  </div>
+                  {getStatusBadge(app)}
+                </div>
+
+                {/* Info */}
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginBottom: '20px' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#94a3b8', fontSize: '13px' }}>
+                    <Clock size={14} />
+                    <span>Creato: {formatDate(app.created_at)}</span>
+                  </div>
+                  {app.trial_ends_at && (
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#94a3b8', fontSize: '13px' }}>
+                      <Clock size={14} />
+                      <span>Scadenza trial: {formatDate(app.trial_ends_at)}</span>
+                    </div>
+                  )}
+                </div>
+
+                {/* Actions */}
+                <div style={{ display: 'flex', gap: '12px' }}>
+                  <Link
+                    href={`/a/${app.slug}`}
+                    style={{
+                      flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px',
+                      padding: '10px 16px', borderRadius: '10px', border: 'none',
+                      background: '#6366f1', color: '#fff', fontSize: '14px', fontWeight: 600,
+                      cursor: 'pointer', textDecoration: 'none',
+                    }}
+                  >
+                    <ExternalLink size={16} />
+                    Apri
+                  </Link>
+                  <Link
+                    href={`/dashboard/projects/${app.id}`}
+                    style={{
+                      display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      padding: '10px 16px', borderRadius: '10px', border: '1px solid #334155',
+                      background: 'transparent', color: '#94a3b8', fontSize: '14px', fontWeight: 600,
+                      cursor: 'pointer', textDecoration: 'none',
+                    }}
+                  >
+                    <Settings size={16} />
+                  </Link>
+                  <button
+                    onClick={() => setDeleteModal({ open: true, appId: app.id, appName: app.name })}
+                    style={{
+                      display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      padding: '10px 16px', borderRadius: '10px', border: '1px solid #334155',
+                      background: 'transparent', color: '#ef4444', fontSize: '14px', fontWeight: 600,
+                      cursor: 'pointer',
+                    }}
+                  >
+                    <Trash2 size={16} />
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
 
-      {/* Delete Confirmation Modal */}
+      {/* Delete Modal */}
       {deleteModal.open && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-          <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 max-w-md w-full">
-            <div className="flex justify-between items-center mb-4">
-              <h3 className="text-xl font-bold">Elimina App</h3>
+        <div style={{ position: 'fixed', inset: 0, zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(8px)' }}>
+          <div style={{ background: '#1e293b', border: '1px solid #334155', borderRadius: '16px', padding: '32px', maxWidth: '400px', width: '100%' }}>
+            <h2 style={{ color: '#ffffff', fontSize: '20px', fontWeight: 700, margin: '0 0 16px 0' }}>Elimina app</h2>
+            <p style={{ color: '#94a3b8', fontSize: '15px', margin: '0 0 24px 0' }}>
+              Sei sicuro di voler eliminare <strong style={{ color: '#ffffff' }}>{deleteModal.appName}</strong>? L'app verrà eliminata definitivamente.
+            </p>
+            <div style={{ display: 'flex', gap: '12px', justifyContent: 'flex-end' }}>
               <button
                 onClick={() => setDeleteModal({ open: false, appId: '', appName: '' })}
-                className="text-slate-400 hover:text-white transition"
-              >
-                <X size={20} />
-              </button>
-            </div>
-
-            <p className="text-slate-400 mb-2">
-              Sei sicuro di voler eliminare l&apos;app
-            </p>
-            <p className="text-white font-semibold mb-6">
-              &quot;{deleteModal.appName}&quot;?
-            </p>
-
-            <p className="text-red-400 text-sm mb-6">
-              ️ Questa azione è irreversibile. Tutti i dati dell&apos;app verranno persi.
-            </p>
-
-            <div className="flex gap-3">
-              <button
-                onClick={() => setDeleteModal({ open: false, appId: '', appName: '' })}
-                disabled={deleting}
-                className="flex-1 px-4 py-3 bg-slate-800 hover:bg-slate-700 rounded-lg font-medium transition disabled:opacity-50"
+                style={{
+                  padding: '10px 20px', borderRadius: '10px', border: '1px solid #334155',
+                  background: 'transparent', color: '#94a3b8', fontSize: '14px', fontWeight: 600,
+                  cursor: 'pointer',
+                }}
               >
                 Annulla
               </button>
               <button
                 onClick={handleDeleteApp}
                 disabled={deleting}
-                className="flex-1 px-4 py-3 bg-red-600 hover:bg-red-700 rounded-lg font-medium transition disabled:opacity-50"
+                style={{
+                  padding: '10px 20px', borderRadius: '10px', border: 'none',
+                  background: '#ef4444', color: '#fff', fontSize: '14px', fontWeight: 600,
+                  cursor: deleting ? 'not-allowed' : 'pointer',
+                }}
               >
                 {deleting ? 'Eliminazione...' : 'Elimina'}
               </button>
