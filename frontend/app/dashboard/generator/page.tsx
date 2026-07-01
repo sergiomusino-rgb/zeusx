@@ -40,10 +40,10 @@ export default function GeneratorPage() {
       setResult(res);
 
       if (res.success && res.slug) {
-        // Redirect directly to projects page
+        // Redirect to success page with app details
         setTimeout(() => {
-          router.push('/dashboard/projects');
-        }, 500);
+          router.push(`/dashboard/generator/success?slug=${res.slug}&password=${res.password}&appName=${encodeURIComponent(appName || 'Gestionale')}`);
+        }, 1500);
       }
     } catch {
       setResult({ success: false, error: 'Errore di connessione' });
