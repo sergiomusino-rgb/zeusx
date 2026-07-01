@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { supabase, getAccessTokenFromStorage } from '@/src/lib/supabase';
+import { supabaseBrowser as supabase } from '@/src/lib/supabase-browser';
 
 export default function PricingPage() {
   const [userId, setUserId] = useState<string | null>(null);
@@ -112,21 +112,33 @@ export default function PricingPage() {
     },
   ];
 
-  const handleUpgrade = async (planId: string, quantity: number = 1) => {
-    if (!userId) {
-      alert('Devi effettuare il login per procedere');
-      return;
-    }
+  function getAccessTokenFromStorage(): string | null {
+    if (typeof window === 'undefined') return null;
+    try {
+      // Cerca in tutte le possibili chiavi di storage di Supabase
+      for (const key of Object.keys(localStorage)) {
+        if (key.startsWith('sb-') && key.endsWith('-auth-token')) {
+          const raw = localStorage.getItem(key);
+          if (!raw) continue;
+          const parsed = JSON.parse(raw);
+          return parsed?.access_token || parsed?.[0] || null;
+        }
+      }
+    } catch {}
+    return null;
+  }
 
-    const { data: { session }, error } = await supabase.auth.getSession();
+  const handleUpgrade = async (planId: string, quantity: number = 1) => {
+    // Controllo sessione fresca al momento del click
+    const { data: { session } } = await supabase.auth.getSession();
     let token = session?.access_token;
 
     if (!token) {
       token = getAccessTokenFromStorage();
     }
 
-    if (!token) {
-      alert('Sessione non valida. Riprova il login.');
+    if (!token || !session?.user) {
+      window.location.href = '/login';
       return;
     }
 
