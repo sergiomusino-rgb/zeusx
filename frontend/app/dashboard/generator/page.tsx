@@ -30,9 +30,9 @@ export default function GeneratorPage() {
       setResult(res);
 
       if (res.success && res.slug) {
-        // Redirect to the new app after a short delay
+        // Redirect to success page with app details
         setTimeout(() => {
-          router.push(`/a/${res.slug}/app`);
+          router.push(`/dashboard/generator/success?slug=${res.slug}&password=${res.password}&appName=${encodeURIComponent(appName || 'Gestionale')}`);
         }, 1500);
       }
     } catch {
