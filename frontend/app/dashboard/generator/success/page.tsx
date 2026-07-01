@@ -4,8 +4,6 @@ import { useState, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { CheckCircle2, Copy, ArrowRight } from 'lucide-react';
-import { createServerClient } from '@supabase/ssr';
-import { cookies } from 'next/headers';
 
 function SuccessContent() {
   const router = useRouter();
@@ -27,27 +25,14 @@ function SuccessContent() {
     setSaving(true);
     
     try {
-      const cookieStore = await cookies();
-      const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-      const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
-      
-      const supabase = createServerClient(supabaseUrl, supabaseServiceKey, {
-        cookies: {
-          get(name: string) {
-            return cookieStore.get(name)?.value;
-          },
-          set() {},
-          remove() {},
-        },
+      // Call server action to save email
+      const res = await fetch('/api/save-client-email', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ slug, email: email.trim() }),
       });
 
-      // Find app by slug and update email
-      const { error } = await supabase
-        .from('apps')
-        .update({ client_email: email.trim() })
-        .eq('slug', slug);
-
-      if (!error) {
+      if (res.ok) {
         setSaved(true);
         setTimeout(() => {
           router.push('/dashboard/projects');

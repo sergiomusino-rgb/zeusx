@@ -1,0 +1,52 @@
+import { NextResponse } from 'next/server';
+import { createServerClient } from '@supabase/ssr';
+import { cookies } from 'next/headers';
+
+export async function POST(request: Request) {
+  try {
+    const { slug, email } = await request.json();
+
+    if (!slug || !email) {
+      return NextResponse.json(
+        { error: 'Slug e email richiesti' },
+        { status: 400 }
+      );
+    }
+
+    const cookieStore = await cookies();
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
+    const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
+
+    const supabase = createServerClient(supabaseUrl, supabaseServiceKey, {
+      cookies: {
+        get(name: string) {
+          return cookieStore.get(name)?.value;
+        },
+        set() {},
+        remove() {},
+      },
+    });
+
+    // Find app by slug and update email
+    const { error } = await supabase
+      .from('apps')
+      .update({ client_email: email })
+      .eq('slug', slug);
+
+    if (error) {
+      console.error('Error saving email:', error);
+      return NextResponse.json(
+        { error: error.message },
+        { status: 500 }
+      );
+    }
+
+    return NextResponse.json({ success: true });
+  } catch (err) {
+    console.error('Unexpected error:', err);
+    return NextResponse.json(
+      { error: 'Errore interno' },
+      { status: 500 }
+    );
+  }
+}
