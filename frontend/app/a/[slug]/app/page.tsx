@@ -1210,7 +1210,7 @@ function SettingsModal({ prefs, onPrefsChange, onClose, onLogout, onChangePasswo
     { key: 'corporate', label: 'Corporate', desc: 'Ampio e spazioso' },
     { key: 'modern', label: 'Modern', desc: 'Bilanciato' },
     { key: 'compact', label: 'Compact', desc: 'Compatto e denso' },
-    { key: 'smartphone', label: 'Smartphone', desc: 'Schermo mobile' },
+    { key: 'smartphone', label: 'Tablet', desc: 'Schermo tablet' },
   ];
 
   return (
