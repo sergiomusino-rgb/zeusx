@@ -301,6 +301,7 @@ export async function generateAppAction(input: GenerateAppInput): Promise<Genera
     }
 
     // Create app_definitions entry
+    console.log('[generateAppAction] Creating app_definitions:', { app_id: newApp.id, tenant_id: tenantId });
     const { error: definitionError } = await supabaseAdmin
       .from('app_definitions')
       .insert({
@@ -311,11 +312,13 @@ export async function generateAppAction(input: GenerateAppInput): Promise<Genera
         is_published: true,
       });
 
+    console.log('[generateAppAction] app_definitions created:', { definitionError });
+
     if (definitionError) {
       console.error('[generateAppAction] Error creating app_definitions:', definitionError);
       // Rollback: delete the app
       await supabaseAdmin.from('apps').delete().eq('id', newApp.id);
-      return { success: false, error: 'Errore nel salvataggio della definizione' };
+      return { success: false, error: 'Errore nel salvataggio della definizione: ' + (definitionError?.message || 'unknown') };
     }
 
     return {
