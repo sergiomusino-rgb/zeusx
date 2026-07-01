@@ -1969,6 +1969,13 @@ export default function ViewerProFinal() {
             primaryColor={colors.danger}
           />
         </div>
+
+        {/* Brand Footer */}
+        <div style={{ padding: '16px 20px', borderTop: `1px solid ${colors.border}`, textAlign: 'center' }}>
+          <p style={{ color: colors.textSecondary, fontSize: '11px', fontWeight: 600, margin: 0 }}>
+            ZeusX <span style={{ color: colors.textSecondary, opacity: 0.7 }}>by</span> <span style={{ color: colors.primary, fontWeight: 700 }}>MUSINO</span>
+          </p>
+        </div>
       </aside>
 
       {/* Main Content */}
