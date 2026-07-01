@@ -13,6 +13,7 @@ export interface GenerateAppInput {
   prompt: string;
   appName?: string;
   sector?: string;
+  userId?: string;
 }
 
 export interface GenerateAppResult {
@@ -204,39 +205,40 @@ export async function generateAppAction(input: GenerateAppInput): Promise<Genera
       },
     });
 
-    // Get current user from session - try both getUser and getSession
-    let user = null;
+    // Get user - first try from input (client-side), then server-side
+    let userId: string | null = input.userId || null;
     let userError = null;
     
-    try {
-      // First try getUser
-      const userResult = await supabaseAuth.auth.getUser();
-      user = userResult.data.user;
-      userError = userResult.error;
-      
-      // If no user, try getSession
-      if (!user) {
-        const sessionResult = await supabaseAuth.auth.getSession();
-        user = sessionResult.data.session?.user || null;
-        userError = sessionResult.error;
+    if (!userId) {
+      // Try to get user from server-side session
+      try {
+        const userResult = await supabaseAuth.auth.getUser();
+        userId = userResult.data.user?.id || null;
+        userError = userResult.error;
+        
+        if (!userId) {
+          const sessionResult = await supabaseAuth.auth.getSession();
+          userId = sessionResult.data.session?.user?.id || null;
+          userError = sessionResult.error;
+        }
+      } catch (err) {
+        console.log('[generateAppAction] Auth error:', err);
+        userError = err;
       }
-    } catch (err) {
-      console.log('[generateAppAction] Auth error:', err);
-      userError = err;
     }
     
-    console.log('[generateAppAction] User:', user?.id, 'error:', userError);
+    console.log('[generateAppAction] UserId:', userId, 'error:', userError);
     
     // Get user's tenant - user MUST be logged in
     let tenantId: string;
-    if (!user || userError) {
+    if (!userId) {
       return { success: false, error: 'Devi effettuare il login per creare un\'app. Ricarica la pagina e riprova.' };
     }
     
     const { data: membership, error: membershipError } = await supabaseAdmin
       .from('tenant_members')
       .select('tenant_id')
-      .eq('user_id', user.id)
+      .eq('user_id', userId)
       .single();
 
     console.log('[generateAppAction] Membership:', membership, 'error:', membershipError);
@@ -246,7 +248,7 @@ export async function generateAppAction(input: GenerateAppInput): Promise<Genera
       const { data: allMemberships } = await supabaseAdmin
         .from('tenant_members')
         .select('tenant_id')
-        .eq('user_id', user.id)
+        .eq('user_id', userId)
         .limit(1);
       
       if (allMemberships && allMemberships.length > 0) {

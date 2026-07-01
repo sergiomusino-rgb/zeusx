@@ -1,10 +1,11 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { Sparkles, Loader2, AlertCircle, CheckCircle2 } from 'lucide-react';
 import { generateAppAction, type GenerateAppInput } from '@/app/actions/generator';
+import { supabase } from '@/src/lib/supabase';
 
 export default function GeneratorPage() {
   const router = useRouter();
@@ -13,6 +14,14 @@ export default function GeneratorPage() {
   const [sector, setSector] = useState('');
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<{ success: boolean; slug?: string; password?: string; error?: string } | null>(null);
+  const [userId, setUserId] = useState<string | null>(null);
+
+  useEffect(() => {
+    // Get user on mount
+    supabase.auth.getUser().then(({ data }) => {
+      setUserId(data.user?.id || null);
+    });
+  }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -24,6 +33,7 @@ export default function GeneratorPage() {
         prompt: prompt.trim(),
         appName: appName.trim() || undefined,
         sector: sector.trim() || undefined,
+        userId: userId || undefined,
       };
 
       const res = await generateAppAction(input);
