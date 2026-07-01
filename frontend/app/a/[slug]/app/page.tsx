@@ -348,7 +348,7 @@ function Dashboard({ colors, radius, shadow, companyName }: DashboardProps) {
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '16px' }}>
           <Calendar size={18} style={{ color: colors.primary }} />
           <h3 style={{ color: colors.text, fontSize: '16px', fontWeight: 600, margin: 0 }}>
-            Scadenze Imminenti
+            Agenda
           </h3>
         </div>
         <div style={{ overflowX: 'auto' }}>
