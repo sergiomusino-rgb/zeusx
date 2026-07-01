@@ -1909,17 +1909,17 @@ export default function ViewerProFinal() {
           display: 'flex', alignItems: 'center', gap: '12px',
         }}>
           {logoUrl ? (
-            <img src={logoUrl} alt={companyName} style={{ height: '36px', width: '36px', borderRadius: '8px', objectFit: 'cover' }} />
+            <img src={logoUrl} alt={companyName} style={{ height: '48px', width: '48px', borderRadius: '10px', objectFit: 'cover' }} />
           ) : (
             <div style={{
-              width: '36px', height: '36px', borderRadius: '8px',
+              width: '48px', height: '48px', borderRadius: '10px',
               background: primaryColor, display: 'flex', alignItems: 'center', justifyContent: 'center',
-              color: '#fff', fontWeight: 700, fontSize: '16px',
+              color: '#fff', fontWeight: 700, fontSize: '20px',
             }}>
               {companyName.charAt(0).toUpperCase()}
             </div>
           )}
-          <span style={{ color: colors.sidebarText, fontSize: '16px', fontWeight: 700, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+          <span style={{ color: colors.sidebarText, fontSize: '18px', fontWeight: 700, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
             {companyName}
           </span>
         </div>
