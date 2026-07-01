@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { Sparkles, Loader2, AlertCircle, CheckCircle2 } from 'lucide-react';
 import { generateAppAction, type GenerateAppInput } from '@/app/actions/generator';
-import { supabase } from '@/src/lib/supabase';
+import { supabaseBrowser } from '@/src/lib/supabase-browser';
 
 export default function GeneratorPage() {
   const router = useRouter();
@@ -18,7 +18,7 @@ export default function GeneratorPage() {
 
   useEffect(() => {
     // Get user on mount
-    supabase.auth.getUser().then(({ data }) => {
+    supabaseBrowser.auth.getUser().then(({ data }) => {
       setUserId(data.user?.id || null);
     });
   }, []);

@@ -1,9 +1,9 @@
-'use client';
+e generetor mi dice che non sono loggato'use client';
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { supabase } from '@/src/lib/supabase';
+import { supabaseBrowser } from '@/src/lib/supabase-browser';
 import { Trash2, Plus, Loader2, AlertCircle, ExternalLink, Settings, Clock } from 'lucide-react';
 
 interface App {
@@ -40,7 +40,7 @@ export default function ProjectsPage() {
     
     try {
       // Get current user
-      const { data: { user }, error: userError } = await supabase.auth.getUser();
+      const { data: { user }, error: userError } = await supabaseBrowser.auth.getUser();
       
       if (userError || !user) {
         console.log('[Projects] User not logged in');
@@ -52,7 +52,7 @@ export default function ProjectsPage() {
       console.log('[Projects] User:', user.id);
 
       // Get user's tenant
-      const { data: memberships, error: membershipError } = await supabase
+      const { data: memberships, error: membershipError } = await supabaseBrowser
         .from('tenant_members')
         .select('tenant_id')
         .eq('user_id', user.id);
@@ -77,7 +77,7 @@ export default function ProjectsPage() {
       console.log('[Projects] TenantId:', tenantId);
 
       // Get apps for this tenant
-      const { data: appsData, error: appsError } = await supabase
+      const { data: appsData, error: appsError } = await supabaseBrowser
         .from('apps')
         .select('id, name, slug, sector, trial_ends_at, is_active, created_at, client_active, expires_at')
         .eq('tenant_id', tenantId)
@@ -101,7 +101,7 @@ export default function ProjectsPage() {
   const handleDeleteApp = async () => {
     setDeleting(true);
     try {
-      const { data: { session } } = await supabase.auth.getSession();
+      const { data: { session } } = await supabaseBrowser.auth.getSession();
       const token = session?.access_token;
 
       if (!token) {
