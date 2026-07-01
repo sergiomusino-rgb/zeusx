@@ -16,6 +16,7 @@ function SuccessContent() {
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [copiedPassword, setCopiedPassword] = useState(false);
 
   const appUrl = `${typeof window !== 'undefined' ? window.location.origin : ''}/a/${slug}`;
 
@@ -49,6 +50,12 @@ function SuccessContent() {
     navigator.clipboard.writeText(appUrl);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
+  };
+
+  const handleCopyPassword = () => {
+    navigator.clipboard.writeText(password || '');
+    setCopiedPassword(true);
+    setTimeout(() => setCopiedPassword(false), 2000);
   };
 
   if (!slug || !password) {
@@ -208,22 +215,48 @@ function SuccessContent() {
             Password temporanea
           </label>
           <div style={{
-            padding: '16px',
-            borderRadius: '12px',
-            border: '1px solid #22c55e40',
-            background: '#22c55e10',
-            textAlign: 'center',
+            display: 'flex',
+            gap: '8px',
           }}>
-            <span style={{
-              color: '#22c55e',
-              fontSize: '24px',
-              fontWeight: 700,
-              fontFamily: 'monospace',
-              letterSpacing: '0.1em',
+            <div style={{
+              flex: 1,
+              padding: '16px',
+              borderRadius: '12px',
+              border: '1px solid #22c55e40',
+              background: '#22c55e10',
+              textAlign: 'center',
             }}>
-              {password}
-            </span>
+              <span style={{
+                color: '#22c55e',
+                fontSize: '24px',
+                fontWeight: 700,
+                fontFamily: 'monospace',
+                letterSpacing: '0.1em',
+              }}>
+                {password}
+              </span>
+            </div>
+            <button
+              onClick={handleCopyPassword}
+              style={{
+                padding: '12px 16px',
+                borderRadius: '12px',
+                border: '1px solid #334155',
+                background: '#334155',
+                color: '#ffffff',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+              }}
+            >
+              <Copy size={18} />
+            </button>
           </div>
+          {copiedPassword && (
+            <p style={{ color: '#22c55e', fontSize: '13px', marginTop: '8px' }}>
+              Password copiata!
+            </p>
+          )}
           <p style={{ color: '#64748b', fontSize: '13px', marginTop: '8px' }}>
             Consiglia al cliente di cambiare la password al primo accesso
           </p>
