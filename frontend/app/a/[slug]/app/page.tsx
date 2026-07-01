@@ -11,6 +11,7 @@ import {
   AlertTriangle, Calendar, CheckCircle, Clock, XCircle, Menu,
   Download, Upload, Download as InstallIcon, MessageSquare, Mail, MessageCircle,
 } from 'lucide-react';
+import { QRCodeCanvas } from 'qrcode.react';
 
 // ─── Interfaces ───────────────────────────────────────────────────────────────
 
@@ -1449,6 +1450,49 @@ function SettingsModal({ prefs, onPrefsChange, onClose, onLogout, onChangePasswo
               {changingPw ? 'Salvataggio...' : 'Cambia Password'}
             </button>
           </form>
+        </div>
+
+        {/* QR Code Section */}
+        <div style={sectionBox}>
+          <div style={sectionTitle}>QR Code Accesso</div>
+          <p style={{ color: colors.textSecondary, fontSize: '13px', marginBottom: '16px' }}>
+            Scansiona questo codice QR per accedere all'app da smartphone
+          </p>
+          <div style={{ 
+            display: 'flex', 
+            justifyContent: 'center', 
+            padding: '16px', 
+            background: '#ffffff', 
+            borderRadius: '12px',
+            marginBottom: '12px'
+          }}>
+            <QRCodeCanvas 
+              value={`${typeof window !== 'undefined' ? window.location.origin : ''}/a/${slug}`}
+              size={160}
+              level="M"
+              includeMargin={false}
+            />
+          </div>
+          <div style={{ 
+            textAlign: 'center',
+            padding: '12px',
+            background: colors.cardBg,
+            borderRadius: '8px',
+            border: `1px solid ${colors.border}`
+          }}>
+            <a 
+              href={`/a/${slug}`}
+              style={{ 
+                color: colors.primary, 
+                fontSize: '14px', 
+                fontWeight: 600,
+                textDecoration: 'none',
+                wordBreak: 'break-all'
+              }}
+            >
+              {typeof window !== 'undefined' ? window.location.origin : ''}/a/{slug}
+            </a>
+          </div>
         </div>
 
         {/* Logout */}
