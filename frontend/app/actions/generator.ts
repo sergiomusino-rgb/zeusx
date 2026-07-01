@@ -204,8 +204,26 @@ export async function generateAppAction(input: GenerateAppInput): Promise<Genera
       },
     });
 
-    // Get current user from session using anon client
-    const { data: { user }, error: userError } = await supabaseAuth.auth.getUser();
+    // Get current user from session - try both getUser and getSession
+    let user = null;
+    let userError = null;
+    
+    try {
+      // First try getUser
+      const userResult = await supabaseAuth.auth.getUser();
+      user = userResult.data.user;
+      userError = userResult.error;
+      
+      // If no user, try getSession
+      if (!user) {
+        const sessionResult = await supabaseAuth.auth.getSession();
+        user = sessionResult.data.session?.user || null;
+        userError = sessionResult.error;
+      }
+    } catch (err) {
+      console.log('[generateAppAction] Auth error:', err);
+      userError = err;
+    }
     
     console.log('[generateAppAction] User:', user?.id, 'error:', userError);
     
