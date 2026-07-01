@@ -119,7 +119,7 @@ router.post('/apps', authMiddleware, async (req, res) => {
     // Verifica limite app per il tenant
     const { data: tenant, error: tenantError } = await supabaseAdmin
       .from('tenants')
-      .select('app_limit, plan')
+      .select('app_limit, plan, total_apps_created')
       .eq('id', tenantId)
       .single();
 
