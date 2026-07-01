@@ -94,12 +94,8 @@ async function callLLM(systemPrompt: string): Promise<string> {
     return data.choices?.[0]?.message?.content || '';
   }
 
-  // Default: Gemini
-  const { GoogleGenerativeAI } = await import('@google/generative-ai');
-  const genAI = new GoogleGenerativeAI(apiKey);
-  const model = genAI.getGenerativeModel({ model: 'gemini-2.0-flash' });
-  const result = await model.generateContent(systemPrompt);
-  return result.response.text();
+  // No other providers supported - throw clear error
+  throw new Error(`Provider '${provider}' non supportato. Usa 'groq', 'openai' o 'openrouter'.`);
 }
 
 // ─── System Prompt ────────────────────────────────────────────────────────────
