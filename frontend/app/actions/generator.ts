@@ -288,6 +288,9 @@ export async function generateAppAction(input: GenerateAppInput): Promise<Genera
           ui: generatedSchema.ui || {},
           branding: generatedSchema.ui || {},
           is_published: true,
+          appName: appName,
+          sector: sector,
+          description: description,
         },
       })
       .select('id')
