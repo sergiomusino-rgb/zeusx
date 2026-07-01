@@ -1,4 +1,4 @@
-e generetor mi dice che non sono loggato'use client';
+'use client';
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
