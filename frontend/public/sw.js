@@ -42,14 +42,17 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // Static assets - cache first
+  // Static assets - cache first (only GET requests)
   event.respondWith(
     caches.match(request).then((cached) => {
       return cached || fetch(request).then((response) => {
-        const clone = response.clone();
-        caches.open(CACHE_NAME).then((cache) => {
-          cache.put(request, clone);
-        });
+        // Only cache GET requests
+        if (request.method === 'GET') {
+          const clone = response.clone();
+          caches.open(CACHE_NAME).then((cache) => {
+            cache.put(request, clone);
+          });
+        }
         return response;
       });
     })

@@ -199,6 +199,21 @@ router.post('/apps', authMiddleware, async (req, res) => {
 
     console.log(`[CreateApp] App creata: ${app.id} per tenant ${tenantId}`);
     
+    // Incrementa contatore totale app create
+    const { error: updateError } = await supabaseAdmin
+      .from('tenants')
+      .update({ 
+        total_apps_created: (tenant.total_apps_created || 0) + 1,
+        updated_at: new Date().toISOString()
+      })
+      .eq('id', tenantId);
+    
+    if (updateError) {
+      console.error('[CreateApp] Errore aggiornamento contatore:', updateError);
+    } else {
+      console.log(`[CreateApp] Contatore aggiornato: ${(tenant.total_apps_created || 0) + 1}`);
+    }
+    
     res.status(201).json({ 
       app,
       clientPassword,
