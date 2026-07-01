@@ -10,7 +10,6 @@ interface App {
   id: string;
   name: string;
   slug: string;
-  sector: string;
   trial_ends_at: string | null;
   is_active: boolean;
   created_at: string;
@@ -79,7 +78,7 @@ export default function ProjectsPage() {
       // Get apps for this tenant
       const { data: appsData, error: appsError } = await supabaseBrowser
         .from('apps')
-        .select('id, name, slug, sector, trial_ends_at, is_active, created_at, client_active, expires_at')
+        .select('id, name, slug, trial_ends_at, is_active, created_at, client_active, expires_at')
         .eq('tenant_id', tenantId)
         .order('created_at', { ascending: false });
 
@@ -231,7 +230,7 @@ export default function ProjectsPage() {
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '16px' }}>
                   <div>
                     <h3 style={{ color: '#ffffff', fontSize: '18px', fontWeight: 600, margin: '0 0 4px 0' }}>{app.name}</h3>
-                    <p style={{ color: '#94a3b8', fontSize: '13px', margin: 0 }}>{app.sector || 'Custom app'}</p>
+                    <p style={{ color: '#94a3b8', fontSize: '13px', margin: 0 }}>App creata</p>
                   </div>
                   {getStatusBadge(app)}
                 </div>
