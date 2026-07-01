@@ -12,7 +12,7 @@ export default function GeneratorPage() {
   const [appName, setAppName] = useState('');
   const [sector, setSector] = useState('');
   const [loading, setLoading] = useState(false);
-  const [result, setResult] = useState<{ success: boolean; slug?: string; error?: string } | null>(null);
+  const [result, setResult] = useState<{ success: boolean; slug?: string; password?: string; error?: string } | null>(null);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -294,6 +294,18 @@ export default function GeneratorPage() {
                   <div style={{ color: '#22c55e', fontSize: '15px', fontWeight: 600 }}>
                     Gestionale creato con successo!
                   </div>
+                  {result.password && (
+                    <div style={{ marginTop: '12px', padding: '12px', background: '#1e293b', borderRadius: '8px', textAlign: 'left' }}>
+                      <div style={{ color: '#94a3b8', fontSize: '13px', marginBottom: '4px' }}>Password temporanea:</div>
+                      <div style={{ color: '#22c55e', fontSize: '18px', fontWeight: 700, fontFamily: 'monospace' }}>{result.password}</div>
+                    </div>
+                  )}
+                  <a 
+                    href={`/a/${result.slug}`}
+                    style={{ marginTop: '16px', display: 'inline-block', color: '#6366f1', textDecoration: 'underline' }}
+                  >
+                    Apri l'app →
+                  </a>
                   <div style={{ color: '#94a3b8', fontSize: '13px', marginTop: '4px' }}>
                     Reindirizzamento in corso...
                   </div>
