@@ -205,7 +205,9 @@ export async function generateAppAction(input: GenerateAppInput): Promise<Genera
     });
 
     // Get current user from session using anon client
-    const { data: { user } } = await supabaseAuth.auth.getUser();
+    const { data: { user }, error: userError } = await supabaseAuth.auth.getUser();
+    
+    console.log('[generateAppAction] User:', user?.id, 'error:', userError);
     
     // Get user's tenant
     let tenantId: string;
@@ -216,23 +218,39 @@ export async function generateAppAction(input: GenerateAppInput): Promise<Genera
         .eq('user_id', user.id)
         .single();
 
+      console.log('[generateAppAction] Membership:', membership, 'error:', membershipError);
+
       if (membershipError || !membership) {
-        return { success: false, error: 'Nessun tenant associato all\'utente' };
+        // Try to find any tenant the user belongs to
+        const { data: allMemberships } = await supabaseAdmin
+          .from('tenant_members')
+          .select('tenant_id')
+          .eq('user_id', user.id)
+          .limit(1);
+        
+        if (allMemberships && allMemberships.length > 0) {
+          tenantId = allMemberships[0].tenant_id;
+        } else {
+          return { success: false, error: 'Nessun tenant associato all\'utente' };
+        }
+      } else {
+        tenantId = membership.tenant_id;
       }
-      tenantId = membership.tenant_id;
     } else {
-      // Fallback: get first tenant for demo purposes when not authenticated
-      const { data: firstTenant, error: tenantError } = await supabaseAdmin
-        .from('tenants')
-        .select('id')
-        .limit(1)
-        .single();
-      
-      if (tenantError || !firstTenant) {
-        return { success: false, error: 'Nessun tenant disponibile' };
-      }
-      tenantId = firstTenant.id;
+        // Fallback: get first tenant for demo purposes when not authenticated
+        const { data: firstTenant, error: tenantError } = await supabaseAdmin
+          .from('tenants')
+          .select('id')
+          .limit(1)
+          .single();
+        
+        if (tenantError || !firstTenant) {
+          return { success: false, error: 'Nessun tenant disponibile' };
+        }
+        tenantId = firstTenant.id;
     }
+    
+    console.log('[generateAppAction] Using tenantId:', tenantId);
 
     // Call LLM to generate schema
     const systemPrompt = buildSystemPrompt(input.prompt, input.appName, input.sector);
