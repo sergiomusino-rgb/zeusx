@@ -1903,25 +1903,22 @@ export default function ViewerProFinal() {
           flexShrink: 0,
         }}
       >
-        {/* Logo + Company */}
+        {/* Logo */}
         <div style={{
           padding: '24px 20px', borderBottom: `1px solid rgba(255,255,255,0.2)`,
-          display: 'flex', alignItems: 'center', gap: '12px',
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
         }}>
           {logoUrl ? (
-            <img src={logoUrl} alt={companyName} style={{ height: '48px', width: '48px', borderRadius: '10px', objectFit: 'cover' }} />
+            <img src={logoUrl} alt={companyName} style={{ height: '80px', width: '80px', borderRadius: '12px', objectFit: 'cover' }} />
           ) : (
             <div style={{
-              width: '48px', height: '48px', borderRadius: '10px',
+              width: '80px', height: '80px', borderRadius: '12px',
               background: 'rgba(255,255,255,0.2)', display: 'flex', alignItems: 'center', justifyContent: 'center',
-              color: '#fff', fontWeight: 700, fontSize: '20px',
+              color: '#fff', fontWeight: 700, fontSize: '32px',
             }}>
               {companyName.charAt(0).toUpperCase()}
             </div>
           )}
-          <span style={{ color: '#ffffff', fontSize: '18px', fontWeight: 700, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-            {companyName}
-          </span>
         </div>
 
         {/* Nav Items */}
@@ -1983,8 +1980,9 @@ export default function ViewerProFinal() {
         {/* Top bar (mobile toggle) */}
         <header style={{
           padding: '16px 24px', borderBottom: `2px solid ${colors.primary}`,
-          display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
           background: colors.cardBg,
+          position: 'relative',
         }}>
           <button
             onClick={() => setSidebarOpen(!sidebarOpen)}
@@ -1992,14 +1990,16 @@ export default function ViewerProFinal() {
               background: 'none', border: 'none', cursor: 'pointer',
               color: colors.textSecondary, padding: '4px',
               display: 'none', // shown via media query in real app
+              position: 'absolute',
+              left: '24px',
             }}
           >
             <Menu size={22} />
           </button>
-          <div style={{ color: colors.textSecondary, fontSize: '13px' }}>
-            {activeView === 'dashboard' ? 'Dashboard' : activeTable?.labelPlural || ''}
+          <div style={{ color: colors.text, fontSize: '16px', fontWeight: 700 }}>
+            {activeView === 'dashboard' ? companyName : activeTable?.labelPlural || companyName}
           </div>
-          <div style={{ width: '30px' }} />
+          <div style={{ width: '30px', position: 'absolute', right: '24px' }} />
         </header>
 
         {/* Content area */}
