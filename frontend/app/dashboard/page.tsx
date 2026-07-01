@@ -86,7 +86,7 @@ export default function DashboardPage() {
       highlighted: false
     },
     { 
-      title: "Calendario", 
+      title: "Agenda", 
       desc: "Gestisci appuntamenti e scadenze",
       link: "/dashboard/vision", 
       color: "bg-emerald-600",
