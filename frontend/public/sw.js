@@ -23,15 +23,18 @@ self.addEventListener('fetch', (event) => {
   const { request } = event;
   const url = new URL(request.url);
 
-  // API calls - network first
+  // API calls - network first (cache only GET requests)
   if (url.pathname.startsWith('/api/') || url.hostname !== self.location.hostname) {
     event.respondWith(
       fetch(request)
         .then((response) => {
-          const clone = response.clone();
-          caches.open(CACHE_NAME).then((cache) => {
-            cache.put(request, clone);
-          });
+          // Only cache GET requests (POST/PUT/DELETE are not supported by Cache API)
+          if (request.method === 'GET') {
+            const clone = response.clone();
+            caches.open(CACHE_NAME).then((cache) => {
+              cache.put(request, clone);
+            });
+          }
           return response;
         })
         .catch(() => caches.match(request))
