@@ -12,7 +12,7 @@ export default function PricingPage() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    supabase.auth.getSession().then(({ data: { session } }) => {
+    supabaseBrowser.auth.getSession().then(({ data: { session } }) => {
       setUserId(session?.user?.id || null);
       if (session?.user?.id) {
         loadCurrentPlan(session.user.id);
@@ -21,7 +21,7 @@ export default function PricingPage() {
       }
     });
 
-    const { data: listener } = supabase.auth.onAuthStateChange((_event, session) => {
+    const { data: listener } = supabaseBrowser.auth.onAuthStateChange((_event, session) => {
       setUserId(session?.user?.id || null);
       if (session?.user?.id) {
         loadCurrentPlan(session.user.id);
@@ -35,14 +35,14 @@ export default function PricingPage() {
 
   async function loadCurrentPlan(userId: string) {
     try {
-      const { data: memberships } = await supabase
+      const { data: memberships } = await supabaseBrowser
         .from('tenant_members')
         .select('tenant_id')
         .eq('user_id', userId)
         .limit(1);
 
       if (memberships?.[0]?.tenant_id) {
-        const { data: tenant } = await supabase
+        const { data: tenant } = await supabaseBrowser
           .from('tenants')
           .select('plan, app_limit, total_apps_created')
           .eq('id', memberships[0].tenant_id)
@@ -70,7 +70,7 @@ export default function PricingPage() {
       slots: '1',
       features: [
         '1 slot app incluso',
-        'Fee mensile: 50€/app (dopo 1 mese gratis)',
+        'Fee mensile: 50/eu/app (dopo 1 mese gratis)',
         'Trial 30 giorni inclusi',
         'Supporto email'
       ],
@@ -85,7 +85,7 @@ export default function PricingPage() {
       slots: '5',
       features: [
         '5 slot app',
-        'Fee mensile: 25€/app',
+        'Fee mensile: 25/eu/app',
         'Trial 30 giorni inclusi',
         'Supporto prioritario',
         'API illimitate'
@@ -101,7 +101,7 @@ export default function PricingPage() {
       slots: '250',
       features: [
         '250 slot app',
-        'Fee mensile: 50€/app',
+        'Fee mensile: 50/eu/app',
         'Trial 30 giorni inclusi',
         'Supporto dedicato 24/7',
         'API illimitate',
@@ -118,12 +118,8 @@ export default function PricingPage() {
       return;
     }
 
-    const { data: { session }, error } = await supabase.auth.getSession();
-    let token = session?.access_token;
-
-    if (!token) {
-      token = getAccessTokenFromStorage();
-    }
+    const { data: { session }, error } = await supabaseBrowser.auth.getSession();
+    const token = session?.access_token;
 
     if (!token) {
       alert('Sessione non valida. Riprova il login.');
@@ -138,7 +134,6 @@ export default function PricingPage() {
         return;
       }
     } else {
-      // Trova il piano selezionato
       const selectedPlan = plans.find(p => p.id === planId);
       if (!selectedPlan) return;
       priceId = selectedPlan.priceId;
@@ -242,7 +237,7 @@ export default function PricingPage() {
                 )}
                 {!isCurrentPlan && plan.highlighted && (
                   <div className="absolute -top-4 left-1/2 -translate-x-1/2 bg-indigo-600 px-4 py-1 rounded-full text-sm font-bold">
-                    PIÙ POPOLARE
+                    PIU POPOLARE
                   </div>
                 )}
 
@@ -250,11 +245,11 @@ export default function PricingPage() {
                 
                 <div className="mb-6">
                   <div className="flex items-baseline gap-2">
-                    <span className="text-5xl font-bold">€{plan.setupPrice}</span>
+                    <span className="text-5xl font-bold">EU {plan.setupPrice}</span>
                     <span className="text-slate-400">setup</span>
                   </div>
                   <div className="text-sm text-slate-400 mt-2">
-                    + {plan.monthlyFee}€/mese per app attiva
+                    + {plan.monthlyFee}EU/mese per app attiva
                   </div>
                 </div>
 
@@ -293,7 +288,7 @@ export default function PricingPage() {
                       : 'bg-slate-800 hover:bg-slate-700 text-white'
                   }`}
                 >
-                  {isCurrentPlan ? '✓ Piano Attuale' : plan.id === 'starter' ? 'Già incluso' : 'Acquista Piano'}
+                  {isCurrentPlan ? '  Piano Attuale' : plan.id === 'starter' ? 'Gia incluso' : 'Acquista Piano'}
                 </button>
               </div>
             );
@@ -312,7 +307,7 @@ export default function PricingPage() {
               </div>
               <div className="flex items-center gap-4">
                 <div className="text-right">
-                  <div className="text-3xl font-bold text-white">€15</div>
+                  <div className="text-3xl font-bold text-white">EU 15</div>
                   <div className="text-sm text-slate-400">per slot</div>
                 </div>
                 <button
