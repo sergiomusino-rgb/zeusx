@@ -281,7 +281,6 @@ export async function generateAppAction(input: GenerateAppInput): Promise<Genera
         name: appName,
         slug,
         tenant_id: tenantId,
-        sector,
         client_password: clientPassword,
         client_active: true,
         config: {
