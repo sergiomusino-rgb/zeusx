@@ -263,6 +263,8 @@ export async function generateAppAction(input: GenerateAppInput): Promise<Genera
     const sector = (generatedSchema.sector as string) || input.sector || 'generale';
     const description = (generatedSchema.description as string) || '';
 
+    console.log('[generateAppAction] Creating app:', { appName, sector, tenantId });
+
     // Generate slug
     const slugBase = appName
       .toLowerCase()
@@ -293,9 +295,11 @@ export async function generateAppAction(input: GenerateAppInput): Promise<Genera
       .select('id')
       .single();
 
+    console.log('[generateAppAction] App created:', { newApp, appError });
+
     if (appError || !newApp) {
       console.error('[generateAppAction] Error creating app:', appError);
-      return { success: false, error: 'Errore nella creazione dell\'app' };
+      return { success: false, error: 'Errore nella creazione dell\'app: ' + (appError?.message || 'unknown') };
     }
 
     // Create app_definitions entry
