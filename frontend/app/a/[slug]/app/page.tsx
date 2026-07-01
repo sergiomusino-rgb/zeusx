@@ -1945,6 +1945,37 @@ export default function ViewerProFinal() {
               primaryColor={primaryColor}
             />
           ))}
+
+          {/* Comunicazioni */}
+          <div style={{ marginTop: '8px', paddingTop: '8px', borderTop: `1px solid rgba(255,255,255,0.2)` }}>
+            <div style={{ padding: '0 14px 8px', fontSize: '11px', fontWeight: 600, color: 'rgba(255,255,255,0.6)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+              Comunicazioni
+            </div>
+            <SidebarItem
+              icon={<MessageSquare size={18} />}
+              label="Provider SDI"
+              active={false}
+              onClick={() => window.open('https://www.sdi.agenziaentrate.gov.it', '_blank')}
+              colors={colors}
+              primaryColor={primaryColor}
+            />
+            <SidebarItem
+              icon={<Mail size={18} />}
+              label="Email"
+              active={false}
+              onClick={() => window.open('mailto:info@zeusx.it', '_blank')}
+              colors={colors}
+              primaryColor={primaryColor}
+            />
+            <SidebarItem
+              icon={<MessageCircle size={18} />}
+              label="WhatsApp"
+              active={false}
+              onClick={() => window.open('https://wa.me/393331234567', '_blank')}
+              colors={colors}
+              primaryColor={primaryColor}
+            />
+          </div>
         </nav>
 
         {/* Bottom actions */}
