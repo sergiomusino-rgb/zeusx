@@ -150,6 +150,13 @@ export default function Sidebar({
         )}
       </div>
 
+      {/* ── Main Nav Header ────────────────────────────────────────────── */}
+      <div className="px-3 pt-4">
+        <span className="text-[10px] font-semibold uppercase tracking-widest text-slate-500">
+          Menu
+        </span>
+      </div>
+
       {/* ── Navigation ────────────────────────────────────────────────── */}
       <nav className="flex-1 overflow-y-auto p-3">
         {/* Back button when in table view */}
