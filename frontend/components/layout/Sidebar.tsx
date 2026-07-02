@@ -4,6 +4,7 @@ import React, { useMemo } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { getTablesBySector, SECTOR_LABELS, getAllTables, UITable } from '@/lib/table-config';
+import { usePermissions } from '@/hooks/usePermissions';
 import {
   LayoutDashboard,
   Sparkles,
@@ -15,6 +16,7 @@ import {
   ChevronRight,
   Database,
   ArrowLeft,
+  Mic,
 } from 'lucide-react';
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -69,6 +71,7 @@ export default function Sidebar({
   onBackToDashboard,
 }: SidebarProps) {
   const pathname = usePathname();
+  const { hasFeatureAccess, hasTableAccess } = usePermissions();
 
   // ─── Main Navigation Items ──────────────────────────────────────────────
   const mainNavItems: NavItem[] = useMemo(
@@ -80,38 +83,38 @@ export default function Sidebar({
         isActive: isPathActive(pathname, '/dashboard') && !showTableNavigation,
         isPrimary: true,
       },
-      {
+      ...(hasFeatureAccess('create_app') ? [{
         label: 'Generatore AI',
         href: '/dashboard/generator',
         icon: <Sparkles size={18} />,
         isActive: isPathActive(pathname, '/dashboard/generator'),
-      },
-      {
+      }] : []),
+      ...(hasFeatureAccess('view_analytics') ? [{
         label: 'Chat AI',
         href: '/dashboard/chat',
         icon: <MessageSquare size={18} />,
         isActive: isPathActive(pathname, '/dashboard/chat'),
-      },
-      {
+      }] : []),
+      ...(hasFeatureAccess('view_analytics') ? [{
         label: 'Vision AI',
         href: '/dashboard/vision',
         icon: <Eye size={18} />,
         isActive: isPathActive(pathname, '/dashboard/vision'),
-      },
-      {
+      }] : []),
+      ...(hasFeatureAccess('view_analytics') ? [{
         label: 'App Create',
         href: '/dashboard/projects',
         icon: <FolderKanban size={18} />,
         isActive: isPathActive(pathname, '/dashboard/projects'),
-      },
-      {
+      }] : []),
+      ...(hasFeatureAccess('manage_settings') ? [{
         label: 'Impostazioni',
         href: '/dashboard/settings',
         icon: <Settings size={18} />,
         isActive: isPathActive(pathname, '/dashboard/settings'),
-      },
+      }] : []),
     ],
-    [pathname, showTableNavigation]
+    [pathname, showTableNavigation, hasFeatureAccess]
   );
 
   // ─── Table Navigation Items ─────────────────────────────────────────────
@@ -184,38 +187,45 @@ export default function Sidebar({
             </div>
 
             {/* Sectors */}
-            {Object.entries(sectors).map(([sector, tables]) => (
-              <div key={sector} className="space-y-1">
-                {/* Sector Header */}
-                <div className="flex items-center gap-2 px-3 py-1">
-                  <span className="text-sm">{SECTOR_ICONS[sector] || '📊'}</span>
-                  <span className="text-[11px] font-semibold uppercase tracking-wider text-slate-500">
-                    {SECTOR_LABELS[sector] || sector}
-                  </span>
+            {Object.entries(sectors).map(([sector, tables]) => {
+              // Filtra le tabelle in base ai permessi dell'utente
+              const visibleTables = tables.filter(table => hasTableAccess(table.name));
+              
+              if (visibleTables.length === 0) return null;
+
+              return (
+                <div key={sector} className="space-y-1">
+                  {/* Sector Header */}
+                  <div className="flex items-center gap-2 px-3 py-1">
+                    <span className="text-sm">{SECTOR_ICONS[sector] || '📊'}</span>
+                    <span className="text-[11px] font-semibold uppercase tracking-wider text-slate-500">
+                      {SECTOR_LABELS[sector] || sector}
+                    </span>
+                  </div>
+
+                  {/* Table Links */}
+                  {visibleTables.map((table) => {
+                    const tablePath = `/dashboard/${table.name}`;
+                    const isActive = pathname === tablePath;
+
+                    return (
+                      <Link
+                        key={table.name}
+                        href={tablePath}
+                        className={`flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm transition-all ${
+                          isActive
+                            ? 'border-l-2 border-indigo-500 bg-indigo-500/10 text-indigo-400 font-medium'
+                            : 'border-l-2 border-transparent text-slate-400 hover:bg-slate-800/40 hover:text-slate-200'
+                        }`}
+                      >
+                        <span className="flex-shrink-0 text-base">{table.icon}</span>
+                        <span className="truncate">{table.labelPlural}</span>
+                      </Link>
+                    );
+                  })}
                 </div>
-
-                {/* Table Links */}
-                {tables.map((table) => {
-                  const tablePath = `/dashboard/${table.name}`;
-                  const isActive = pathname === tablePath;
-
-                  return (
-                    <Link
-                      key={table.name}
-                      href={tablePath}
-                      className={`flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm transition-all ${
-                        isActive
-                          ? 'border-l-2 border-indigo-500 bg-indigo-500/10 text-indigo-400 font-medium'
-                          : 'border-l-2 border-transparent text-slate-400 hover:bg-slate-800/40 hover:text-slate-200'
-                      }`}
-                    >
-                      <span className="flex-shrink-0 text-base">{table.icon}</span>
-                      <span className="truncate">{table.labelPlural}</span>
-                    </Link>
-                  );
-                })}
-              </div>
-            ))}
+              );
+            })}
 
             {/* Empty state */}
             {allTables.length === 0 && (
