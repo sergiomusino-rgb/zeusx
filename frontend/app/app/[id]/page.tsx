@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { supabase } from '@/src/lib/supabase';
 import { sanitizeBlueprint } from '@/src/lib/blueprint-schema';
-import Link from 'next/link';
+import AppSidebarLayout from '@/components/shared/AppSidebarLayout';
 
 export default function AppViewerPage() {
   const params = useParams();
@@ -178,121 +178,89 @@ export default function AppViewerPage() {
   const currentTable = blueprint.schema?.tables?.find((t: any) => t.name === selectedTable);
 
   return (
-    <div className="min-h-screen bg-gray-950 text-white flex">
-      {/* Sidebar */}
-      <aside className="w-64 bg-gray-900 border-r border-gray-800 p-6">
-        <Link href="/dashboard/projects" className="text-gray-400 hover:text-white mb-4 block">
-          ← Torna ai Progetti
-        </Link>
-        {blueprint.logo && (
-          <img src={blueprint.logo} alt="Logo" className="w-16 h-16 rounded-lg mb-3 object-contain" />
-        )}
-        <h1 className="text-2xl font-bold mb-2">{blueprint.appName}</h1>
-        <p className="text-sm text-gray-400 mb-8">{blueprint.description}</p>
-
-        <nav className="space-y-2">
-          {blueprint.schema?.tables?.map((table: any) => (
+    <AppSidebarLayout showTableNavigation={true}>
+      <div className="max-w-7xl mx-auto">
+        <div className="flex justify-between items-center mb-8">
+          <h2 className="text-3xl font-bold">
+            {currentTable?.icon && <span className="mr-3">{currentTable.icon}</span>}
+            {currentTable?.labelPlural || currentTable?.label}
+          </h2>
+          <div className="flex gap-3">
             <button
-              key={table.name}
-              onClick={() => setSelectedTable(table.name)}
-              className={`w-full text-left px-4 py-2 rounded-lg transition ${
-                selectedTable === table.name
-                  ? 'bg-indigo-600 text-white'
-                  : 'text-gray-400 hover:bg-gray-800'
-              }`}
+              onClick={() => handleExport()}
+              className="px-6 py-3 bg-emerald-600 hover:bg-emerald-700 rounded-lg font-semibold transition"
             >
-              {table.icon && <span className="mr-2">{table.icon}</span>}
-              {table.labelPlural || table.label}
+              Esporta CSV
             </button>
-          ))}
-        </nav>
-      </aside>
-
-      {/* Main Content */}
-      <main className="flex-1 p-8">
-        <div className="max-w-7xl mx-auto">
-          <div className="flex justify-between items-center mb-8">
-            <h2 className="text-3xl font-bold">
-              {currentTable?.icon && <span className="mr-3">{currentTable.icon}</span>}
-              {currentTable?.labelPlural || currentTable?.label}
-            </h2>
-            <div className="flex gap-3">
-              <button
-                onClick={() => handleExport()}
-                className="px-6 py-3 bg-emerald-600 hover:bg-emerald-700 rounded-lg font-semibold transition"
-              >
-                Esporta CSV
-              </button>
-              <button
-                onClick={() => setShowImport(true)}
-                className="px-6 py-3 bg-blue-600 hover:bg-blue-700 rounded-lg font-semibold transition"
-              >
-                Importa CSV
-              </button>
-              <button
-                onClick={handleNewRecord}
-                className="px-6 py-3 bg-indigo-600 hover:bg-indigo-700 rounded-lg font-semibold transition"
-              >
-                + Nuovo
-              </button>
-            </div>
-          </div>
-
-          {/* Records Table */}
-          <div className="bg-gray-900 rounded-xl border border-gray-800 overflow-hidden">
-            <table className="w-full">
-              <thead className="bg-gray-800">
-                <tr>
-                  {currentTable?.fields?.map((field: any) => (
-                    <th key={field.id} className="px-4 py-3 text-left text-sm font-semibold text-gray-300">
-                      {field.label}
-                    </th>
-                  ))}
-                  <th className="px-4 py-3 text-right text-sm font-semibold text-gray-300">Azioni</th>
-                </tr>
-              </thead>
-              <tbody>
-                {records.length === 0 ? (
-                  <tr>
-                    <td colSpan={(currentTable?.fields?.length || 0) + 1} className="px-4 py-12 text-center text-gray-500">
-                      Nessun record. Clicca "+ Nuovo" per crearne uno.
-                    </td>
-                  </tr>
-                ) : (
-                  records.map((record: any) => (
-                    <tr key={record.id} className="border-t border-gray-800 hover:bg-gray-800/50">
-                      {currentTable?.fields?.map((field: any) => (
-                        <td key={field.id} className="px-4 py-3 text-sm text-gray-300">
-                          {renderFieldValue(record.data[field.id], field)}
-                        </td>
-                      ))}
-                      <td className="px-4 py-3 text-right">
-                        <button
-                          onClick={() => handleEditRecord(record)}
-                          className="text-blue-400 hover:text-blue-300 mr-4"
-                        >
-                          Modifica
-                        </button>
-                        <button
-                          onClick={() => handleDeleteRecord(record.id)}
-                          className="text-red-400 hover:text-red-300"
-                        >
-                          Elimina
-                        </button>
-                      </td>
-                    </tr>
-                  ))
-                )}
-              </tbody>
-            </table>
-          </div>
-
-          {/* Record Count */}
-          <div className="mt-4 text-sm text-gray-500">
-            {records.length} record{records.length !== 1 ? 'i' : 'o'}
+            <button
+              onClick={() => setShowImport(true)}
+              className="px-6 py-3 bg-blue-600 hover:bg-blue-700 rounded-lg font-semibold transition"
+            >
+              Importa CSV
+            </button>
+            <button
+              onClick={handleNewRecord}
+              className="px-6 py-3 bg-indigo-600 hover:bg-indigo-700 rounded-lg font-semibold transition"
+            >
+              + Nuovo
+            </button>
           </div>
         </div>
-      </main>
+
+        {/* Records Table */}
+        <div className="bg-gray-900 rounded-xl border border-gray-800 overflow-hidden">
+          <table className="w-full">
+            <thead className="bg-gray-800">
+              <tr>
+                {currentTable?.fields?.map((field: any) => (
+                  <th key={field.id} className="px-4 py-3 text-left text-sm font-semibold text-gray-300">
+                    {field.label}
+                  </th>
+                ))}
+                <th className="px-4 py-3 text-right text-sm font-semibold text-gray-300">Azioni</th>
+              </tr>
+            </thead>
+            <tbody>
+              {records.length === 0 ? (
+                <tr>
+                  <td colSpan={(currentTable?.fields?.length || 0) + 1} className="px-4 py-12 text-center text-gray-500">
+                    Nessun record. Clicca "+ Nuovo" per crearne uno.
+                  </td>
+                </tr>
+              ) : (
+                records.map((record: any) => (
+                  <tr key={record.id} className="border-t border-gray-800 hover:bg-gray-800/50">
+                    {currentTable?.fields?.map((field: any) => (
+                      <td key={field.id} className="px-4 py-3 text-sm text-gray-300">
+                        {renderFieldValue(record.data[field.id], field)}
+                      </td>
+                    ))}
+                    <td className="px-4 py-3 text-right">
+                      <button
+                        onClick={() => handleEditRecord(record)}
+                        className="text-blue-400 hover:text-blue-300 mr-4"
+                      >
+                        Modifica
+                      </button>
+                      <button
+                        onClick={() => handleDeleteRecord(record.id)}
+                        className="text-red-400 hover:text-red-300"
+                      >
+                        Elimina
+                      </button>
+                    </td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
+        </div>
+
+        {/* Record Count */}
+        <div className="mt-4 text-sm text-gray-500">
+          {records.length} record{records.length !== 1 ? 'i' : 'o'}
+        </div>
+      </div>
 
       {/* Form Modal */}
       {showForm && currentTable && (
@@ -316,7 +284,7 @@ export default function AppViewerPage() {
           onClose={() => setShowImport(false)}
         />
       )}
-    </div>
+    </AppSidebarLayout>
   );
 }
 
