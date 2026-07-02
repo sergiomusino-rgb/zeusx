@@ -42,6 +42,8 @@ interface SidebarProps {
   showTableNavigation?: boolean;
   /** Callback per tornare alla dashboard principale */
   onBackToDashboard?: () => void;
+  /** Callback quando si clicca su un link (per chiudere sidebar su mobile) */
+  onLinkClick?: () => void;
 }
 
 interface NavItem {
@@ -71,9 +73,16 @@ export default function Sidebar({
   appId,
   showTableNavigation = false,
   onBackToDashboard,
+  onLinkClick,
 }: SidebarProps) {
   const pathname = usePathname();
   const { hasFeatureAccess, hasTableAccess } = usePermissions();
+
+  const handleLinkClick = () => {
+    if (onLinkClick) {
+      onLinkClick();
+    }
+  };
 
   // ─── Main Navigation Items ──────────────────────────────────────────────
   const mainNavItems: NavItem[] = useMemo(
@@ -161,6 +170,7 @@ export default function Sidebar({
               <Link
                 key={item.href}
                 href={item.href}
+                onClick={handleLinkClick}
                 className={`flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-all ${
                   item.isActive
                     ? 'border border-indigo-500/30 bg-gradient-to-r from-indigo-500/20 to-purple-500/20 text-indigo-400 shadow-sm shadow-indigo-500/10'
