@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useMemo } from 'react';
+import React, { useMemo, useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { getTablesBySector, SECTOR_LABELS, getAllTables, UITable } from '@/lib/table-config';
@@ -17,6 +17,8 @@ import {
   Database,
   ArrowLeft,
   Mic,
+  Menu,
+  X,
 } from 'lucide-react';
 
 // ═══════════════════════════════════════════════════════════════════════════

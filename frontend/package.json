@@ -9,6 +9,8 @@
     "lint": "eslint"
   },
   "dependencies": {
+    "@capacitor/android": "^6.0.0",
+    "@capacitor/core": "^6.0.0",
     "@google/generative-ai": "^0.24.1",
     "@stripe/stripe-js": "^9.8.0",
     "@supabase/auth-helpers-nextjs": "^0.10.0",
