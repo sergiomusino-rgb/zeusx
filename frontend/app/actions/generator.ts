@@ -338,6 +338,23 @@ export async function generateAppAction(input: GenerateAppInput): Promise<Genera
       return { success: false, error: 'Errore nella creazione dell\'app: ' + (appError?.message || 'unknown') };
     }
 
+    // Increment total_apps_created counter in tenant
+    console.log('[generateAppAction] Incrementing total_apps_created for tenant:', tenantId);
+    const { data: tenantData, error: tenantError } = await supabaseAdmin
+      .from('tenants')
+      .select('total_apps_created')
+      .eq('id', tenantId)
+      .single();
+
+    if (!tenantError && tenantData) {
+      const newCount = (tenantData.total_apps_created || 0) + 1;
+      await supabaseAdmin
+        .from('tenants')
+        .update({ total_apps_created: newCount })
+        .eq('id', tenantId);
+      console.log('[generateAppAction] Total apps created updated to:', newCount);
+    }
+
     // Create app_definitions entry (use upsert to handle duplicates)
     console.log('[generateAppAction] Creating app_definitions:', { app_id: newApp.id, tenant_id: tenantId });
     const { error: definitionError } = await supabaseAdmin
