@@ -499,6 +499,12 @@ app.use('/api', require('./routes/client-app'));
 // --- APP RECORDS ROUTES (CRUD dati app) ---
 app.use('/api', require('./routes/app-records'));
 
+// --- STAFF ROUTES (gestione utenti e permessi) ---
+app.use('/api/staff', require('./routes/staff'));
+
+// --- TOKEN AUTH ROUTES ---
+app.use('/api/auth', require('./routes/staff'));
+
 // --- ERROR HANDLER ---
 app.use((err, _req, res, _next) => {
   console.error('Unhandled error:', err);
