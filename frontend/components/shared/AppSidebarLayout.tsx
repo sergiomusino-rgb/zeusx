@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useEffect, useState, useCallback } from 'react';
+import Link from 'next/link';
 import { useParams, usePathname, useRouter } from 'next/navigation';
 import Sidebar from '@/components/layout/Sidebar';
 import AuthGuard from '@/components/layout/AuthGuard';
