@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import Sidebar from '@/components/layout/Sidebar';
 import AuthGuard from '@/components/layout/AuthGuard';
+import { Menu, X } from 'lucide-react';
 
 export default function DashboardLayoutClient({
   children,
@@ -14,6 +15,7 @@ export default function DashboardLayoutClient({
   const pathname = usePathname();
   const router = useRouter();
   const [mounted, setMounted] = useState(false);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   // Controlla se siamo in una pagina [table] della dashboard
   const isTablePage = pathname.match(/^\/dashboard\/(patients|appointments|customers|vehicles|jobs|dishes|reservations)$/);
@@ -23,10 +25,27 @@ export default function DashboardLayoutClient({
   // Determine if the sidebar should be shown
   const shouldShowSidebar = pathname === '/dashboard';
 
+  // Close mobile menu on route change
+  useEffect(() => {
+    setMobileMenuOpen(false);
+  }, [pathname]);
+
   // Evita hydration mismatch
   useEffect(() => {
     setMounted(true);
   }, []);
+
+  // Prevent body scroll when mobile menu is open
+  useEffect(() => {
+    if (mobileMenuOpen) {
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = '';
+    }
+    return () => {
+      document.body.style.overflow = '';
+    };
+  }, [mobileMenuOpen]);
 
   const handleBackToDashboard = useCallback(() => {
     router.push('/dashboard');
@@ -48,19 +67,72 @@ export default function DashboardLayoutClient({
       <meta httpEquiv="Expires" content="0" />
 
       <div className="flex h-screen overflow-hidden bg-slate-950 text-white">
-        {/* Sidebar - Conditionally rendered */}
+        {/* ─── Desktop Sidebar (always visible on md+) ─────────────────── */}
         {shouldShowSidebar && (
-          <Sidebar
-            showTableNavigation={showTableNav}
-            onBackToDashboard={handleBackToDashboard}
-          />
+          <div className="hidden md:block">
+            <Sidebar
+              showTableNavigation={showTableNav}
+              onBackToDashboard={handleBackToDashboard}
+            />
+          </div>
         )}
 
-        {/* Main Content Area */}
+        {/* ─── Mobile Sidebar Overlay ──────────────────────────────────── */}
+        {shouldShowSidebar && (
+          <div className="md:hidden">
+            {/* Backdrop */}
+            <div
+              className={`fixed inset-0 z-40 transition-all duration-300 ease-in-out ${
+                mobileMenuOpen
+                  ? 'bg-black/60 backdrop-blur-sm opacity-100 pointer-events-auto'
+                  : 'bg-transparent opacity-0 pointer-events-none'
+              }`}
+              onClick={() => setMobileMenuOpen(false)}
+              aria-hidden="true"
+            />
+
+            {/* Slide-out Sidebar Panel */}
+            <div
+              className={`fixed inset-y-0 left-0 z-50 w-64 transform transition-transform duration-300 ease-in-out ${
+                mobileMenuOpen ? 'translate-x-0' : '-translate-x-full'
+              }`}
+            >
+              <Sidebar
+                showTableNavigation={showTableNav}
+                onBackToDashboard={handleBackToDashboard}
+                onClose={() => setMobileMenuOpen(false)}
+              />
+            </div>
+          </div>
+        )}
+
+        {/* ─── Main Content Area ───────────────────────────────────────── */}
         <div className="flex flex-1 flex-col overflow-hidden">
-          {/* Header */}
+          {/* Mobile Header (visible only on small screens) */}
+          <header className="flex h-16 items-center justify-between border-b border-slate-800 bg-slate-900 px-4 md:hidden">
+            {shouldShowSidebar ? (
+              <button
+                onClick={() => setMobileMenuOpen(true)}
+                className="rounded-lg p-2 text-slate-400 transition-colors hover:bg-slate-800 hover:text-white"
+                aria-label="Apri menu"
+              >
+                <Menu size={22} />
+              </button>
+            ) : (
+              <div />
+            )}
+            <Link
+              href="/dashboard"
+              className="bg-gradient-to-r from-blue-400 to-indigo-500 bg-clip-text text-lg font-black tracking-wider text-transparent"
+            >
+              ⚡ ZEUSX
+            </Link>
+            <div className="w-10" /> {/* Spacer for centering */}
+          </header>
+
+          {/* Desktop Header (hidden on mobile) */}
           {!(pathname.startsWith('/dashboard/generator') || pathname.startsWith('/dashboard/projects') || pathname.startsWith('/dashboard/vision') || pathname.startsWith('/dashboard/settings')) && (
-            <header className="flex h-16 items-center justify-between border-b border-slate-800 bg-slate-900/40 px-6 backdrop-blur">
+            <header className="hidden h-16 items-center justify-between border-b border-slate-800 bg-slate-900/40 px-6 backdrop-blur md:flex">
               <div className="flex items-center gap-4">
                 {isSubPage ? (
                   <Link

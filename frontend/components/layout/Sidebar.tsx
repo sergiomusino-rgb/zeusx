@@ -16,6 +16,7 @@ import {
   ChevronRight,
   Database,
   ArrowLeft,
+  X,
 } from 'lucide-react';
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -39,6 +40,8 @@ interface SidebarProps {
   showTableNavigation?: boolean;
   /** Callback per tornare alla dashboard principale */
   onBackToDashboard?: () => void;
+  /** Callback per chiudere la sidebar su mobile */
+  onClose?: () => void;
 }
 
 interface NavItem {
@@ -68,6 +71,7 @@ export default function Sidebar({
   appId,
   showTableNavigation = false,
   onBackToDashboard,
+  onClose,
 }: SidebarProps) {
   const pathname = usePathname();
 
@@ -134,8 +138,24 @@ export default function Sidebar({
   // ─── Render ──────────────────────────────────────────────────────────────
   return (
     <aside className="flex h-full w-64 flex-col border-r border-slate-800 bg-slate-900">
-      {/* ── Logo ──────────────────────────────────────────────────────── */}
-      <div className="flex h-16 items-center gap-2 border-b border-slate-800/60 px-5">
+      {/* ── Mobile Close Button ────────────────────────────────────────── */}
+      {onClose && (
+        <div className="flex items-center justify-between border-b border-slate-800/60 px-5 py-4 md:hidden">
+          <span className="bg-gradient-to-r from-blue-400 to-indigo-500 bg-clip-text text-lg font-black tracking-wider text-transparent">
+            ⚡ ZEUSX
+          </span>
+          <button
+            onClick={onClose}
+            className="rounded-lg p-1.5 text-slate-400 transition-colors hover:bg-slate-800 hover:text-white"
+            aria-label="Chiudi menu"
+          >
+            <X size={22} />
+          </button>
+        </div>
+      )}
+
+      {/* ── Logo (desktop) ─────────────────────────────────────────────── */}
+      <div className="hidden h-16 items-center gap-2 border-b border-slate-800/60 px-5 md:flex">
         <Link
           href="/dashboard"
           className="bg-gradient-to-r from-blue-400 to-indigo-500 bg-clip-text text-xl font-black tracking-wider text-transparent"
@@ -165,23 +185,29 @@ export default function Sidebar({
         {/* Main Navigation */}
         {!showTableNavigation && (
           <div className="space-y-1">
-            {mainNavItems.map((item) => (
-              <Link
-                key={item.href}
-                href={item.href}
-                className={`flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-all ${
-                  item.isActive
-                    ? 'border border-indigo-500/30 bg-gradient-to-r from-indigo-500/20 to-purple-500/20 text-indigo-400 shadow-sm shadow-indigo-500/10'
-                    : 'border border-transparent text-slate-400 hover:bg-slate-800/50 hover:text-white'
-                }`}
-              >
-                <span className="flex-shrink-0">{item.icon}</span>
-                <span className="truncate">{item.label}</span>
-                {item.isPrimary && item.isActive && (
-                  <ChevronRight size={14} className="ml-auto text-indigo-400" />
-                )}
-              </Link>
-            ))}
+            {mainNavItems.map((item) => {
+              const handleClick = onClose
+                ? () => setTimeout(() => onClose(), 150)
+                : undefined;
+              return (
+                <Link
+                  key={item.href}
+                  href={item.href}
+                  onClick={handleClick}
+                  className={`flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-all ${
+                    item.isActive
+                      ? 'border border-indigo-500/30 bg-gradient-to-r from-indigo-500/20 to-purple-500/20 text-indigo-400 shadow-sm shadow-indigo-500/10'
+                      : 'border border-transparent text-slate-400 hover:bg-slate-800/50 hover:text-white'
+                  }`}
+                >
+                  <span className="flex-shrink-0">{item.icon}</span>
+                  <span className="truncate">{item.label}</span>
+                  {item.isPrimary && item.isActive && (
+                    <ChevronRight size={14} className="ml-auto text-indigo-400" />
+                  )}
+                </Link>
+              );
+            })}
           </div>
         )}
 
@@ -216,6 +242,7 @@ export default function Sidebar({
                     <Link
                       key={table.name}
                       href={tablePath}
+                      onClick={onClose ? () => setTimeout(() => onClose(), 150) : undefined}
                       className={`flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm transition-all ${
                         isActive
                           ? 'border-l-2 border-indigo-500 bg-indigo-500/10 text-indigo-400 font-medium'
