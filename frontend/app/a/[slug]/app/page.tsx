@@ -40,25 +40,43 @@ function fieldName(f: FieldDef): string {
 interface AppConfig {
   id: string;
   slug: string;
-  appName: string;
+  appName?: string;
+  name?: string;
   logo?: string;
-  schema?: {
-    tables: TableDef[];
+  blocked?: boolean;
+  // La struttura reale: { id, slug, name, config: { schema: { tables }, ... } }
+  config?: {
+    schema?: {
+      tables: TableDef[];
+    };
+    blueprint?: {
+      schema?: {
+        tables: TableDef[];
+      };
+      tables?: TableDef[];
+    };
+    tables?: TableDef[];
+    branding?: {
+      company_name?: string;
+      logo_url?: string;
+      primary_color?: string;
+      theme?: 'dark' | 'light';
+    };
+    appName?: string;
+    logo?: string;
+    [key: string]: unknown;
   };
+  // Fallback per strutture piatte
+  schema?: { tables: TableDef[] };
   branding?: {
     company_name?: string;
     logo_url?: string;
     primary_color?: string;
     theme?: 'dark' | 'light';
   };
-  blueprint?: {
-    schema?: {
-      tables: TableDef[];
-    };
-    tables?: TableDef[]; // fallback per compatibilità
-  };
-  tables?: TableDef[]; // altro fallback
-  blocked?: boolean;
+  blueprint?: { schema?: { tables: TableDef[] }; tables?: TableDef[] };
+  tables?: TableDef[];
+  [key: string]: unknown;
 }
 
 interface AppSession {
@@ -449,7 +467,7 @@ function DataTable({
     if (!appId || !password) return;
     setExporting(true);
     try {
-      const res = await fetch(`${BACKEND_URL}/api/client/apps/${appId}/export?table=${table.name}`, {
+      const res = await fetch(`/api/client/apps/${appId}/export?table=${table.name}`, {
         headers: { Authorization: `Bearer ${password}` },
       });
       if (!res.ok) throw new Error('Errore esportazione');
@@ -479,7 +497,7 @@ function DataTable({
       formData.append('file', file);
       formData.append('table', table.name);
 
-      const res = await fetch(`${BACKEND_URL}/api/client/apps/${appId}/import`, {
+      const res = await fetch(`/api/client/apps/${appId}/import`, {
         method: 'POST',
         headers: { Authorization: `Bearer ${password}` },
         body: formData,
@@ -1646,17 +1664,27 @@ export default function ViewerProFinal() {
 
   // Derived values
   const appInfo = session?.appInfo;
+  // L'appInfo ha struttura: { id, slug, name, config: { schema: { tables }, ... } }
   const config = appInfo;
+  const innerConfig = config?.config;
   
-  // Estrai tabelle da blueprint (supporta sia schema.tables che tables diretto)
-  const tables = config?.schema?.tables 
+  // Estrai tabelle da blueprint — cerca in config.config.schema.tables (la struttura reale)
+  // e mantieni tutti i fallback per compatibilità
+  const tables = innerConfig?.schema?.tables 
+    || config?.schema?.tables 
+    || innerConfig?.blueprint?.schema?.tables 
     || config?.blueprint?.schema?.tables 
+    || innerConfig?.blueprint?.tables 
     || config?.blueprint?.tables 
+    || innerConfig?.tables 
     || config?.tables 
     || [];
   
   console.log('[Viewer] Config:', config);
   console.log('[Viewer] Config keys:', config ? Object.keys(config) : 'null');
+  console.log('[Viewer] innerConfig (config.config):', innerConfig);
+  console.log('[Viewer] innerConfig keys:', innerConfig ? Object.keys(innerConfig) : 'null');
+  console.log('[Viewer] innerConfig.schema:', innerConfig?.schema);
   console.log('[Viewer] Blueprint:', config?.blueprint);
   console.log('[Viewer] Tables found:', tables.length, tables);
   
@@ -1752,7 +1780,7 @@ export default function ViewerProFinal() {
   const loadRecords = useCallback(async (tableName: string, password: string, appId: string) => {
     setRecordsLoading(true);
     try {
-      const res = await fetch(`${BACKEND_URL}/api/client/apps/${appId}/records?table=${tableName}`, {
+      const res = await fetch(`/api/client/apps/${appId}/records?table=${tableName}`, {
         headers: { Authorization: `Bearer ${password}` },
       });
       if (!res.ok) throw new Error('Failed to load records');
@@ -1779,7 +1807,7 @@ export default function ViewerProFinal() {
 
   const handleLogin = useCallback(async (password: string) => {
     // Fetch app config from backend to validate password
-    const res = await fetch(`${BACKEND_URL}/api/a/${slug}`, {
+    const res = await fetch(`/api/a/${slug}`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ password }),
@@ -1814,7 +1842,7 @@ export default function ViewerProFinal() {
     if (!session || !activeTable) return;
     setSaving(true);
     try {
-      const res = await fetch(`${BACKEND_URL}/api/client/apps/${session.appInfo.id}/records`, {
+      const res = await fetch(`/api/client/apps/${session.appInfo.id}/records`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -1836,7 +1864,7 @@ export default function ViewerProFinal() {
     if (!session || !activeTable || !modalRecord || modalRecord === 'new') return;
     setSaving(true);
     try {
-      const res = await fetch(`${BACKEND_URL}/api/client/apps/${session.appInfo.id}/records/${modalRecord.id}`, {
+      const res = await fetch(`/api/client/apps/${session.appInfo.id}/records/${modalRecord.id}`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
@@ -1858,7 +1886,7 @@ export default function ViewerProFinal() {
     if (!session || !activeTable) return;
     if (!confirm('Sei sicuro di voler eliminare questo record?')) return;
     try {
-      const res = await fetch(`${BACKEND_URL}/api/client/apps/${session.appInfo.id}/records/${recordId}`, {
+      const res = await fetch(`/api/client/apps/${session.appInfo.id}/records/${recordId}`, {
         method: 'DELETE',
         headers: { Authorization: `Bearer ${session.password}` },
       });
@@ -1870,7 +1898,7 @@ export default function ViewerProFinal() {
   }, [session, activeTable, loadRecords]);
 
   const handleChangePassword = useCallback(async (oldPw: string, newPw: string) => {
-    const res = await fetch(`${BACKEND_URL}/api/a/${slug}/change-password`, {
+    const res = await fetch(`/api/a/${slug}/change-password`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ oldPassword: oldPw, newPassword: newPw }),

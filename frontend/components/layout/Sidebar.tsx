@@ -12,6 +12,7 @@ import {
   FolderKanban,
   Settings,
   Crown,
+  Shield,
   ChevronRight,
   Database,
   ArrowLeft,
@@ -87,22 +88,34 @@ export default function Sidebar({
         isActive: isPathActive(pathname, '/dashboard/generator'),
       },
       {
+        label: 'App Create',
+        href: '/dashboard/projects',
+        icon: <FolderKanban size={18} />,
+        isActive: isPathActive(pathname, '/dashboard/projects'),
+      },
+      {
+        label: 'Agenda',
+        href: '/dashboard/vision',
+        icon: <Eye size={18} />,
+        isActive: isPathActive(pathname, '/dashboard/vision'),
+      },
+      {
         label: 'Chat AI',
         href: '/dashboard/chat',
         icon: <MessageSquare size={18} />,
         isActive: isPathActive(pathname, '/dashboard/chat'),
       },
       {
-        label: 'Vision AI',
-        href: '/dashboard/vision',
-        icon: <Eye size={18} />,
-        isActive: isPathActive(pathname, '/dashboard/vision'),
+        label: 'Piani e Abbonamento',
+        href: '/pricing',
+        icon: <Crown size={18} />,
+        isActive: isPathActive(pathname, '/pricing'),
       },
       {
-        label: 'App Create',
-        href: '/dashboard/projects',
-        icon: <FolderKanban size={18} />,
-        isActive: isPathActive(pathname, '/dashboard/projects'),
+        label: 'Admin',
+        href: '/admin',
+        icon: <Shield size={18} />,
+        isActive: isPathActive(pathname, '/admin'),
       },
       {
         label: 'Impostazioni',
@@ -233,17 +246,6 @@ export default function Sidebar({
         {/* Quick access to Pricing when not in table view */}
         {!showTableNavigation && (
           <div className="mt-4 border-t border-slate-800/60 pt-3">
-            <Link
-              href="/pricing"
-              className={`flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-all ${
-                isPathActive(pathname, '/pricing')
-                  ? 'border border-amber-500/30 bg-gradient-to-r from-amber-500/20 to-yellow-500/20 text-amber-400'
-                  : 'border border-transparent text-slate-400 hover:bg-slate-800/50 hover:text-white'
-              }`}
-            >
-              <Crown size={18} />
-              <span>Piani e Abbonamento</span>
-            </Link>
           </div>
         )}
       </nav>

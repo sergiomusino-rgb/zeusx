@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { supabase } from '@/src/lib/supabase';
+import { supabaseBrowser } from '@/lib/supabase-browser';
 import Link from 'next/link';
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
@@ -44,14 +44,14 @@ export default function AdminPage() {
   useEffect(() => { boot(); }, []);
 
   async function boot() {
-    const { data: { user } } = await supabase.auth.getUser();
+    const { data: { user } } = await supabaseBrowser.auth.getUser();
     if (!user || user.id !== ADMIN_USER_ID) { setDenied(true); setLoading(false); return; }
     await loadData();
   }
 
   async function loadData() {
     try {
-      const { data: { session } } = await supabase.auth.getSession();
+      const { data: { session } } = await supabaseBrowser.auth.getSession();
       const token = session?.access_token;
       if (!token) return;
 
@@ -73,7 +73,7 @@ export default function AdminPage() {
   const { totals, dist, chartData, recentApps } = data;
   const pieData = Object.entries(dist).map(([name, value]) => ({ name, value }));
   const fmtEur = (n: number) => new Intl.NumberFormat('it-IT', { style: 'currency', currency: 'EUR' }).format(n);
-  const estimatedRevenue = Object.entries(dist).reduce((sum, [plan, count]) => sum + (count || 0) * (PLAN_PRICES[plan] || 0), 0);
+  const estimatedRevenue = Object.entries(dist).reduce((sum, [plan, count]) => sum + (Number(count) || 0) * (PLAN_PRICES[plan] || 0), 0);
 
   return (
     <div className="min-h-screen bg-slate-950 text-white">
@@ -84,8 +84,8 @@ export default function AdminPage() {
             <h1 className="text-2xl font-bold">ZeusX Admin</h1>
             <p className="text-slate-400 text-sm">Panoramica piattaforma</p>
           </div>
-          <Link href="/dashboard" className="px-4 py-2 bg-slate-800 hover:bg-slate-700 rounded-lg text-sm transition">
-            Dashboard
+          <Link href="/dashboard" className="px-6 py-2 bg-indigo-600 hover:bg-indigo-700 rounded-xl font-semibold transition-all">
+            ← Dashboard
           </Link>
         </div>
       </div>

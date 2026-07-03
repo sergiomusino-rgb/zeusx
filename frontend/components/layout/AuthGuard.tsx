@@ -55,23 +55,45 @@ export default function AuthGuard({
         const supabase = supabaseBrowser;
 
         // ── Step 1: Verifica sessione ──────────────────────────────────
+        // First try to get session from storage (faster, synchronous check)
+        const stored = getStoredSession();
+        
+        // Then verify with server (async)
         const { data: { session }, error: sessionError } = await supabase.auth.getSession();
 
         if (cancelled) return;
 
-        if (sessionError || !session?.user) {
-          // Controlla anche localStorage per evitare race condition
-          const stored = getStoredSession();
-          if (!stored) {
+        // If no session from server but we have stored session, wait a bit and retry
+        let currentSession = session;
+        
+        if ((sessionError || !currentSession?.user) && stored) {
+          // Give it a moment for the session to sync
+          await new Promise(resolve => setTimeout(resolve, 500));
+          
+          // Try again
+          const { data: { session: retrySession } } = await supabase.auth.getSession();
+          
+          if (cancelled) return;
+          
+          if (!retrySession?.user) {
+            // Still no valid session after retry
             const returnUrl = encodeURIComponent(pathname);
             router.replace(`${redirectTo}?returnUrl=${returnUrl}`);
             return;
           }
+          
+          // Use the retry session
+          currentSession = retrySession;
+        } else if (sessionError || !currentSession?.user) {
+          // No session at all
+          const returnUrl = encodeURIComponent(pathname);
+          router.replace(`${redirectTo}?returnUrl=${returnUrl}`);
+          return;
         }
 
         // ── Step 2: Verifica tenant (opzionale) ────────────────────────
         if (requireTenant) {
-          const userId = session?.user?.id;
+          const userId = currentSession?.user?.id;
           if (!userId) {
             const returnUrl = encodeURIComponent(pathname);
             router.replace(`${redirectTo}?returnUrl=${returnUrl}`);
@@ -89,16 +111,16 @@ export default function AuthGuard({
 
           if (memberError || !membership) {
             // Prova a creare automaticamente il tenant per l'utente tramite API
-            if (userId && session?.access_token) {
+            if (userId && currentSession?.access_token) {
               try {
                 const response = await fetch('/api/tenants/create', {
                   method: 'POST',
                   headers: {
                     'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${session.access_token}`,
+                    'Authorization': `Bearer ${currentSession.access_token}`,
                   },
                   body: JSON.stringify({
-                    name: session.user.email ? `Workspace di ${session.user.email}` : 'Il mio Workspace',
+                    name: currentSession.user.email ? `Workspace di ${currentSession.user.email}` : 'Il mio Workspace',
                     slug: `workspace-${userId.slice(0, 8)}`,
                   }),
                 });

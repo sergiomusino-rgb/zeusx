@@ -5,8 +5,13 @@ import { useParams } from 'next/navigation';
 import { createClient } from '@supabase/supabase-js';
 import { Eye, EyeOff } from 'lucide-react';
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+
+if (!supabaseUrl || !supabaseAnonKey) {
+  throw new Error('Missing Supabase environment variables');
+}
+
 const supabase = createClient(supabaseUrl, supabaseAnonKey);
 
 export default function ClientLoginPage() {
@@ -57,7 +62,7 @@ export default function ClientLoginPage() {
       // Verifica password direttamente da Supabase (policy RLS permette lettura pubblica)
       const { data: appData, error: appError } = await supabase
         .from('apps')
-        .select('id, client_password, client_active, expires_at, config')
+        .select('id, slug, name, client_password, client_active, expires_at, config')
         .eq('slug', slug)
         .single();
 
@@ -92,23 +97,48 @@ export default function ClientLoginPage() {
         }
       }
 
-      // Carica le info dell'app per la sessione
+      // Carica TUTTE le info dell'app per la sessione (apps + app_definitions)
       const { data: appInfoData } = await supabase
         .from('apps')
-        .select('config')
+        .select('id, slug, name, config')
         .eq('id', appData.id)
         .single();
 
-      // Salva sessione con appInfo completo (id + config)
+      // Carica anche app_definitions per avere le tabelle
+      const { data: appDefData, error: appDefError } = await supabase
+        .from('app_definitions')
+        .select('schema, ui_config')
+        .eq('app_id', appData.id)
+        .maybeSingle();
+
+      console.log('[Login] appInfoData:', appInfoData?.config);
+      console.log('[Login] appDefData:', appDefData);
+      console.log('[Login] appDefError:', appDefError?.message);
+
+      // Combina i dati - metti le tabelle da app_definitions in config
+      // La struttura deve essere: config.schema.tables per la app page
+      // IMPORTANTE: non sovrascrivere schema con {} quando appDefData è null
+      const combinedConfig = {
+        ...(appInfoData?.config || {}),
+        ...(appDefData?.schema ? { schema: appDefData.schema } : {}),
+        ...(appDefData?.ui_config ? { ui_config: appDefData.ui_config } : {}),
+      };
+      
+      console.log('[Login] combinedConfig:', combinedConfig);
+
+      // Salva sessione con appInfo completo (tutti i dati)
       const sessionData = {
         slug,
         password,
         appInfo: {
           id: appData.id,
           slug,
-          ...(appInfoData?.config || {}),
+          name: appData.name,
+          config: combinedConfig,
         },
       };
+      
+      console.log('[Login] Saving session with appInfo:', sessionData.appInfo);
       localStorage.setItem(`app_session_${slug}`, JSON.stringify(sessionData));
       window.location.href = `/a/${slug}/app`;
     } catch {

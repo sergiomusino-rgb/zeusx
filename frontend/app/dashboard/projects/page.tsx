@@ -43,7 +43,7 @@ export default function ProjectsPage() {
       
       if (userError || !user) {
         console.log('[Projects] User not logged in');
-        setError('Effettua il login per vedere i tuoi progetti');
+        setError('Effettua il login per vedere le app create');
         setLoading(false);
         return;
       }
@@ -148,7 +148,7 @@ export default function ProjectsPage() {
       <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#0a0e1a' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '12px', color: '#94a3b8' }}>
           <Loader2 size={24} style={{ animation: 'spin 1s linear infinite' }} />
-          <span>Caricamento progetti...</span>
+          <span>Caricamento app...</span>
         </div>
         <style jsx global>{`
           @keyframes spin {
@@ -164,8 +164,13 @@ export default function ProjectsPage() {
     <div style={{ minHeight: '100vh', background: '#0a0e1a', padding: '24px' }}>
       {/* Header */}
       <div style={{ maxWidth: '1200px', margin: '0 auto', marginBottom: '32px' }}>
+        <div style={{ marginBottom: '24px' }}>
+          <Link href="/dashboard" className="px-6 py-2 bg-indigo-600 hover:bg-indigo-700 rounded-xl font-semibold transition-all">
+            ← Dashboard
+          </Link>
+        </div>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
-          <h1 style={{ color: '#ffffff', fontSize: '32px', fontWeight: 700, margin: 0 }}>I tuoi progetti</h1>
+          <h1 style={{ color: '#ffffff', fontSize: '32px', fontWeight: 700, margin: 0 }}>Le app create</h1>
           <Link
             href="/dashboard/generator"
             style={{
@@ -177,7 +182,7 @@ export default function ProjectsPage() {
             }}
           >
             <Plus size={18} />
-            Nuovo progetto
+            Nuova app
           </Link>
         </div>
         <p style={{ color: '#94a3b8', fontSize: '15px', margin: 0 }}>

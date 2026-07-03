@@ -1,422 +1,123 @@
 'use client';
 
-import { useState, Suspense } from 'react';
-import { useRouter, useSearchParams } from 'next/navigation';
+import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
-import { CheckCircle2, Copy, ArrowRight } from 'lucide-react';
-import { QRCodeCanvas } from 'qrcode.react';
+import { Sparkles, Copy, Check, ExternalLink } from 'lucide-react';
+import { useState, useEffect } from 'react';
 
-function SuccessContent() {
-  const router = useRouter();
+export default function SuccessPage() {
   const searchParams = useSearchParams();
+  const appId = searchParams.get('appId');
   const slug = searchParams.get('slug');
   const password = searchParams.get('password');
-  const appName = searchParams.get('appName') || 'Il tuo gestionale';
-  
-  const [email, setEmail] = useState('');
-  const [saving, setSaving] = useState(false);
-  const [saved, setSaved] = useState(false);
+  const appName = searchParams.get('appName');
+
   const [copied, setCopied] = useState(false);
-  const [copiedPassword, setCopiedPassword] = useState(false);
 
-  const appUrl = `${typeof window !== 'undefined' ? window.location.origin : ''}/a/${slug}`;
-
-  const handleSaveEmail = async () => {
-    if (!email.trim() || !slug) return;
-    
-    setSaving(true);
-    
-    try {
-      // Call server action to save email
-      const res = await fetch('/api/save-client-email', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ slug, email: email.trim() }),
-      });
-
-      if (res.ok) {
-        setSaved(true);
-        setTimeout(() => {
-          router.push('/dashboard/projects');
-        }, 1500);
-      }
-    } catch (err) {
-      console.error('Error saving email:', err);
-    } finally {
-      setSaving(false);
+  useEffect(() => {
+    if (password) {
+      setCopied(true);
+      navigator.clipboard.writeText(password);
+      setTimeout(() => setCopied(false), 2000);
     }
-  };
+  }, [password]);
 
-  const handleCopy = () => {
-    navigator.clipboard.writeText(appUrl);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
-  };
-
-  const handleCopyPassword = () => {
-    navigator.clipboard.writeText(password || '');
-    setCopiedPassword(true);
-    setTimeout(() => setCopiedPassword(false), 2000);
-  };
-
-  if (!slug || !password) {
+  if (!appId || !slug) {
     return (
-      <div style={{
-        minHeight: '100vh',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        background: 'linear-gradient(135deg, #0a0e1a 0%, #1e1b4b 100%)',
-        padding: '20px',
-      }}>
-        <div style={{
-          background: '#1e293b',
-          border: '1px solid #334155',
-          borderRadius: '24px',
-          padding: '48px',
-          maxWidth: '500px',
-          width: '100%',
-          textAlign: 'center',
-        }}>
-          <h1 style={{ color: '#ffffff', fontSize: '24px', marginBottom: '16px' }}>
-            Dati non disponibili
-          </h1>
+      <div className="min-h-screen bg-gray-950 text-white p-8 flex items-center justify-center">
+        <div className="text-center">
+          <h1 className="text-2xl font-bold mb-4">Errore</h1>
+          <p className="text-gray-400 mb-8">Parametri mancanti</p>
           <Link
             href="/dashboard/generator"
-            style={{ color: '#6366f1', textDecoration: 'underline' }}
+            className="text-indigo-400 hover:text-indigo-300"
           >
-            Torna al Generator
+            Torna al generatore
           </Link>
         </div>
       </div>
     );
   }
 
+  const appUrl = `/a/${slug}`;
+
   return (
-    <div style={{
-      minHeight: '100vh',
-      display: 'flex',
-      alignItems: 'center',
-      justifyContent: 'center',
-      background: 'linear-gradient(135deg, #0a0e1a 0%, #1e1b4b 100%)',
-      padding: '20px',
-    }}>
-      <div style={{
-        background: '#1e293b',
-        border: '1px solid #334155',
-        borderRadius: '24px',
-        padding: '48px',
-        maxWidth: '500px',
-        width: '100%',
-        boxShadow: '0 25px 50px -12px rgba(0,0,0,0.5)',
-      }}>
-        {/* Success Icon */}
-        <div style={{
-          display: 'flex',
-          justifyContent: 'center',
-          marginBottom: '24px',
-        }}>
-          <div style={{
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            width: '80px',
-            height: '80px',
-            borderRadius: '50%',
-            background: '#22c55e20',
-          }}>
-            <CheckCircle2 size={40} color="#22c55e" />
+    <div className="min-h-screen bg-gray-950 text-white p-8">
+      <div className="max-w-2xl mx-auto">
+        {/* Header */}
+        <div className="text-center mb-12">
+          <div className="inline-flex items-center justify-center w-20 h-20 rounded-2xl bg-gradient-to-br from-indigo-500 to-purple-600 mb-6">
+            <Sparkles className="w-10 h-10 text-white" />
           </div>
-        </div>
-
-        {/* Title */}
-        <h1 style={{
-          color: '#ffffff',
-          fontSize: '28px',
-          fontWeight: 800,
-          textAlign: 'center',
-          margin: '0 0 8px 0',
-        }}>
-          Gestionale Creato!
-        </h1>
-        <p style={{
-          color: '#94a3b8',
-          fontSize: '16px',
-          textAlign: 'center',
-          margin: '0 0 32px 0',
-        }}>
-          {appName} è pronto per essere utilizzato
-        </p>
-
-        {/* App Link */}
-        <div style={{ marginBottom: '24px' }}>
-          <label style={{
-            display: 'block',
-            color: '#94a3b8',
-            fontSize: '13px',
-            fontWeight: 600,
-            marginBottom: '8px',
-            textTransform: 'uppercase',
-            letterSpacing: '0.05em',
-          }}>
-            Link all'app
-          </label>
-          <div style={{
-            display: 'flex',
-            gap: '8px',
-          }}>
-            <input
-              type="text"
-              value={appUrl}
-              readOnly
-              style={{
-                flex: 1,
-                padding: '12px 16px',
-                borderRadius: '12px',
-                border: '1px solid #334155',
-                background: '#0f172a',
-                color: '#ffffff',
-                fontSize: '14px',
-              }}
-            />
-            <button
-              onClick={handleCopy}
-              style={{
-                padding: '12px 16px',
-                borderRadius: '12px',
-                border: '1px solid #334155',
-                background: '#334155',
-                color: '#ffffff',
-                cursor: 'pointer',
-                display: 'flex',
-                alignItems: 'center',
-              }}
-            >
-              <Copy size={18} />
-            </button>
-          </div>
-          {copied && (
-            <p style={{ color: '#22c55e', fontSize: '13px', marginTop: '8px' }}>
-              Link copiato!
-            </p>
-          )}
-        </div>
-
-        {/* QR Code */}
-        <div style={{ marginBottom: '24px', textAlign: 'center' }}>
-          <label style={{
-            display: 'block',
-            color: '#94a3b8',
-            fontSize: '13px',
-            fontWeight: 600,
-            marginBottom: '12px',
-            textTransform: 'uppercase',
-            letterSpacing: '0.05em',
-          }}>
-            QR Code per accesso smartphone
-          </label>
-          <div style={{
-            display: 'inline-block',
-            padding: '16px',
-            background: '#ffffff',
-            borderRadius: '16px',
-            boxShadow: '0 4px 12px rgba(0,0,0,0.3)',
-          }}>
-            <QRCodeCanvas value={appUrl} size={180} level="H" />
-          </div>
-          <p style={{ color: '#94a3b8', fontSize: '12px', marginTop: '8px' }}>
-            Scannerizza con la fotocamera del telefono
+          <h1 className="text-4xl font-bold mb-4">🎉 Complimenti!</h1>
+          <p className="text-xl text-gray-300">
+            Il tuo gestionale è stato creato con successo!
           </p>
         </div>
 
-        {/* Password */}
-        <div style={{ marginBottom: '24px' }}>
-          <label style={{
-            display: 'block',
-            color: '#94a3b8',
-            fontSize: '13px',
-            fontWeight: 600,
-            marginBottom: '8px',
-            textTransform: 'uppercase',
-            letterSpacing: '0.05em',
-          }}>
-            Password temporanea
-          </label>
-          <div style={{
-            display: 'flex',
-            gap: '8px',
-          }}>
-            <div style={{
-              flex: 1,
-              padding: '16px',
-              borderRadius: '12px',
-              border: '1px solid #22c55e40',
-              background: '#22c55e10',
-              textAlign: 'center',
-            }}>
-              <span style={{
-                color: '#22c55e',
-                fontSize: '24px',
-                fontWeight: 700,
-                fontFamily: 'monospace',
-                letterSpacing: '0.1em',
-              }}>
-                {password}
-              </span>
+        {/* App Info Card */}
+        <div className="bg-gray-900 border border-gray-800 rounded-2xl p-8 mb-8">
+          <div className="flex items-center justify-between mb-6">
+            <div>
+              <h2 className="text-2xl font-bold">{appName || 'Il tuo Gestionale'}</h2>
+              <p className="text-gray-400">App ID: {appId}</p>
             </div>
-            <button
-              onClick={handleCopyPassword}
-              style={{
-                padding: '12px 16px',
-                borderRadius: '12px',
-                border: '1px solid #334155',
-                background: '#334155',
-                color: '#ffffff',
-                cursor: 'pointer',
-                display: 'flex',
-                alignItems: 'center',
-              }}
-            >
-              <Copy size={18} />
-            </button>
+            <div className="px-4 py-2 bg-green-500/20 border border-green-500/30 rounded-lg">
+              <span className="text-green-400 font-medium">✓ Attiva</span>
+            </div>
           </div>
-          {copiedPassword && (
-            <p style={{ color: '#22c55e', fontSize: '13px', marginTop: '8px' }}>
-              Password copiata!
-            </p>
+
+          {/* Password */}
+          {password && (
+            <div className="mb-6 p-4 bg-gray-800 rounded-xl">
+              <label className="block text-sm font-medium text-gray-400 mb-2">
+                Password temporanea (copiata automaticamente)
+              </label>
+              <div className="flex items-center gap-3">
+                <code className="flex-1 text-2xl font-mono text-indigo-400">
+                  {password}
+                </code>
+                <button
+                  onClick={() => {
+                    navigator.clipboard.writeText(password);
+                    setCopied(true);
+                    setTimeout(() => setCopied(false), 2000);
+                  }}
+                  className="p-3 bg-gray-700 hover:bg-gray-600 rounded-lg transition-colors"
+                >
+                  {copied ? (
+                    <Check className="w-5 h-5 text-green-400" />
+                  ) : (
+                    <Copy className="w-5 h-5 text-gray-300" />
+                  )}
+                </button>
+              </div>
+            </div>
           )}
-          <p style={{ color: '#64748b', fontSize: '13px', marginTop: '8px' }}>
-            Consiglia al cliente di cambiare la password al primo accesso
-          </p>
+
+          {/* Actions */}
+          <div className="flex flex-col sm:flex-row gap-4">
+            <a
+              href={appUrl}
+              className="flex-1 flex items-center justify-center gap-2 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white font-bold py-4 px-6 rounded-xl transition-all"
+            >
+              <ExternalLink className="w-5 h-5" />
+              Apri il Gestionale
+            </a>
+            <Link
+              href="/dashboard"
+              className="flex-1 flex items-center justify-center gap-2 bg-gray-800 hover:bg-gray-700 text-white font-medium py-4 px-6 rounded-xl transition-all"
+            >
+              Torna alla Dashboard
+            </Link>
+          </div>
         </div>
 
-        {/* Email for client */}
-        <div style={{ marginBottom: '32px' }}>
-          <label style={{
-            display: 'block',
-            color: '#94a3b8',
-            fontSize: '13px',
-            fontWeight: 600,
-            marginBottom: '8px',
-            textTransform: 'uppercase',
-            letterSpacing: '0.05em',
-          }}>
-            Email del cliente (opzionale)
-          </label>
-          <div style={{ display: 'flex', gap: '8px' }}>
-            <input
-              type="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              placeholder="cliente@azienda.it"
-              style={{
-                flex: 1,
-                padding: '12px 16px',
-                borderRadius: '12px',
-                border: '1px solid #334155',
-                background: '#0f172a',
-                color: '#ffffff',
-                fontSize: '15px',
-                outline: 'none',
-              }}
-              onFocus={(e) => { e.currentTarget.style.borderColor = '#6366f1'; }}
-              onBlur={(e) => { e.currentTarget.style.borderColor = '#334155'; }}
-            />
-            <button
-              onClick={handleSaveEmail}
-              disabled={saving || !email.trim()}
-              style={{
-                padding: '12px 20px',
-                borderRadius: '12px',
-                border: 'none',
-                background: saving || !email.trim() ? '#475569' : '#6366f1',
-                color: '#ffffff',
-                fontSize: '14px',
-                fontWeight: 600,
-                cursor: saving || !email.trim() ? 'not-allowed' : 'pointer',
-                whiteSpace: 'nowrap',
-              }}
-            >
-              {saving ? 'Salvataggio...' : 'Salva'}
-            </button>
-          </div>
-          {saved && (
-            <p style={{ color: '#22c55e', fontSize: '13px', marginTop: '8px' }}>
-              Email salvata! Reindirizzamento...
-            </p>
-          )}
-        </div>
-
-        {/* Actions */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-          <a
-            href={appUrl}
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              gap: '8px',
-              padding: '16px 24px',
-              borderRadius: '12px',
-              border: '1px solid #6366f1',
-              background: '#6366f1',
-              color: '#ffffff',
-              fontSize: '16px',
-              fontWeight: 600,
-              textDecoration: 'none',
-              cursor: 'pointer',
-            }}
-          >
-            Prova l'app ora
-            <ArrowRight size={18} />
-          </a>
-          
-          <Link
-            href="/dashboard/projects"
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              gap: '8px',
-              padding: '16px 24px',
-              borderRadius: '12px',
-              border: '1px solid #334155',
-              background: 'transparent',
-              color: '#94a3b8',
-              fontSize: '14px',
-              fontWeight: 500,
-              textDecoration: 'none',
-            }}
-          >
-            Torna ai Progetti
-          </Link>
+        {/* Help Text */}
+        <div className="text-center text-gray-500 text-sm">
+          <p>La prima volta che accedi ti consigliamo di cambiare la password temporanea.</p>
         </div>
       </div>
-
-      <style jsx global>{`
-        @keyframes spin {
-          from { transform: rotate(0deg); }
-          to { transform: rotate(360deg); }
-        }
-      `}</style>
     </div>
-  );
-}
-
-export default function SuccessPage() {
-  return (
-    <Suspense fallback={
-      <div style={{
-        minHeight: '100vh',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        background: 'linear-gradient(135deg, #0a0e1a 0%, #1e1b4b 100%)',
-      }}>
-        <div style={{ color: '#94a3b8' }}>Caricamento...</div>
-      </div>
-    }>
-      <SuccessContent />
-    </Suspense>
   );
 }

@@ -2,405 +2,204 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import Link from 'next/link';
-import { Sparkles, Loader2, AlertCircle, CheckCircle2 } from 'lucide-react';
-import { generateAppAction, type GenerateAppInput } from '@/app/actions/generator';
-import { supabaseBrowser } from '@/src/lib/supabase-browser';
+import { generateAppAction, type GenerateAppResult } from '@/app/actions/generator';
+import { supabaseBrowser } from '@/lib/supabase-browser';
+
+// Settori disponibili per la generazione
+const SECTORS = [
+  { id: 'studio-medico', name: 'Studio Medico', icon: '🩺', description: 'Pazienti, appuntamenti, cartelle cliniche' },
+  { id: 'ristorante', name: 'Ristorante', icon: '🍽️', description: 'Tavoli, menu, ordini, cucina' },
+  { id: 'negozio', name: 'Negozio', icon: '🏪', description: 'Prodotti, vendite, magazzino' },
+  { id: 'officina', name: 'Officina', icon: '🔧', description: 'Veicoli, interventi, ricambi' },
+  { id: 'studio-legale', name: 'Studio Legale', icon: '⚖️', description: 'Clienti, pratiche, udienze' },
+  { id: 'agenzia-immobiliare', name: 'Agenzia Immobiliare', icon: '🏠', description: 'Immobili, clienti, contratti' },
+  { id: 'palestra', name: 'Palestra', icon: '💪', description: 'Iscritti, abbonamenti, schede' },
+  { id: 'hotel', name: 'Hotel', icon: '🏨', description: 'Camere, prenotazioni, ospiti' },
+  { id: 'associazione', name: 'Associazione', icon: '🤝', description: 'Soci, quote, eventi' },
+  { id: 'custom', name: 'Personalizzato', icon: '✨', description: 'Descrivi il tuo settore' },
+];
 
 export default function GeneratorPage() {
   const router = useRouter();
-  const [prompt, setPrompt] = useState('');
-  const [appName, setAppName] = useState('');
-  const [sector, setSector] = useState('');
-  const [loading, setLoading] = useState(false);
-  const [result, setResult] = useState<{ success: boolean; slug?: string; password?: string; error?: string } | null>(null);
   const [userId, setUserId] = useState<string | null>(null);
+  const [selectedSector, setSelectedSector] = useState<string>('');
+  const [appName, setAppName] = useState('');
+  const [customPrompt, setCustomPrompt] = useState('');
+  const [isGenerating, setIsGenerating] = useState(false);
+  const [error, setError] = useState('');
+  const [step, setStep] = useState<'sector' | 'details' | 'generating'>('sector');
 
   useEffect(() => {
-    // Get user on mount
-    supabaseBrowser.auth.getUser().then(({ data }) => {
-      setUserId(data.user?.id || null);
-    });
+    async function checkAuth() {
+      const { data: { session } } = await supabaseBrowser.auth.getSession();
+      if (session?.user) {
+        setUserId(session.user.id);
+      }
+    }
+    checkAuth();
   }, []);
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setLoading(true);
-    setResult(null);
+  const handleSectorSelect = (sectorId: string) => {
+    setSelectedSector(sectorId);
+    setStep('details');
+  };
+
+  const handleGenerate = async () => {
+    if (!userId) {
+      setError('Devi effettuare il login per creare un\'app');
+      return;
+    }
+
+    if (!appName.trim()) {
+      setError('Inserisci un nome per l\'app');
+      return;
+    }
+
+    setIsGenerating(true);
+    setError('');
+    setStep('generating');
 
     try {
-      const input: GenerateAppInput = {
-        prompt: prompt.trim(),
-        appName: appName.trim() || undefined,
-        sector: sector.trim() || undefined,
-        userId: userId || undefined,
-      };
+      const sector = SECTORS.find(s => s.id === selectedSector);
+      const prompt = selectedSector === 'custom' 
+        ? customPrompt 
+        : `Crea un gestionale per ${sector?.name || 'settore generico'}: ${sector?.description || ''}`;
 
-      const res = await generateAppAction(input);
-      setResult(res);
+      const result: GenerateAppResult = await generateAppAction({
+        prompt,
+        appName: appName.trim(),
+        sector: sector?.name || 'Gestionale',
+        userId,
+      });
 
-      if (res.success && res.slug) {
-        // Redirect to success page with app details
-        setTimeout(() => {
-          router.push(`/dashboard/generator/success?slug=${res.slug}&password=${res.password}&appName=${encodeURIComponent(appName || 'Gestionale')}`);
-        }, 1500);
+      if (result.success && result.appId) {
+        router.push(`/dashboard/generator/success?appId=${result.appId}&slug=${result.slug}&password=${result.password}&appName=${encodeURIComponent(appName)}`);
+      } else {
+        setError(result.error || 'Errore nella generazione');
+        setStep('details');
       }
-    } catch {
-      setResult({ success: false, error: 'Errore di connessione' });
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Errore sconosciuto');
+      setStep('details');
     } finally {
-      setLoading(false);
+      setIsGenerating(false);
     }
   };
 
-  return (
-    <div style={{
-      minHeight: '100vh',
-      display: 'flex',
-      alignItems: 'center',
-      justifyContent: 'center',
-      background: 'linear-gradient(135deg, #0a0e1a 0%, #1e1b4b 100%)',
-      padding: '20px',
-    }}>
-      <div style={{
-        background: '#1e293b',
-        border: '1px solid #334155',
-        borderRadius: '24px',
-        padding: '48px',
-        maxWidth: '640px',
-        width: '100%',
-        boxShadow: '0 25px 50px -12px rgba(0,0,0,0.5)',
-      }}>
-        {/* Back Button */}
-        <div style={{ marginBottom: '24px' }}>
-          <Link
-            href="/dashboard"
-            style={{
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: '8px',
-              padding: '8px 16px',
-              borderRadius: '10px',
-              border: '1px solid #334155',
-              background: 'transparent',
-              color: '#94a3b8',
-              fontSize: '14px',
-              fontWeight: 500,
-              textDecoration: 'none',
-              cursor: 'pointer',
-              transition: 'all 0.2s',
-            }}
-            onMouseEnter={(e) => {
-              e.currentTarget.style.background = '#1e293b';
-              e.currentTarget.style.color = '#e2e8f0';
-              e.currentTarget.style.borderColor = '#6366f1';
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.background = 'transparent';
-              e.currentTarget.style.color = '#94a3b8';
-              e.currentTarget.style.borderColor = '#334155';
-            }}
-          >
-            ← Torna alla Dashboard
-          </Link>
-        </div>
+  // Step 1: Selezione settore
+  if (step === 'sector') {
+    return (
+      <div className="min-h-screen bg-gray-950 text-white p-8">
+        <div className="max-w-6xl mx-auto">
+          <header className="mb-12">
+            <h1 className="text-4xl font-bold mb-4">✨ Crea il tuo Gestionale</h1>
+            <p className="text-gray-400 text-lg">Seleziona il settore per il tuo gestionale</p>
+          </header>
 
-        {/* Header */}
-        <div style={{ textAlign: 'center', marginBottom: '40px' }}>
-          <div style={{
-            display: 'inline-flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            width: '64px',
-            height: '64px',
-            borderRadius: '16px',
-            background: 'linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%)',
-            marginBottom: '20px',
-          }}>
-            <Sparkles size={32} color="#fff" />
-          </div>
-          <h1 style={{
-            color: '#ffffff',
-            fontSize: '32px',
-            fontWeight: 800,
-            margin: '0 0 12px 0',
-            letterSpacing: '-0.02em',
-          }}>
-            Crea il tuo gestionale con l'AI
-          </h1>
-          <p style={{
-            color: '#94a3b8',
-            fontSize: '16px',
-            lineHeight: '1.6',
-            margin: 0,
-          }}>
-            Descrivi il gestionale che desideri e l'AI lo creerà per te in pochi secondi.
-          </p>
-        </div>
-
-        {/* Form */}
-        <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-          {/* Prompt */}
-          <div>
-            <label style={{
-              display: 'block',
-              marginBottom: '8px',
-              fontSize: '14px',
-              fontWeight: 600,
-              color: '#e2e8f0',
-            }}>
-              Descrivi il tuo gestionale
-            </label>
-            <textarea
-              value={prompt}
-              onChange={(e) => setPrompt(e.target.value)}
-              placeholder="Es: Un gestionale per uno studio dentistico con gestione pazienti, appuntamenti e trattamenti..."
-              rows={4}
-              required
-              style={{
-                width: '100%',
-                padding: '14px 16px',
-                borderRadius: '12px',
-                border: '1px solid #334155',
-                background: '#0f172a',
-                color: '#ffffff',
-                fontSize: '15px',
-                lineHeight: '1.5',
-                outline: 'none',
-                resize: 'vertical',
-                boxSizing: 'border-box',
-              }}
-              onFocus={(e) => { e.currentTarget.style.borderColor = '#6366f1'; }}
-              onBlur={(e) => { e.currentTarget.style.borderColor = '#334155'; }}
-            />
-          </div>
-
-          {/* App Name (optional) */}
-          <div>
-            <label style={{
-              display: 'block',
-              marginBottom: '8px',
-              fontSize: '14px',
-              fontWeight: 600,
-              color: '#e2e8f0',
-            }}>
-              Nome dell'app <span style={{ color: '#64748b', fontWeight: 400 }}>(opzionale)</span>
-            </label>
-            <input
-              type="text"
-              value={appName}
-              onChange={(e) => setAppName(e.target.value)}
-              placeholder="Es: Studio Dentistico Rossi"
-              style={{
-                width: '100%',
-                padding: '12px 16px',
-                borderRadius: '12px',
-                border: '1px solid #334155',
-                background: '#0f172a',
-                color: '#ffffff',
-                fontSize: '15px',
-                outline: 'none',
-                boxSizing: 'border-box',
-              }}
-              onFocus={(e) => { e.currentTarget.style.borderColor = '#6366f1'; }}
-              onBlur={(e) => { e.currentTarget.style.borderColor = '#334155'; }}
-            />
-          </div>
-
-          {/* Sector (optional) */}
-          <div>
-            <label style={{
-              display: 'block',
-              marginBottom: '8px',
-              fontSize: '14px',
-              fontWeight: 600,
-              color: '#e2e8f0',
-            }}>
-              Settore <span style={{ color: '#64748b', fontWeight: 400 }}>(opzionale)</span>
-            </label>
-            <input
-              type="text"
-              value={sector}
-              onChange={(e) => setSector(e.target.value)}
-              placeholder="Es: sanitario, ecommerce, ristorante..."
-              style={{
-                width: '100%',
-                padding: '12px 16px',
-                borderRadius: '12px',
-                border: '1px solid #334155',
-                background: '#0f172a',
-                color: '#ffffff',
-                fontSize: '15px',
-                outline: 'none',
-                boxSizing: 'border-box',
-              }}
-              onFocus={(e) => { e.currentTarget.style.borderColor = '#6366f1'; }}
-              onBlur={(e) => { e.currentTarget.style.borderColor = '#334155'; }}
-            />
-          </div>
-
-          {/* Submit Button */}
-          <button
-            type="submit"
-            disabled={loading || !prompt.trim()}
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              gap: '10px',
-              padding: '16px 24px',
-              borderRadius: '12px',
-              border: 'none',
-              background: loading || !prompt.trim()
-                ? '#475569'
-                : 'linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%)',
-              color: '#fff',
-              fontSize: '16px',
-              fontWeight: 700,
-              cursor: loading || !prompt.trim() ? 'not-allowed' : 'pointer',
-              transition: 'all 0.2s',
-              marginTop: '8px',
-            }}
-            onMouseEnter={(e) => {
-              if (!loading && prompt.trim()) {
-                e.currentTarget.style.opacity = '0.9';
-                e.currentTarget.style.transform = 'translateY(-1px)';
-              }
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.opacity = '1';
-              e.currentTarget.style.transform = 'translateY(0)';
-            }}
-          >
-            {loading ? (
-              <>
-                <Loader2 size={20} style={{ animation: 'spin 1s linear infinite' }} />
-                Generazione in corso...
-              </>
-            ) : (
-              <>
-                <Sparkles size={20} />
-                Crea il mio gestionale
-              </>
-            )}
-          </button>
-        </form>
-
-        {/* Result Messages */}
-        {result && (
-          <div style={{
-            marginTop: '24px',
-            padding: '16px',
-            borderRadius: '12px',
-            display: 'flex',
-            alignItems: 'center',
-            gap: '12px',
-            background: result.success ? '#22c55e15' : '#ef444415',
-            border: `1px solid ${result.success ? '#22c55e40' : '#ef444440'}`,
-          }}>
-            {result.success ? (
-              <>
-                <CheckCircle2 size={24} style={{ color: '#22c55e', flexShrink: 0 }} />
-                <div>
-                  <div style={{ color: '#22c55e', fontSize: '15px', fontWeight: 600 }}>
-                    Gestionale creato con successo!
-                  </div>
-                  {result.password && (
-                    <div style={{ marginTop: '12px', padding: '12px', background: '#1e293b', borderRadius: '8px', textAlign: 'left' }}>
-                      <div style={{ color: '#94a3b8', fontSize: '13px', marginBottom: '4px' }}>Password temporanea:</div>
-                      <div style={{ color: '#22c55e', fontSize: '18px', fontWeight: 700, fontFamily: 'monospace' }}>{result.password}</div>
-                    </div>
-                  )}
-                  <a 
-                    href={`/a/${result.slug}`}
-                    style={{ marginTop: '16px', display: 'inline-block', color: '#6366f1', textDecoration: 'underline' }}
-                  >
-                    Apri l'app →
-                  </a>
-                  <div style={{ color: '#94a3b8', fontSize: '13px', marginTop: '4px' }}>
-                    Reindirizzamento in corso...
-                  </div>
-                </div>
-              </>
-            ) : (
-              <>
-                <AlertCircle size={24} style={{ color: '#ef4444', flexShrink: 0 }} />
-                <div>
-                  <div style={{ color: '#ef4444', fontSize: '15px', fontWeight: 600 }}>
-                    Errore
-                  </div>
-                  <div style={{ color: '#94a3b8', fontSize: '13px', marginTop: '4px' }}>
-                    {result.error}
-                  </div>
-                </div>
-              </>
-            )}
-          </div>
-        )}
-
-        {/* Examples */}
-        <div style={{
-          marginTop: '40px',
-          padding: '20px',
-          borderRadius: '12px',
-          background: '#0f172a',
-          border: '1px solid #334155',
-        }}>
-          <div style={{
-            color: '#94a3b8',
-            fontSize: '12px',
-            fontWeight: 600,
-            textTransform: 'uppercase',
-            letterSpacing: '0.05em',
-            marginBottom: '12px',
-          }}>
-            Esempi di prompt
-          </div>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-            {[
-              'Gestionale per un ristorante con menu, ordini e prenotazioni',
-              'CRM per agenzia immobiliare con clienti e immobili',
-              'Gestione progetti per studio di consulenza',
-            ].map((example, i) => (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {SECTORS.map((sector) => (
               <button
-                key={i}
-                type="button"
-                onClick={() => setPrompt(example)}
-                style={{
-                  textAlign: 'left',
-                  padding: '10px 14px',
-                  borderRadius: '8px',
-                  border: '1px solid #334155',
-                  background: 'transparent',
-                  color: '#94a3b8',
-                  fontSize: '13px',
-                  cursor: 'pointer',
-                  transition: 'all 0.2s',
-                }}
-                onMouseEnter={(e) => {
-                  e.currentTarget.style.background = '#1e293b';
-                  e.currentTarget.style.color = '#e2e8f0';
-                  e.currentTarget.style.borderColor = '#6366f1';
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.background = 'transparent';
-                  e.currentTarget.style.color = '#94a3b8';
-                  e.currentTarget.style.borderColor = '#334155';
-                }}
+                key={sector.id}
+                onClick={() => handleSectorSelect(sector.id)}
+                className="p-6 rounded-2xl border border-gray-800 bg-gray-900 hover:border-indigo-500 hover:bg-gray-800 transition-all text-left group"
               >
-                {example}
+                <div className="text-4xl mb-4">{sector.icon}</div>
+                <h3 className="text-xl font-bold mb-2 group-hover:text-indigo-400">{sector.name}</h3>
+                <p className="text-gray-400 text-sm">{sector.description}</p>
               </button>
             ))}
           </div>
+
+          <div className="mt-12 text-center">
+            <button
+              onClick={() => router.push('/dashboard')}
+              className="text-gray-500 hover:text-white transition-colors"
+            >
+              ← Torna al Dashboard
+            </button>
+          </div>
         </div>
       </div>
+    );
+  }
 
-      {/* CSS for spin animation */}
-      <style jsx global>{`
-        @keyframes spin {
-          from { transform: rotate(0deg); }
-          to { transform: rotate(360deg); }
-        }
-      `}</style>
+  // Step 2: Dettagli app
+  if (step === 'details') {
+    const selected = SECTORS.find(s => s.id === selectedSector);
+
+    return (
+      <div className="min-h-screen bg-gray-950 text-white p-8">
+        <div className="max-w-2xl mx-auto">
+          <button
+            onClick={() => setStep('sector')}
+            className="text-gray-500 hover:text-white mb-8 flex items-center gap-2"
+          >
+            ← Indietro
+          </button>
+
+          <header className="mb-8">
+            <div className="text-4xl mb-4">{selected?.icon}</div>
+            <h1 className="text-3xl font-bold mb-2">{selected?.name}</h1>
+            <p className="text-gray-400">{selected?.description}</p>
+          </header>
+
+          <div className="space-y-6">
+            <div>
+              <label className="block text-sm font-medium text-gray-300 mb-2">
+                Nome dell'App *
+              </label>
+              <input
+                type="text"
+                value={appName}
+                onChange={(e) => setAppName(e.target.value)}
+                placeholder={`Il mio ${selected?.name}`}
+                className="w-full bg-gray-900 border border-gray-700 rounded-xl px-4 py-3 text-white placeholder-gray-500 focus:outline-none focus:border-indigo-500"
+              />
+            </div>
+
+            {selectedSector === 'custom' && (
+              <div>
+                <label className="block text-sm font-medium text-gray-300 mb-2">
+                  Descrivi il tuo gestionale *
+                </label>
+                <textarea
+                  value={customPrompt}
+                  onChange={(e) => setCustomPrompt(e.target.value)}
+                  placeholder="Descrivi le funzionalità che ti servono..."
+                  rows={4}
+                  className="w-full bg-gray-900 border border-gray-700 rounded-xl px-4 py-3 text-white placeholder-gray-500 focus:outline-none focus:border-indigo-500 resize-none"
+                />
+              </div>
+            )}
+
+            {error && (
+              <div className="p-4 rounded-xl bg-red-500/10 border border-red-500/30 text-red-400">
+                {error}
+              </div>
+            )}
+
+            <button
+              onClick={handleGenerate}
+              disabled={!appName.trim() || (selectedSector === 'custom' && !customPrompt.trim())}
+              className="w-full bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 disabled:from-gray-600 disabled:to-gray-600 disabled:cursor-not-allowed text-white font-bold py-4 px-6 rounded-xl transition-all"
+            >
+              🚀 Genera il tuo Gestionale
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Step 3: Generazione in corso
+  return (
+    <div className="min-h-screen bg-gray-950 text-white p-8 flex items-center justify-center">
+      <div className="text-center">
+        <div className="w-20 h-20 mx-auto mb-8 border-4 border-indigo-500 border-t-transparent rounded-full animate-spin"></div>
+        <h2 className="text-2xl font-bold mb-4">Generazione in corso...</h2>
+        <p className="text-gray-400">L'AI sta creando il tuo gestionale personalizzato</p>
+        <p className="text-gray-500 text-sm mt-4">Questo potrebbe richiedere qualche secondo</p>
+      </div>
     </div>
   );
 }

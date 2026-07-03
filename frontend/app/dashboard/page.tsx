@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { Suspense, useEffect, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
-import { supabase, getAccessTokenFromStorage } from '@/src/lib/supabase';
+import { supabaseBrowser } from '@/lib/supabase-browser';
 
 const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || 'https://zeusx-backend.onrender.com';
 
@@ -16,8 +16,8 @@ function SyncPlanBanner() {
       const sessionId = searchParams.get('session_id');
       if (!sessionId) return;
 
-      const { data: { session } } = await supabase.auth.getSession();
-      let token = session?.access_token || getAccessTokenFromStorage();
+      const { data: { session } } = await supabaseBrowser.auth.getSession();
+      let token = session?.access_token;
       if (!token) return;
 
       try {
@@ -58,11 +58,15 @@ function SyncPlanBanner() {
 export default function DashboardPage() {
   const ADMIN_USER_ID = 'd3eda57f-692a-4904-ac5f-93bdaaec8ce5';
   const [chatInput, setChatInput] = useState('');
-  const [isAdmin, setIsAdmin] = useState(false);
+  const [isAdmin, setIsAdmin] = useState<boolean | null>(null);
 
   useEffect(() => {
     async function checkAdmin() {
-      const { data: { user } } = await supabase.auth.getUser();
+      const { data: { session } } = await supabaseBrowser.auth.getSession();
+      const user = session?.user;
+      console.log('[Dashboard] User ID:', user?.id);
+      console.log('[Dashboard] Admin ID:', ADMIN_USER_ID);
+      console.log('[Dashboard] Is Admin:', user?.id === ADMIN_USER_ID);
       setIsAdmin(user?.id === ADMIN_USER_ID);
     }
     checkAdmin();
@@ -96,7 +100,7 @@ export default function DashboardPage() {
   ];
 
   // Card admin visibile solo per il tuo account
-  if (isAdmin) {
+  if (isAdmin === true) {
     coreFeatures.push({
       title: "Admin Panel",
       desc: "Statistiche, ricavi e gestione piattaforma",
@@ -123,10 +127,7 @@ export default function DashboardPage() {
   return (
     <div className="min-h-screen bg-gray-950 text-white p-8">
       <header className="max-w-6xl mx-auto mb-12">
-        <div>
-          <h1 className="text-4xl font-extrabold text-white">ZeusX Dashboard</h1>
-          <p className="text-gray-400 mt-2">Bentornato, Sergio. Cosa vuoi fare oggi?</p>
-        </div>
+        <p className="text-gray-400 mt-2">Bentornato, Sergio. Cosa vuoi fare oggi?</p>
       </header>
 
       <Suspense fallback={null}>
@@ -138,7 +139,7 @@ export default function DashboardPage() {
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           {coreFeatures.map((item, index) => (
             <Link href={item.link} key={index} className="group">
-              <div className={`p-8 rounded-2xl border transition-all hover:scale-105 ${
+              <div className={`h-full p-8 rounded-2xl border transition-all hover:scale-105 flex flex-col ${
                 item.highlighted 
                   ? 'border-indigo-500/50 bg-gradient-to-br from-indigo-950/50 to-purple-950/50 shadow-lg shadow-indigo-500/20' 
                   : 'border-gray-800 bg-gray-900 hover:border-gray-500'
@@ -147,7 +148,7 @@ export default function DashboardPage() {
                   <span className="text-4xl">{item.icon}</span>
                 </div>
                 <h2 className="text-xl font-bold mb-2">{item.title}</h2>
-                <p className="text-gray-400 mb-6">{item.desc}</p>
+                <p className="text-gray-400 mb-6 flex-1">{item.desc}</p>
                 <span className="text-blue-400 font-semibold group-hover:underline">Accedi →</span>
               </div>
             </Link>

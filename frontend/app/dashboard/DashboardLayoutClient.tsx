@@ -20,6 +20,9 @@ export default function DashboardLayoutClient({
   const showTableNav = Boolean(isTablePage);
   const isSubPage = pathname.startsWith('/dashboard/') && pathname !== '/dashboard';
 
+  // Determine if the sidebar should be shown
+  const shouldShowSidebar = pathname === '/dashboard';
+
   // Evita hydration mismatch
   useEffect(() => {
     setMounted(true);
@@ -45,45 +48,49 @@ export default function DashboardLayoutClient({
       <meta httpEquiv="Expires" content="0" />
 
       <div className="flex h-screen overflow-hidden bg-slate-950 text-white">
-        {/* Sidebar */}
-        <Sidebar
-          showTableNavigation={showTableNav}
-          onBackToDashboard={handleBackToDashboard}
-        />
+        {/* Sidebar - Conditionally rendered */}
+        {shouldShowSidebar && (
+          <Sidebar
+            showTableNavigation={showTableNav}
+            onBackToDashboard={handleBackToDashboard}
+          />
+        )}
 
         {/* Main Content Area */}
         <div className="flex flex-1 flex-col overflow-hidden">
           {/* Header */}
-          <header className="flex h-16 items-center justify-between border-b border-slate-800 bg-slate-900/40 px-6 backdrop-blur">
-            <div className="flex items-center gap-4">
-              {isSubPage ? (
-                <Link
-                  href="/dashboard"
-                  className="flex items-center gap-2 text-sm font-medium text-slate-400 transition-colors hover:text-white"
-                >
-                  ← Torna alla Dashboard
-                </Link>
-              ) : (
-                <span className="bg-gradient-to-r from-blue-400 to-indigo-500 bg-clip-text text-xl font-black tracking-wider text-transparent">
-                  ⚡ ZEUSX
-                </span>
-              )}
-            </div>
+          {!(pathname.startsWith('/dashboard/generator') || pathname.startsWith('/dashboard/projects') || pathname.startsWith('/dashboard/vision') || pathname.startsWith('/dashboard/settings')) && (
+            <header className="flex h-16 items-center justify-between border-b border-slate-800 bg-slate-900/40 px-6 backdrop-blur">
+              <div className="flex items-center gap-4">
+                {isSubPage ? (
+                  <Link
+                    href="/dashboard"
+                    className="flex items-center gap-2 text-sm font-medium text-slate-400 transition-colors hover:text-white"
+                  >
+                    ← Torna alla Dashboard
+                  </Link>
+                ) : (
+                    <span className="bg-gradient-to-r from-blue-400 to-indigo-500 bg-clip-text text-xl font-black tracking-wider text-transparent">
+                      ⚡ Dashboard
+                    </span>
+                )}
+              </div>
 
-            <div className="flex items-center gap-4">
-              <Link
-                href="/"
-                className="text-xs text-slate-400 transition-colors hover:text-white"
-              >
-                Esci
-              </Link>
-            </div>
-          </header>
+              <div className="flex items-center gap-4">
+                <Link
+                  href="/"
+                  className="text-xs text-slate-400 transition-colors hover:text-white"
+                >
+                  Esci
+                </Link>
+              </div>
+            </header>
+          )}
 
           {/* Scrollable Content */}
           <main
             className={`flex-1 overflow-y-auto bg-slate-950 ${
-              pathname.startsWith('/dashboard/generator') ? 'p-0' : 'p-6 lg:p-8'
+              pathname.startsWith('/dashboard/generator') || pathname.startsWith('/dashboard/projects') || pathname.startsWith('/dashboard/vision') || pathname.startsWith('/dashboard/settings') ? 'p-0' : 'p-6 lg:p-8'
             }`}
           >
             {children}

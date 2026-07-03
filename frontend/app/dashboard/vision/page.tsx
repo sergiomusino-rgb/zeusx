@@ -1,5 +1,6 @@
 "use client";
 import { useState } from 'react';
+import Link from 'next/link';
 import { ChevronLeft, ChevronRight, Plus, X } from 'lucide-react';
 
 interface Event {
@@ -126,6 +127,11 @@ export default function CalendarPage() {
       <div className="max-w-7xl mx-auto">
         {/* Header */}
         <div className="flex items-center justify-between mb-6">
+          <div>
+            <Link href="/dashboard" className="px-6 py-2 bg-indigo-600 hover:bg-indigo-700 rounded-xl font-semibold transition-all">
+              ← Dashboard
+            </Link>
+          </div>
           <div>
             <h1 className="text-3xl font-bold">Calendario</h1>
             <p className="text-slate-400 mt-1">Gestisci i tuoi appuntamenti e scadenze</p>
