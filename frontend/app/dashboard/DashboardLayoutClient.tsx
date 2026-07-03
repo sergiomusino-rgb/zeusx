@@ -22,8 +22,8 @@ export default function DashboardLayoutClient({
   const showTableNav = Boolean(isTablePage);
   const isSubPage = pathname.startsWith('/dashboard/') && pathname !== '/dashboard';
 
-  // Determine if the sidebar should be shown
-  const shouldShowSidebar = pathname === '/dashboard';
+  // Determine if the sidebar should be shown (on all dashboard pages)
+  const shouldShowSidebar = pathname.startsWith('/dashboard');
 
   // Close mobile menu on route change
   useEffect(() => {
