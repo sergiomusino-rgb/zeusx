@@ -130,40 +130,36 @@ export default function DashboardLayoutClient({
             <div className="w-10" /> {/* Spacer for centering */}
           </header>
 
-          {/* Desktop Header (hidden on mobile) */}
-          {!(pathname.startsWith('/dashboard/generator') || pathname.startsWith('/dashboard/projects') || pathname.startsWith('/dashboard/vision') || pathname.startsWith('/dashboard/settings')) && (
-            <header className="hidden h-16 items-center justify-between border-b border-slate-800 bg-slate-900/40 px-6 backdrop-blur md:flex">
-              <div className="flex items-center gap-4">
-                {isSubPage ? (
-                  <Link
-                    href="/dashboard"
-                    className="flex items-center gap-2 text-sm font-medium text-slate-400 transition-colors hover:text-white"
-                  >
-                    ← Torna alla Dashboard
-                  </Link>
-                ) : (
-                    <span className="bg-gradient-to-r from-blue-400 to-indigo-500 bg-clip-text text-xl font-black tracking-wider text-transparent">
-                      ⚡ Dashboard
-                    </span>
-                )}
-              </div>
-
-              <div className="flex items-center gap-4">
+          {/* Desktop Header (hidden on mobile) - uniform on all dashboard pages */}
+          <header className="hidden h-16 items-center justify-between border-b border-slate-800 bg-slate-900/40 px-6 backdrop-blur md:flex">
+            <div className="flex items-center gap-4">
+              {isSubPage ? (
                 <Link
-                  href="/"
-                  className="text-xs text-slate-400 transition-colors hover:text-white"
+                  href="/dashboard"
+                  className="flex items-center gap-2 text-sm font-medium text-slate-400 transition-colors hover:text-white"
                 >
-                  Esci
+                  ← Torna alla Dashboard
                 </Link>
-              </div>
-            </header>
-          )}
+              ) : (
+                  <span className="bg-gradient-to-r from-blue-400 to-indigo-500 bg-clip-text text-xl font-black tracking-wider text-transparent">
+                    ⚡ Dashboard
+                  </span>
+              )}
+            </div>
+
+            <div className="flex items-center gap-4">
+              <Link
+                href="/"
+                className="text-xs text-slate-400 transition-colors hover:text-white"
+              >
+                Esci
+              </Link>
+            </div>
+          </header>
 
           {/* Scrollable Content */}
           <main
-            className={`flex-1 overflow-y-auto bg-slate-950 ${
-              pathname.startsWith('/dashboard/generator') || pathname.startsWith('/dashboard/projects') || pathname.startsWith('/dashboard/vision') || pathname.startsWith('/dashboard/settings') ? 'p-0' : 'p-6 lg:p-8'
-            }`}
+            className="flex-1 overflow-y-auto bg-slate-950 p-6 lg:p-8"
           >
             {children}
           </main>

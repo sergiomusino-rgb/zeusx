@@ -90,14 +90,6 @@ export default function GeneratorPage() {
   if (step === 'sector') {
     return (
       <div className="min-h-screen bg-gray-950 text-white p-8">
-        {/* Dashboard button top-left */}
-        <button
-          onClick={() => router.push('/dashboard')}
-          className="fixed top-4 left-4 z-50 flex items-center gap-2 rounded-xl bg-indigo-600/90 px-4 py-2.5 text-sm font-semibold text-white shadow-lg backdrop-blur transition-all hover:bg-indigo-500"
-        >
-          ← Dashboard
-        </button>
-
         <div className="max-w-6xl mx-auto">
           <header className="mb-12">
             <h1 className="text-4xl font-bold mb-4">✨ Crea il tuo Gestionale</h1>
@@ -137,14 +129,6 @@ export default function GeneratorPage() {
 
     return (
       <div className="min-h-screen bg-gray-950 text-white p-8">
-        {/* Dashboard button top-left */}
-        <button
-          onClick={() => router.push('/dashboard')}
-          className="fixed top-4 left-4 z-50 flex items-center gap-2 rounded-xl bg-indigo-600/90 px-4 py-2.5 text-sm font-semibold text-white shadow-lg backdrop-blur transition-all hover:bg-indigo-500"
-        >
-          ← Dashboard
-        </button>
-
         <div className="max-w-2xl mx-auto">
           <button
             onClick={() => setStep('sector')}
@@ -210,14 +194,6 @@ export default function GeneratorPage() {
   // Step 3: Generazione in corso
   return (
     <div className="min-h-screen bg-gray-950 text-white p-8 flex items-center justify-center">
-      {/* Dashboard button top-left */}
-      <button
-        onClick={() => router.push('/dashboard')}
-        className="fixed top-4 left-4 z-50 flex items-center gap-2 rounded-xl bg-indigo-600/90 px-4 py-2.5 text-sm font-semibold text-white shadow-lg backdrop-blur transition-all hover:bg-indigo-500"
-      >
-        ← Dashboard
-      </button>
-
       <div className="text-center">
         <div className="w-20 h-20 mx-auto mb-8 border-4 border-indigo-500 border-t-transparent rounded-full animate-spin"></div>
         <h2 className="text-2xl font-bold mb-4">Generazione in corso...</h2>

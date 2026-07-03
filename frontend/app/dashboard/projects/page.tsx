@@ -164,11 +164,6 @@ export default function ProjectsPage() {
     <div style={{ minHeight: '100vh', background: '#0a0e1a', padding: '24px' }}>
       {/* Header */}
       <div style={{ maxWidth: '1200px', margin: '0 auto', marginBottom: '32px' }}>
-        <div style={{ marginBottom: '24px' }}>
-          <Link href="/dashboard" className="px-6 py-2 bg-indigo-600 hover:bg-indigo-700 rounded-xl font-semibold transition-all">
-            ← Dashboard
-          </Link>
-        </div>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
           <h1 style={{ color: '#ffffff', fontSize: '32px', fontWeight: 700, margin: 0 }}>Le app create</h1>
           <Link
