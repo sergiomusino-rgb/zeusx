@@ -2,7 +2,6 @@
 
 import { useEffect, useState } from 'react';
 import { supabaseBrowser } from '@/lib/supabase-browser';
-import Link from 'next/link';
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
   PieChart, Pie, Cell, LineChart, Line,
@@ -78,17 +77,14 @@ export default function AdminPage() {
   return (
     <div className="min-h-screen bg-slate-950 text-white">
       {/* Header */}
-      <div className="border-b border-slate-800 px-6 py-4">
-        <div className="max-w-7xl mx-auto flex justify-between items-center">
-          <div>
-            <h1 className="text-2xl font-bold">ZeusX Admin</h1>
-            <p className="text-slate-400 text-sm">Panoramica piattaforma</p>
-          </div>
-          <Link href="/dashboard" className="px-6 py-2 bg-indigo-600 hover:bg-indigo-700 rounded-xl font-semibold transition-all">
-            ← Dashboard
-          </Link>
-        </div>
-      </div>
+       <div className="border-b border-slate-800 px-6 py-4">
+         <div className="max-w-7xl mx-auto">
+           <div>
+             <h1 className="text-2xl font-bold">ZeusX Admin</h1>
+             <p className="text-slate-400 text-sm">Panoramica piattaforma</p>
+           </div>
+         </div>
+       </div>
 
       {/* Tabs */}
       <div className="border-b border-slate-800 px-6">

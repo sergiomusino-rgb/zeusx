@@ -1,7 +1,6 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import Link from 'next/link';
 import { supabaseBrowser as supabase } from '@/src/lib/supabase-browser';
 
 export default function PricingPage() {
@@ -115,7 +114,6 @@ export default function PricingPage() {
   function getAccessTokenFromStorage(): string | null {
     if (typeof window === 'undefined') return null;
     try {
-      // Cerca in tutte le possibili chiavi di storage di Supabase
       for (const key of Object.keys(localStorage)) {
         if (key.startsWith('sb-') && key.endsWith('-auth-token')) {
           const raw = localStorage.getItem(key);
@@ -129,7 +127,6 @@ export default function PricingPage() {
   }
 
   const handleUpgrade = async (planId: string, quantity: number = 1) => {
-    // Controllo sessione fresca al momento del click
     const { data: { session } } = await supabase.auth.getSession();
     let token = session?.access_token;
 
@@ -150,7 +147,6 @@ export default function PricingPage() {
         return;
       }
     } else {
-      // Trova il piano selezionato
       const selectedPlan = plans.find(p => p.id === planId);
       if (!selectedPlan) return;
       priceId = selectedPlan.priceId;
@@ -192,15 +188,8 @@ export default function PricingPage() {
   }
 
   return (
-    <div className="min-h-screen bg-slate-950 text-white p-12">
+    <div className="p-12">
       <div className="max-w-6xl mx-auto">
-        {/* Header con pulsante Dashboard */}
-        <div className="flex justify-between items-center mb-8">
-          <Link href="/dashboard" className="px-6 py-2 bg-indigo-600 hover:bg-indigo-700 rounded-xl font-semibold transition-all">
-            ← Dashboard
-          </Link>
-        </div>
-
         <h1 className="text-5xl font-black text-center mb-4">Piani ZEUSX</h1>
         <p className="text-center text-slate-400 mb-12 text-lg">
           Scegli il piano giusto per il tuo business
