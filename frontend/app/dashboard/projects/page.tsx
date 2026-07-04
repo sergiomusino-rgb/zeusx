@@ -145,7 +145,7 @@ export default function ProjectsPage() {
 
   if (loading) {
     return (
-      <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#0a0e1a' }}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '60vh' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '12px', color: '#94a3b8' }}>
           <Loader2 size={24} style={{ animation: 'spin 1s linear infinite' }} />
           <span>Caricamento app...</span>
@@ -161,7 +161,7 @@ export default function ProjectsPage() {
   }
 
   return (
-    <div style={{ minHeight: '100vh', background: '#0a0e1a', padding: '24px' }}>
+    <div style={{ padding: '24px' }}>
       {/* Header */}
       <div style={{ maxWidth: '1200px', margin: '0 auto', marginBottom: '32px' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>

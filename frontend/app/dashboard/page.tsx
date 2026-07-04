@@ -125,17 +125,15 @@ export default function DashboardPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-950 text-white p-8">
-      <header className="max-w-6xl mx-auto mb-12">
-        <p className="text-gray-400 mt-2">Bentornato, Sergio. Cosa vuoi fare oggi?</p>
-      </header>
+    <div className="p-8">
+      <p className="text-gray-400 mb-8">Bentornato, Sergio. Cosa vuoi fare oggi?</p>
 
       <Suspense fallback={null}>
         <SyncPlanBanner />
       </Suspense>
 
       {/* Core Business Features */}
-      <main className="max-w-6xl mx-auto space-y-8">
+      <div className="space-y-8">
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           {coreFeatures.map((item, index) => (
             <Link href={item.link} key={index} className="group">
@@ -175,11 +173,7 @@ export default function DashboardPage() {
             </div>
           </form>
         </div>
-      </main>
-
-      <footer className="max-w-6xl mx-auto mt-20 pt-8 border-t border-gray-900 text-center text-gray-600">
-        <p>ZeusX System Control v1.0.0</p>
-      </footer>
+      </div>
     </div>
   );
 }

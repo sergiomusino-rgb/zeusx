@@ -89,12 +89,12 @@ export default function GeneratorPage() {
   // Step 1: Selezione settore
   if (step === 'sector') {
     return (
-      <div className="min-h-screen bg-gray-950 text-white p-8">
+      <div className="p-8">
         <div className="max-w-6xl mx-auto">
-          <header className="mb-12">
+          <div className="mb-12">
             <h1 className="text-4xl font-bold mb-4">✨ Crea il tuo Gestionale</h1>
             <p className="text-gray-400 text-lg">Seleziona il settore per il tuo gestionale</p>
-          </header>
+          </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {SECTORS.map((sector) => (
@@ -128,7 +128,7 @@ export default function GeneratorPage() {
     const selected = SECTORS.find(s => s.id === selectedSector);
 
     return (
-      <div className="min-h-screen bg-gray-950 text-white p-8">
+      <div className="p-8">
         <div className="max-w-2xl mx-auto">
           <button
             onClick={() => setStep('sector')}
@@ -137,11 +137,11 @@ export default function GeneratorPage() {
             ← Indietro
           </button>
 
-          <header className="mb-8">
+          <div className="mb-8">
             <div className="text-4xl mb-4">{selected?.icon}</div>
             <h1 className="text-3xl font-bold mb-2">{selected?.name}</h1>
             <p className="text-gray-400">{selected?.description}</p>
-          </header>
+          </div>
 
           <div className="space-y-6">
             <div>
@@ -193,7 +193,7 @@ export default function GeneratorPage() {
 
   // Step 3: Generazione in corso
   return (
-    <div className="min-h-screen bg-gray-950 text-white p-8 flex items-center justify-center">
+    <div className="flex items-center justify-center p-8" style={{ minHeight: '60vh' }}>
       <div className="text-center">
         <div className="w-20 h-20 mx-auto mb-8 border-4 border-indigo-500 border-t-transparent rounded-full animate-spin"></div>
         <h2 className="text-2xl font-bold mb-4">Generazione in corso...</h2>
