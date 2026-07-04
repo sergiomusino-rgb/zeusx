@@ -2159,28 +2159,29 @@ export default function ViewerProFinal() {
       )}
 
       {/* Sidebar */}
-      <aside
-        className={`${layoutCfg.sidebarWidth}`}
-        style={{
-          background: colors.primary,
-          borderRight: `1px solid ${colors.border}`,
-          display: 'flex',
-          flexDirection: 'column',
-          transition: 'width 0.3s, transform 0.3s',
-          position: 'relative',
-          zIndex: 20,
-          flexShrink: 0,
-          // Mobile: off-canvas by default
-          ...(isMobile ? {
-            position: 'fixed',
-            left: sidebarOpen ? '0' : '-280px',
-            top: 0,
-            bottom: 0,
-            width: '280px',
-            boxShadow: sidebarOpen ? '4px 0 24px rgba(0,0,0,0.3)' : 'none',
-          } : {}),
-        }}
-      >
+      {(!isMobile || sidebarOpen) && (
+        <aside
+          className={`${layoutCfg.sidebarWidth}`}
+          style={{
+            background: colors.primary,
+            borderRight: `1px solid ${colors.border}`,
+            display: 'flex',
+            flexDirection: 'column',
+            transition: 'width 0.3s, transform 0.3s',
+            position: 'relative',
+            zIndex: 20,
+            flexShrink: 0,
+            // Mobile: off-canvas by default
+            ...(isMobile ? {
+              position: 'fixed',
+              left: '0',
+              top: 0,
+              bottom: 0,
+              width: '280px',
+              boxShadow: '4px 0 24px rgba(0,0,0,0.3)',
+            } : {}),
+          }}
+        >
         {/* Logo */}
         <div style={{
           padding: '24px 20px', borderBottom: `1px solid rgba(255,255,255,0.2)`,
