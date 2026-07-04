@@ -112,6 +112,14 @@ const LAYOUT_CONFIG = {
   smartphone: { sidebarWidth: 'w-full', padding: 'p-3', radius: 'rounded-none', shadow: 'none', sidebarCollapsible: true },
 };
 
+const SIDEBAR_WIDTHS = {
+  corporate: '288px',
+  modern: '256px',
+  compact: '224px',
+  tablet: '256px',
+  smartphone: '280px',
+};
+
 const CHART_COLORS = ['#6366f1', '#22c55e', '#f59e0b', '#ef4444', '#06b6d4', '#8b5cf6'];
 
 // ─── Mock Data ────────────────────────────────────────────────────────────────
@@ -1646,7 +1654,8 @@ export default function ViewerProFinal() {
   const [modalRecord, setModalRecord] = useState<AppRecord | null | 'new'>(null);
   const [saving, setSaving] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
-  const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [isMobile, setIsMobile] = useState(false);
   // Record per relazioni tra tabelle
   const [clientiRecords, setClientiRecords] = useState<AppRecord[]>([]);
   const [prodottiRecords, setProdottiRecords] = useState<AppRecord[]>([]);
@@ -1747,6 +1756,22 @@ export default function ViewerProFinal() {
     link.href = `/a/${slug}/manifest`;
     document.head.appendChild(link);
   }, [slug]);
+
+  // ─── Detect mobile viewport ──────────────────────────────────────────────
+
+  useEffect(() => {
+    const checkMobile = () => {
+      const mobile = window.innerWidth < 768;
+      setIsMobile(mobile);
+      if (mobile) {
+        setSidebarOpen(false);
+      }
+    };
+
+    checkMobile();
+    window.addEventListener('resize', checkMobile);
+    return () => window.removeEventListener('resize', checkMobile);
+  }, []);
 
   // ─── Check session on mount ──────────────────────────────────────────────
 
@@ -2128,6 +2153,17 @@ export default function ViewerProFinal() {
 
   return (
     <div style={{ display: 'flex', minHeight: '100vh', background: colors.bg, transition: 'background 0.3s' }}>
+      {/* Mobile overlay */}
+      {isMobile && sidebarOpen && (
+        <div
+          onClick={() => setSidebarOpen(false)}
+          style={{
+            position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)',
+            zIndex: 15, transition: 'opacity 0.3s',
+          }}
+        />
+      )}
+
       {/* Sidebar */}
       <aside
         className={`${layoutCfg.sidebarWidth}`}
@@ -2140,6 +2176,15 @@ export default function ViewerProFinal() {
           position: 'relative',
           zIndex: 20,
           flexShrink: 0,
+          // Mobile: off-canvas by default
+          ...(isMobile ? {
+            position: 'fixed',
+            left: sidebarOpen ? '0' : '-280px',
+            top: 0,
+            bottom: 0,
+            width: '280px',
+            boxShadow: sidebarOpen ? '4px 0 24px rgba(0,0,0,0.3)' : 'none',
+          } : {}),
         }}
       >
         {/* Logo */}
