@@ -20,7 +20,7 @@ export default function DashboardLayoutClient({
   // Controlla se siamo in una pagina [table] della dashboard
   const isTablePage = pathname.match(/^\/dashboard\/(patients|appointments|customers|vehicles|jobs|dishes|reservations)$/);
   const showTableNav = Boolean(isTablePage);
-  const isSubPage = pathname.startsWith('/dashboard/') && pathname !== '/dashboard';
+  const isSubPage = (pathname.startsWith('/dashboard/') && pathname !== '/dashboard') || pathname === '/pricing' || pathname === '/admin';
 
   // Determine if the sidebar should be shown (on dashboard, admin, and pricing pages)
   const shouldShowSidebar = pathname.startsWith('/dashboard') || pathname.startsWith('/admin') || pathname === '/pricing';
