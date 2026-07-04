@@ -85,7 +85,7 @@ interface AppRecord {
 }
 
 interface UserPrefs {
-  layout: 'corporate' | 'modern' | 'compact' | 'tablet' | 'smartphone';
+  layout: 'corporate' | 'modern' | 'compact';
   theme: 'dark' | 'light';
   primaryColor: string;
   companyName: string;
@@ -108,16 +108,12 @@ const LAYOUT_CONFIG = {
   corporate:  { sidebarWidth: 'w-72', padding: 'p-8', radius: 'rounded-2xl', shadow: 'shadow-2xl' },
   modern:     { sidebarWidth: 'w-64', padding: 'p-6', radius: 'rounded-xl',  shadow: 'shadow-xl' },
   compact:    { sidebarWidth: 'w-56', padding: 'p-4', radius: 'rounded-lg',  shadow: 'shadow-lg' },
-  tablet:     { sidebarWidth: 'w-64', padding: 'p-5', radius: 'rounded-xl',  shadow: 'shadow-xl' },
-  smartphone: { sidebarWidth: 'w-full', padding: 'p-3', radius: 'rounded-none', shadow: 'none', sidebarCollapsible: true },
 };
 
 const SIDEBAR_WIDTHS = {
   corporate: '288px',
   modern: '256px',
   compact: '224px',
-  tablet: '256px',
-  smartphone: '280px',
 };
 
 const CHART_COLORS = ['#6366f1', '#22c55e', '#f59e0b', '#ef4444', '#06b6d4', '#8b5cf6'];
@@ -1232,8 +1228,6 @@ function SettingsModal({ prefs, onPrefsChange, onClose, onLogout, onChangePasswo
     { key: 'corporate', label: 'Corporate', desc: 'Ampio e spazioso' },
     { key: 'modern', label: 'Modern', desc: 'Bilanciato' },
     { key: 'compact', label: 'Compact', desc: 'Compatto e denso' },
-    { key: 'tablet', label: 'Tablet', desc: 'Schermo tablet' },
-    { key: 'smartphone', label: 'Smartphone', desc: 'Schermo mobile con sidebar a scomparsa' },
   ];
 
   return (
@@ -1268,7 +1262,7 @@ function SettingsModal({ prefs, onPrefsChange, onClose, onLogout, onChangePasswo
         {/* Layout Section */}
         <div style={sectionBox}>
           <div style={sectionTitle}>Layout</div>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: '12px' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '12px' }}>
             {layouts.map(({ key, label, desc }) => {
               const isActive = prefs.layout === key;
               const cfg = LAYOUT_CONFIG[key];
@@ -1292,7 +1286,7 @@ function SettingsModal({ prefs, onPrefsChange, onClose, onLogout, onChangePasswo
                     }}
                   >
                     <div style={{
-                      width: key === 'corporate' ? '35%' : key === 'modern' ? '28%' : key === 'compact' ? '22%' : key === 'tablet' ? '25%' : '100%',
+                      width: key === 'corporate' ? '35%' : key === 'modern' ? '28%' : '22%',
                       background: isActive ? colors.primary : colors.textSecondary + '40',
                       borderRadius: '4px', margin: '4px',
                     }} />
@@ -1476,7 +1470,7 @@ function SettingsModal({ prefs, onPrefsChange, onClose, onLogout, onChangePasswo
         <div style={sectionBox}>
           <div style={sectionTitle}>QR Code Accesso</div>
           <p style={{ color: colors.textSecondary, fontSize: '13px', marginBottom: '16px' }}>
-            Scansiona questo codice QR per accedere all'app da smartphone
+            Scansiona questo codice QR per accedere all'app da qualsiasi dispositivo
           </p>
           <div style={{ 
             display: 'flex', 
