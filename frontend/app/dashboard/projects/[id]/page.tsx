@@ -237,7 +237,7 @@ export default function AppDetailPage() {
       {expired && (
         <div className="p-4 rounded-xl bg-red-500/10 border border-red-500/30 text-red-300 text-sm flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <span>⚠️ Il trial di questa app è scaduto. Rinnova il piano per continuare.</span>
-          <Link href="/pricing" className="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg text-xs font-medium transition text-center">
+          <Link href="/dashboard/pricing" className="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg text-xs font-medium transition text-center">
             Vai ai Piani
           </Link>
         </div>
@@ -346,7 +346,7 @@ export default function AppDetailPage() {
                   className="flex-1 px-4 py-2 bg-slate-800 border border-slate-700 rounded-lg text-sm text-slate-300 font-mono focus:outline-none"
                 />
                 <button
-                  onClick={() => copyToClipboard(app.client_password || '')}
+                  onClick={() => copyToClipboard(app.client_password ?? '')}
                   className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-sm font-medium transition"
                 >
                   Copia
