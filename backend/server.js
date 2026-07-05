@@ -499,6 +499,9 @@ app.use('/api', require('./routes/client-app'));
 // --- APP RECORDS ROUTES (CRUD dati app) ---
 app.use('/api', require('./routes/app-records'));
 
+// --- CUSTOM TABLES ROUTES (tabelle personalizzate utente) ---
+app.use('/api', require('./routes/custom-tables'));
+
 // --- ERROR HANDLER ---
 app.use((err, _req, res, _next) => {
   console.error('Unhandled error:', err);
