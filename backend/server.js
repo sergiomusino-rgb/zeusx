@@ -511,6 +511,9 @@ app.use('/api', require('./routes/app-records'));
 // --- CUSTOM TABLES ROUTES (tabelle personalizzate utente) ---
 app.use('/api', require('./routes/custom-tables'));
 
+// --- INVOICES ROUTES (fatturazione) ---
+app.use('/api', require('./routes/invoices'));
+
 // --- ERROR HANDLER ---
 app.use((err, _req, res, _next) => {
   console.error('Unhandled error:', err);
