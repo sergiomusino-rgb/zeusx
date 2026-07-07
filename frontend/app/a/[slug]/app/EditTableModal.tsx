@@ -23,7 +23,7 @@ interface TableDef {
 
 interface EditTableModalProps {
   table: TableDef;
-  onSave: (fields: FieldDef[]) => Promise<void>;
+  onSave: (data: { name?: string; label?: string; labelPlural?: string; fields: FieldDef[] }) => Promise<void>;
   onClose: () => void;
   saving: boolean;
   colors: ReturnType<typeof getThemeVars>;
@@ -62,6 +62,9 @@ const FIELD_TYPES = [
 export default function EditTableModal({
   table, onSave, onClose, saving, colors,
 }: EditTableModalProps) {
+  const [tableName, setTableName] = useState(table.name);
+  const [tableLabel, setTableLabel] = useState(table.label);
+  const [tableLabelPlural, setTableLabelPlural] = useState(table.labelPlural);
   const [fields, setFields] = useState<FieldDef[]>(() =>
     table.fields.map(f => ({ ...f }))
   );
@@ -105,7 +108,12 @@ export default function EditTableModal({
     e.preventDefault();
     const validFields = fields.filter((f) => f.name.trim() && f.label.trim());
     if (validFields.length === 0) return;
-    await onSave(validFields);
+    await onSave({
+      name: tableName,
+      label: tableLabel,
+      labelPlural: tableLabelPlural,
+      fields: validFields,
+    });
   };
 
   const inputStyle: React.CSSProperties = {
@@ -158,6 +166,46 @@ export default function EditTableModal({
         </div>
 
         <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '18px' }}>
+          {/* METADATI TABELLA */}
+          <div style={{
+            background: colors.cardBgAlt, borderRadius: '12px',
+            padding: '20px', border: `1px solid ${colors.border}`,
+          }}>
+            <div style={sectionTitle}>Nome Tabella</div>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '12px' }}>
+              <div>
+                <label style={labelStyle}>Nome (identificativo)</label>
+                <input
+                  type="text"
+                  value={tableName}
+                  onChange={(e) => setTableName(e.target.value.toLowerCase().replace(/[^a-z0-9_]/g, '_').replace(/_+/g, '_'))}
+                  placeholder="nome_tabella"
+                  style={inputStyle}
+                />
+              </div>
+              <div>
+                <label style={labelStyle}>Label (singolare)</label>
+                <input
+                  type="text"
+                  value={tableLabel}
+                  onChange={(e) => setTableLabel(e.target.value)}
+                  placeholder="Nome"
+                  style={inputStyle}
+                />
+              </div>
+              <div>
+                <label style={labelStyle}>Label (plurale)</label>
+                <input
+                  type="text"
+                  value={tableLabelPlural}
+                  onChange={(e) => setTableLabelPlural(e.target.value)}
+                  placeholder="Nomi"
+                  style={inputStyle}
+                />
+              </div>
+            </div>
+          </div>
+
           {/* CAMPI */}
           <div style={{
             background: colors.cardBgAlt, borderRadius: '12px',
