@@ -1426,6 +1426,7 @@ function SettingsModal({ prefs, onPrefsChange, onClose, onLogout, onChangePasswo
               placeholder="Password attuale"
               value={oldPassword}
               onChange={(e) => setOldPassword(e.target.value)}
+              autoComplete="current-password"
               style={inputStyle}
             />
             <input
@@ -1433,6 +1434,7 @@ function SettingsModal({ prefs, onPrefsChange, onClose, onLogout, onChangePasswo
               placeholder="Nuova password"
               value={newPassword}
               onChange={(e) => setNewPassword(e.target.value)}
+              autoComplete="new-password"
               style={inputStyle}
             />
             <input
@@ -1440,6 +1442,7 @@ function SettingsModal({ prefs, onPrefsChange, onClose, onLogout, onChangePasswo
               placeholder="Conferma nuova password"
               value={confirmPassword}
               onChange={(e) => setConfirmPassword(e.target.value)}
+              autoComplete="new-password"
               style={inputStyle}
             />
             {passwordMsg && (
@@ -1588,6 +1591,7 @@ function LoginScreen({ slug, appName, logoUrl, primaryColor, onLogin }: LoginScr
             placeholder="Password"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
+            autoComplete="current-password"
             style={{
               width: '100%', padding: '12px 16px', borderRadius: '10px',
               border: '1px solid #334155', background: '#0f172a',
@@ -2032,11 +2036,13 @@ export default function ViewerProFinal() {
         },
         body: JSON.stringify({ table: activeTable.name, data: formData }),
       });
-      if (!res.ok) throw new Error('Errore nella creazione');
+      const responseData = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(responseData.error || `Errore server: ${res.status}`);
       setModalRecord(null);
       await loadRecords(activeTable.name, session.password, session.appInfo.id);
     } catch (err) {
-      alert(err instanceof Error ? err.message : 'Errore');
+      console.error('[CreateRecord] Error:', err);
+      alert(err instanceof Error ? err.message : 'Errore durante il salvataggio');
     } finally {
       setSaving(false);
     }
@@ -2054,11 +2060,13 @@ export default function ViewerProFinal() {
         },
         body: JSON.stringify({ data: formData }),
       });
-      if (!res.ok) throw new Error('Errore nella modifica');
+      const responseData = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(responseData.error || `Errore server: ${res.status}`);
       setModalRecord(null);
       await loadRecords(activeTable.name, session.password, session.appInfo.id);
     } catch (err) {
-      alert(err instanceof Error ? err.message : 'Errore');
+      console.error('[UpdateRecord] Error:', err);
+      alert(err instanceof Error ? err.message : 'Errore durante la modifica');
     } finally {
       setSaving(false);
     }
@@ -2072,10 +2080,12 @@ export default function ViewerProFinal() {
         method: 'DELETE',
         headers: { Authorization: `Bearer ${session.password}` },
       });
-      if (!res.ok) throw new Error('Errore nella eliminazione');
+      const responseData = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(responseData.error || `Errore server: ${res.status}`);
       await loadRecords(activeTable.name, session.password, session.appInfo.id);
     } catch (err) {
-      alert(err instanceof Error ? err.message : 'Errore');
+      console.error('[DeleteRecord] Error:', err);
+      alert(err instanceof Error ? err.message : 'Errore durante l\'eliminazione');
     }
   }, [session, activeTable, loadRecords]);
 
