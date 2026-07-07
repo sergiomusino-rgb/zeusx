@@ -358,7 +358,11 @@ router.post('/apps/:appId/import', authMiddleware, tenantMiddleware, upload.sing
     let records = [];
 
     if (fileName.endsWith('.csv')) {
-      const parser = req.file.buffer.pipe(csv());
+      const { Readable } = require('stream');
+      const bufferStream = new Readable();
+      bufferStream.push(req.file.buffer);
+      bufferStream.push(null);
+      const parser = bufferStream.pipe(csv());
       for await (const row of parser) {
         records.push(row);
       }
