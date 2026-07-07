@@ -296,6 +296,81 @@ router.post('/client/apps/:appId/import', clientAuthMiddleware, upload.single('f
   }
 });
 
+// PUT /client/apps/:appId/tables/:tableName - Update a table definition in the app config
+router.put('/client/apps/:appId/tables/:tableName', clientAuthMiddleware, async (req, res) => {
+  try {
+    const { tableName } = req.params;
+    const { fields } = req.body;
+
+    if (!fields || !Array.isArray(fields)) {
+      return res.status(400).json({ error: 'fields (array) obbligatorio' });
+    }
+
+    const supabase = getSupabase();
+
+    // Leggi app config corrente
+    const { data: app, error: appError } = await supabase
+      .from('apps')
+      .select('config')
+      .eq('id', req.appId)
+      .single();
+
+    if (appError || !app) {
+      return res.status(404).json({ error: 'App non trovata' });
+    }
+
+    const config = app.config || {};
+    const tables = (config.schema?.tables?.length ? config.schema.tables : null)
+      || (config.blueprint?.schema?.tables?.length ? config.blueprint.schema.tables : null)
+      || (config.tables?.length ? config.tables : [])
+      || [];
+
+    // Trova e aggiorna la tabella
+    const tableIndex = tables.findIndex((t) => t.name === tableName);
+    if (tableIndex === -1) {
+      return res.status(404).json({ error: 'Tabella non trovata' });
+    }
+
+    // Aggiorna i campi della tabella
+    tables[tableIndex] = {
+      ...tables[tableIndex],
+        fields: fields.map((f) => ({
+        name: f.name,
+        label: f.label,
+        type: f.type || 'text',
+        required: f.required || false,
+        options: f.options || [],
+        fixed: f.fixed !== undefined ? f.fixed : true,
+      })),
+    };
+
+    // Determina dove salvare: in schema.tables (priorità 1)
+    let updatedConfig;
+    if (config.schema?.tables) {
+      updatedConfig = { ...config, schema: { ...config.schema, tables } };
+    } else if (config.blueprint?.schema?.tables) {
+      updatedConfig = { ...config, blueprint: { ...config.blueprint, schema: { ...config.blueprint.schema, tables } } };
+    } else {
+      updatedConfig = { ...config, tables };
+    }
+
+    const { error: updateError } = await supabase
+      .from('apps')
+      .update({ config: updatedConfig, updated_at: new Date().toISOString() })
+      .eq('id', req.appId);
+
+    if (updateError) {
+      console.error('PUT table-def error:', updateError);
+      return res.status(500).json({ error: updateError.message });
+    }
+
+    res.json({ success: true, table: tables[tableIndex] });
+  } catch (err) {
+    console.error('PUT table-def exception:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // GET /api/client/apps/:appId/export?table=clients
 router.get('/client/apps/:appId/export', clientAuthMiddleware, async (req, res) => {
   try {

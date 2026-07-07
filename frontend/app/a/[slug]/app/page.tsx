@@ -5,6 +5,7 @@ import { SYSTEM_TABLES, getTableByName, createEmptyRecord } from './table-defini
 import DynamicDataTable from './DynamicDataTable';
 import DynamicRecordModal from './DynamicRecordModal';
 import CreateCustomTableModal from './CreateCustomTableModal';
+import EditTableModal from './EditTableModal';
 import CustomTableRenderer from './CustomTableRenderer';
 import CustomRecordModal from './CustomRecordModal';
 import {
@@ -16,6 +17,7 @@ import {
   X, ChevronDown, Users, ShoppingCart, Package, DollarSign, TrendingUp,
   AlertTriangle, Calendar, CheckCircle, Clock, XCircle, Menu,
   Download, Upload, Download as InstallIcon, MessageSquare, Mail, MessageCircle,
+  Settings2,
 } from 'lucide-react';
 import { QRCodeCanvas } from 'qrcode.react';
 
@@ -1660,6 +1662,27 @@ export default function ViewerProFinal() {
   const [ordiniRecords, setOrdiniRecords] = useState<AppRecord[]>([]);
   // Tabelle personalizzate create dall'utente
   const [customTables, setCustomTables] = useState<any[]>([]);
+  // Re-login helper to refresh session after table edit
+  const refreshSession = useCallback(async () => {
+    if (!session) return;
+    try {
+      const res = await fetch(`/api/a/${slug}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ password: session.password }),
+      });
+      if (res.ok) {
+        const data = await res.json();
+        const updatedSession = {
+          ...session,
+          appInfo: data.appInfo || data,
+        };
+        localStorage.setItem(sessionKey, JSON.stringify(updatedSession));
+        setSession(updatedSession);
+      }
+    } catch { /* ignore */ }
+  }, [session, slug, sessionKey]);
+  
   const [customTablesLoading, setCustomTablesLoading] = useState(false);
   const [customRecords, setCustomRecords] = useState<any[]>([]);
   const [customRecordsLoading, setCustomRecordsLoading] = useState(false);
@@ -1667,6 +1690,9 @@ export default function ViewerProFinal() {
   const [creatingCustomTable, setCreatingCustomTable] = useState(false);
   const [customModalRecord, setCustomModalRecord] = useState<any | null | 'new'>(null);
   const [customSaving, setCustomSaving] = useState(false);
+  // Edit table modal
+  const [editTable, setEditTable] = useState<TableDef | null>(null);
+  const [editTableSaving, setEditTableSaving] = useState(false);
 
   const [prefs, setPrefs] = useState<UserPrefs>({
     layout: 'modern',
@@ -2107,6 +2133,34 @@ export default function ViewerProFinal() {
     }
   }, [slug, session, sessionKey]);
 
+  // ─── Edit table handler ─────────────────────────────────────────────────
+
+  const handleEditTableSave = useCallback(async (fields: any[]) => {
+    if (!session || !editTable) return;
+    setEditTableSaving(true);
+    try {
+      const res = await fetch(`/api/client/apps/${session.appInfo.id}/tables/${editTable.name}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${session.password}`,
+        },
+        body: JSON.stringify({ fields }),
+      });
+      if (!res.ok) {
+        const err = await res.json();
+        throw new Error(err.error || 'Errore salvataggio tabella');
+      }
+      setEditTable(null);
+      // Refresh session to get updated config
+      await refreshSession();
+    } catch (err) {
+      alert(err instanceof Error ? err.message : 'Errore');
+    } finally {
+      setEditTableSaving(false);
+    }
+  }, [session, editTable, refreshSession]);
+
   const handleLogout = useCallback(() => {
     localStorage.removeItem(sessionKey);
     localStorage.removeItem(prefsKey);
@@ -2224,15 +2278,38 @@ export default function ViewerProFinal() {
 
           {/* Tables fisse */}
           {tables.map((table) => (
-            <SidebarItem
-              key={table.name}
-              icon={resolveIcon(table.icon)}
-              label={table.labelPlural}
-              active={activeView === table.name}
-              onClick={() => setActiveView(table.name)}
-              colors={colors}
-              primaryColor={primaryColor}
-            />
+            <div key={table.name} style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <SidebarItem
+                  icon={resolveIcon(table.icon)}
+                  label={table.labelPlural}
+                  active={activeView === table.name}
+                  onClick={() => setActiveView(table.name)}
+                  colors={colors}
+                  primaryColor={primaryColor}
+                />
+              </div>
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setEditTable(table);
+                }}
+                title="Modifica tabella"
+                style={{
+                  background: 'rgba(255,255,255,0.15)',
+                  border: 'none', borderRadius: '6px',
+                  padding: '4px', cursor: 'pointer',
+                  color: 'rgba(255,255,255,0.7)',
+                  display: 'flex', alignItems: 'center',
+                  marginRight: '8px', flexShrink: 0,
+                  transition: 'all 0.2s',
+                }}
+                onMouseEnter={(e) => { e.currentTarget.style.background = 'rgba(255,255,255,0.25)'; e.currentTarget.style.color = '#fff'; }}
+                onMouseLeave={(e) => { e.currentTarget.style.background = 'rgba(255,255,255,0.15)'; e.currentTarget.style.color = 'rgba(255,255,255,0.7)'; }}
+              >
+                <Settings2 size={14} />
+              </button>
+            </div>
           ))}
 
           {/* Tabelle personalizzate */}
@@ -2453,6 +2530,17 @@ export default function ViewerProFinal() {
           saving={customSaving}
           colors={colors}
           tableLabel={activeCustomTable.label}
+        />
+      )}
+
+      {/* Edit Table Modal */}
+      {editTable !== null && (
+        <EditTableModal
+          table={editTable}
+          onSave={handleEditTableSave}
+          onClose={() => setEditTable(null)}
+          saving={editTableSaving}
+          colors={colors}
         />
       )}
     </div>
