@@ -19,8 +19,14 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ slu
     const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
     const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
+    console.log('[change-password] Environment check:', {
+      hasUrl: !!supabaseUrl,
+      hasKey: !!serviceRoleKey,
+      urlPrefix: supabaseUrl?.substring(0, 20) || 'missing',
+    });
+
     if (!supabaseUrl || !serviceRoleKey) {
-      console.error('[change-password] Missing Supabase credentials');
+      console.error('[change-password] Missing Supabase credentials:', { supabaseUrl, serviceRoleKey });
       return NextResponse.json({ error: 'Configurazione server incompleta' }, { status: 500 });
     }
 
