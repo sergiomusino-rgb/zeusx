@@ -1693,6 +1693,8 @@ export default function ViewerProFinal() {
   // Edit table modal
   const [editTable, setEditTable] = useState<TableDef | null>(null);
   const [editTableSaving, setEditTableSaving] = useState(false);
+  const [importazioniOpen, setImportazioniOpen] = useState(false);
+  const [comunicazioniOpen, setComunicazioniOpen] = useState(false);
 
   const [prefs, setPrefs] = useState<UserPrefs>({
     layout: 'modern',
@@ -2350,106 +2352,154 @@ export default function ViewerProFinal() {
             </button>
           </div>
 
-          {/* Comunicazioni */}
+          {/* Comunicazioni - Collapsible */}
           <div style={{ marginTop: '8px', paddingTop: '8px', borderTop: `1px solid rgba(255,255,255,0.2)` }}>
-            <div style={{ padding: '0 14px 8px', fontSize: '11px', fontWeight: 600, color: 'rgba(255,255,255,0.6)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-              Comunicazioni
-            </div>
-            <SidebarItem
-              icon={<MessageSquare size={18} />}
-              label="Provider SDI"
-              active={false}
-              onClick={() => window.open('https://www.sdi.agenziaentrate.gov.it', '_blank')}
-              colors={colors}
-              primaryColor={primaryColor}
-            />
-            <SidebarItem
-              icon={<Mail size={18} />}
-              label="Email"
-              active={false}
-              onClick={() => window.open('https://mail.google.com', '_blank')}
-              colors={colors}
-              primaryColor={primaryColor}
-            />
-            <SidebarItem
-              icon={<MessageCircle size={18} />}
-              label="WhatsApp"
-              active={false}
-              onClick={() => window.open('https://wa.me/393331234567', '_blank')}
-              colors={colors}
-              primaryColor={primaryColor}
-            />
+            <button
+              onClick={() => setComunicazioniOpen(!comunicazioniOpen)}
+              style={{
+                display: 'flex', alignItems: 'center', gap: '8px',
+                padding: '8px 14px', borderRadius: '8px', border: 'none',
+                background: 'transparent', color: '#fff',
+                fontSize: '11px', fontWeight: 600, cursor: 'pointer',
+                width: '100%', textTransform: 'uppercase',
+                letterSpacing: '0.05em', transition: 'background 0.2s',
+              }}
+              onMouseEnter={(e) => { e.currentTarget.style.background = 'rgba(255,255,255,0.1)'; }}
+              onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; }}
+            >
+              <MessageSquare size={14} />
+              <span style={{ flex: 1, textAlign: 'left' }}>Comunicazioni</span>
+              <ChevronDown
+                size={14}
+                style={{
+                  transform: comunicazioniOpen ? 'rotate(180deg)' : 'rotate(0deg)',
+                  transition: 'transform 0.2s',
+                }}
+              />
+            </button>
+            {comunicazioniOpen && (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '2px', marginTop: '4px' }}>
+                <SidebarItem
+                  icon={<MessageSquare size={18} />}
+                  label="Provider SDI"
+                  active={false}
+                  onClick={() => window.open('https://www.sdi.agenziaentrate.gov.it', '_blank')}
+                  colors={colors}
+                  primaryColor={primaryColor}
+                />
+                <SidebarItem
+                  icon={<Mail size={18} />}
+                  label="Email"
+                  active={false}
+                  onClick={() => window.open('https://mail.google.com', '_blank')}
+                  colors={colors}
+                  primaryColor={primaryColor}
+                />
+                <SidebarItem
+                  icon={<MessageCircle size={18} />}
+                  label="WhatsApp"
+                  active={false}
+                  onClick={() => window.open('https://wa.me/393331234567', '_blank')}
+                  colors={colors}
+                  primaryColor={primaryColor}
+                />
+              </div>
+            )}
           </div>
 
-          {/* Importazioni */}
+          {/* Importazioni - Collapsible */}
           <div style={{ marginTop: '8px', paddingTop: '8px', borderTop: `1px solid rgba(255,255,255,0.2)` }}>
-            <div style={{ padding: '0 14px 8px', fontSize: '11px', fontWeight: 600, color: 'rgba(255,255,255,0.6)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-              Importazioni
-            </div>
-            <SidebarItem
-              icon={<Upload size={18} />}
-              label="Importa CSV"
-              active={activeView === 'import_csv'}
-              onClick={() => setActiveView('import_csv')}
-              colors={colors}
-              primaryColor={primaryColor}
-            />
-            <SidebarItem
-              icon={<Download size={18} />}
-              label="Esporta CSV"
-              active={activeView === 'export_csv'}
-              onClick={() => setActiveView('export_csv')}
-              colors={colors}
-              primaryColor={primaryColor}
-            />
-            <SidebarItem
-              icon={<FileText size={18} />}
-              label="Importa PDF"
-              active={activeView === 'import_pdf'}
-              onClick={() => setActiveView('import_pdf')}
-              colors={colors}
-              primaryColor={primaryColor}
-            />
-            <SidebarItem
-              icon={<FileText size={18} />}
-              label="Esporta PDF"
-              active={activeView === 'export_pdf'}
-              onClick={() => setActiveView('export_pdf')}
-              colors={colors}
-              primaryColor={primaryColor}
-            />
-            <SidebarItem
-              icon={<FileSpreadsheet size={18} />}
-              label="Importa Excel"
-              active={activeView === 'import_excel'}
-              onClick={() => setActiveView('import_excel')}
-              colors={colors}
-              primaryColor={primaryColor}
-            />
-            <SidebarItem
-              icon={<FileSpreadsheet size={18} />}
-              label="Esporta Excel"
-              active={activeView === 'export_excel'}
-              onClick={() => setActiveView('export_excel')}
-              colors={colors}
-              primaryColor={primaryColor}
-            />
-            <SidebarItem
-              icon={<FileIcon size={18} />}
-              label="Importa JSON"
-              active={activeView === 'import_json'}
-              onClick={() => setActiveView('import_json')}
-              colors={colors}
-              primaryColor={primaryColor}
-            />
-            <SidebarItem
-              icon={<FileIcon size={18} />}
-              label="Esporta JSON"
-              active={activeView === 'export_json'}
-              onClick={() => setActiveView('export_json')}
-              colors={colors}
-              primaryColor={primaryColor}
-            />
+            <button
+              onClick={() => setImportazioniOpen(!importazioniOpen)}
+              style={{
+                display: 'flex', alignItems: 'center', gap: '8px',
+                padding: '8px 14px', borderRadius: '8px', border: 'none',
+                background: 'transparent', color: '#fff',
+                fontSize: '11px', fontWeight: 600, cursor: 'pointer',
+                width: '100%', textTransform: 'uppercase',
+                letterSpacing: '0.05em', transition: 'background 0.2s',
+              }}
+              onMouseEnter={(e) => { e.currentTarget.style.background = 'rgba(255,255,255,0.1)'; }}
+              onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; }}
+            >
+              <Upload size={14} />
+              <span style={{ flex: 1, textAlign: 'left' }}>Importazioni</span>
+              <ChevronDown 
+                size={14} 
+                style={{ 
+                  transform: importazioniOpen ? 'rotate(180deg)' : 'rotate(0deg)',
+                  transition: 'transform 0.2s',
+                }} 
+              />
+            </button>
+            {importazioniOpen && (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '2px', marginTop: '4px' }}>
+                <SidebarItem
+                  icon={<Upload size={18} />}
+                  label="Importa CSV"
+                  active={activeView === 'import_csv'}
+                  onClick={() => setActiveView('import_csv')}
+                  colors={colors}
+                  primaryColor={primaryColor}
+                />
+                <SidebarItem
+                  icon={<Download size={18} />}
+                  label="Esporta CSV"
+                  active={activeView === 'export_csv'}
+                  onClick={() => setActiveView('export_csv')}
+                  colors={colors}
+                  primaryColor={primaryColor}
+                />
+                <SidebarItem
+                  icon={<FileText size={18} />}
+                  label="Importa PDF"
+                  active={activeView === 'import_pdf'}
+                  onClick={() => setActiveView('import_pdf')}
+                  colors={colors}
+                  primaryColor={primaryColor}
+                />
+                <SidebarItem
+                  icon={<FileText size={18} />}
+                  label="Esporta PDF"
+                  active={activeView === 'export_pdf'}
+                  onClick={() => setActiveView('export_pdf')}
+                  colors={colors}
+                  primaryColor={primaryColor}
+                />
+                <SidebarItem
+                  icon={<FileSpreadsheet size={18} />}
+                  label="Importa Excel"
+                  active={activeView === 'import_excel'}
+                  onClick={() => setActiveView('import_excel')}
+                  colors={colors}
+                  primaryColor={primaryColor}
+                />
+                <SidebarItem
+                  icon={<FileSpreadsheet size={18} />}
+                  label="Esporta Excel"
+                  active={activeView === 'export_excel'}
+                  onClick={() => setActiveView('export_excel')}
+                  colors={colors}
+                  primaryColor={primaryColor}
+                />
+                <SidebarItem
+                  icon={<FileIcon size={18} />}
+                  label="Importa JSON"
+                  active={activeView === 'import_json'}
+                  onClick={() => setActiveView('import_json')}
+                  colors={colors}
+                  primaryColor={primaryColor}
+                />
+                <SidebarItem
+                  icon={<FileIcon size={18} />}
+                  label="Esporta JSON"
+                  active={activeView === 'export_json'}
+                  onClick={() => setActiveView('export_json')}
+                  colors={colors}
+                  primaryColor={primaryColor}
+                />
+              </div>
+            )}
           </div>
         </nav>
 
