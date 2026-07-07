@@ -1,11 +1,7 @@
+import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
-import { NextResponse } from 'next/server';
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
-const supabase = createClient(supabaseUrl, serviceRoleKey);
-
-export async function POST(req: Request, { params }: { params: Promise<{ slug: string }> }) {
+export async function POST(req: NextRequest, { params }: { params: Promise<{ slug: string }> }) {
   try {
     const { slug } = await params;
     const body = await req.json();
@@ -19,20 +15,42 @@ export async function POST(req: Request, { params }: { params: Promise<{ slug: s
       return NextResponse.json({ error: 'La nuova password deve avere almeno 6 caratteri' }, { status: 400 });
     }
 
-    const { data: app, error } = await supabase
+    // Instanzia il client Supabase DENTRO la funzione per evitare problemi di scope e cold-start
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+    const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+
+    if (!supabaseUrl || !serviceRoleKey) {
+      console.error('[change-password] Missing Supabase credentials');
+      return NextResponse.json({ error: 'Configurazione server incompleta' }, { status: 500 });
+    }
+
+    const supabase = createClient(supabaseUrl, serviceRoleKey);
+
+    // Recupera l'app tramite slug
+    const { data: app, error: appError } = await supabase
       .from('apps')
       .select('id, client_password, client_active, expires_at')
       .eq('slug', slug)
       .single();
 
-    if (error || !app) {
+    if (appError || !app) {
       return NextResponse.json({ error: 'App non trovata' }, { status: 404 });
     }
 
+    if (app.client_active === false) {
+      return NextResponse.json({ error: 'App bloccata' }, { status: 403 });
+    }
+
+    if (app.expires_at && new Date(app.expires_at) < new Date()) {
+      return NextResponse.json({ error: 'App scaduta' }, { status: 403 });
+    }
+
+    // Verifica password attuale
     if (app.client_password !== oldPassword) {
       return NextResponse.json({ error: 'Password attuale errata' }, { status: 401 });
     }
 
+    // Aggiorna password
     const { error: updateError } = await supabase
       .from('apps')
       .update({ client_password: newPassword })
@@ -43,7 +61,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ slug: s
       return NextResponse.json({ error: 'Errore aggiornamento password' }, { status: 500 });
     }
 
-    return NextResponse.json({ success: true });
+    return NextResponse.json({ success: true, message: 'Password cambiata con successo' });
   } catch (err) {
     console.error('[change-password] error:', err);
     return NextResponse.json({ error: 'Errore interno' }, { status: 500 });
