@@ -5,7 +5,10 @@ const multer = require('multer');
 const csv = require('csv-parser');
 const { stringify } = require('csv-stringify/sync');
 
-const upload = multer({ storage: multer.memoryStorage() });
+const upload = multer({ 
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 50 * 1024 * 1024 } // 50MB limit
+});
 
 function getSupabase() {
   return createClient(

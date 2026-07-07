@@ -12,6 +12,26 @@ export async function middleware(request: NextRequest) {
   if (isServerAction || isServerActionData) {
     return response;
   }
+
+  // Aggiungi CORS headers per la route manifest
+  if (request.nextUrl.pathname.match(/^\/a\/[^\/]+\/manifest$/)) {
+    response.headers.set('Access-Control-Allow-Origin', '*');
+    response.headers.set('Access-Control-Allow-Methods', 'GET, OPTIONS');
+    response.headers.set('Access-Control-Allow-Headers', 'Content-Type');
+    
+    // Gestisci preflight OPTIONS request
+    if (request.method === 'OPTIONS') {
+      return new NextResponse(null, {
+        status: 204,
+        headers: {
+          'Access-Control-Allow-Origin': '*',
+          'Access-Control-Allow-Methods': 'GET, OPTIONS',
+          'Access-Control-Allow-Headers': 'Content-Type',
+          'Access-Control-Max-Age': '86400',
+        },
+      });
+    }
+  }
   
   // Disabilita la cache per tutte le pagine della dashboard
   // Questo forza il browser a caricare sempre la versione più recente
