@@ -1,6 +1,12 @@
 'use client';
 
 import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
+import { SYSTEM_TABLES, getTableByName, createEmptyRecord } from './table-definitions';
+import DynamicDataTable from './DynamicDataTable';
+import DynamicRecordModal from './DynamicRecordModal';
+import CreateCustomTableModal from './CreateCustomTableModal';
+import CustomTableRenderer from './CustomTableRenderer';
+import CustomRecordModal from './CustomRecordModal';
 import {
   LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
   PieChart, Pie, Cell, Legend,
@@ -15,22 +21,10 @@ import { QRCodeCanvas } from 'qrcode.react';
 
 // ─── Interfaces ───────────────────────────────────────────────────────────────
 
-interface FieldDef {
-  name?: string;
-  id?: string;
-  label: string;
-  type: string;
-  options?: string[];
-  required?: boolean;
-}
-
-interface TableDef {
-  name: string;
-  label: string;
-  labelPlural: string;
-  icon: string;
-  fields: FieldDef[];
-}
+// Re-export types from table-definitions for local use
+import type { FieldDef as TableFieldDef, TableDef as TableDefType } from './table-definitions';
+type FieldDef = TableFieldDef;
+type TableDef = TableDefType;
 
 // Helper per ottenere il nome del campo (supporta sia name che id)
 function fieldName(f: FieldDef): string {
@@ -91,7 +85,7 @@ interface AppRecord {
 }
 
 interface UserPrefs {
-  layout: 'corporate' | 'modern' | 'compact' | 'tablet' | 'smartphone';
+  layout: 'corporate' | 'modern' | 'compact';
   theme: 'dark' | 'light';
   primaryColor: string;
   companyName: string;
@@ -114,8 +108,12 @@ const LAYOUT_CONFIG = {
   corporate:  { sidebarWidth: 'w-72', padding: 'p-8', radius: 'rounded-2xl', shadow: 'shadow-2xl' },
   modern:     { sidebarWidth: 'w-64', padding: 'p-6', radius: 'rounded-xl',  shadow: 'shadow-xl' },
   compact:    { sidebarWidth: 'w-56', padding: 'p-4', radius: 'rounded-lg',  shadow: 'shadow-lg' },
-  tablet:     { sidebarWidth: 'w-64', padding: 'p-5', radius: 'rounded-xl',  shadow: 'shadow-xl' },
-  smartphone: { sidebarWidth: 'w-full', padding: 'p-3', radius: 'rounded-none', shadow: 'none', sidebarCollapsible: true },
+};
+
+const SIDEBAR_WIDTHS = {
+  corporate: '288px',
+  modern: '256px',
+  compact: '224px',
 };
 
 const CHART_COLORS = ['#6366f1', '#22c55e', '#f59e0b', '#ef4444', '#06b6d4', '#8b5cf6'];
@@ -1230,8 +1228,6 @@ function SettingsModal({ prefs, onPrefsChange, onClose, onLogout, onChangePasswo
     { key: 'corporate', label: 'Corporate', desc: 'Ampio e spazioso' },
     { key: 'modern', label: 'Modern', desc: 'Bilanciato' },
     { key: 'compact', label: 'Compact', desc: 'Compatto e denso' },
-    { key: 'tablet', label: 'Tablet', desc: 'Schermo tablet' },
-    { key: 'smartphone', label: 'Smartphone', desc: 'Schermo mobile con sidebar a scomparsa' },
   ];
 
   return (
@@ -1266,7 +1262,7 @@ function SettingsModal({ prefs, onPrefsChange, onClose, onLogout, onChangePasswo
         {/* Layout Section */}
         <div style={sectionBox}>
           <div style={sectionTitle}>Layout</div>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: '12px' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '12px' }}>
             {layouts.map(({ key, label, desc }) => {
               const isActive = prefs.layout === key;
               const cfg = LAYOUT_CONFIG[key];
@@ -1290,7 +1286,7 @@ function SettingsModal({ prefs, onPrefsChange, onClose, onLogout, onChangePasswo
                     }}
                   >
                     <div style={{
-                      width: key === 'corporate' ? '35%' : key === 'modern' ? '28%' : key === 'compact' ? '22%' : key === 'tablet' ? '25%' : '100%',
+                      width: key === 'corporate' ? '35%' : key === 'modern' ? '28%' : '22%',
                       background: isActive ? colors.primary : colors.textSecondary + '40',
                       borderRadius: '4px', margin: '4px',
                     }} />
@@ -1477,7 +1473,7 @@ function SettingsModal({ prefs, onPrefsChange, onClose, onLogout, onChangePasswo
         <div style={sectionBox}>
           <div style={sectionTitle}>QR Code Accesso</div>
           <p style={{ color: colors.textSecondary, fontSize: '13px', marginBottom: '16px' }}>
-            Scansiona questo codice QR per accedere all'app da smartphone
+            Scansiona questo codice QR per accedere all'app da qualsiasi dispositivo
           </p>
           <div style={{ 
             display: 'flex', 
@@ -1656,7 +1652,21 @@ export default function ViewerProFinal() {
   const [modalRecord, setModalRecord] = useState<AppRecord | null | 'new'>(null);
   const [saving, setSaving] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
-  const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [isMobile, setIsMobile] = useState(false);
+  // Record per relazioni tra tabelle
+  const [clientiRecords, setClientiRecords] = useState<AppRecord[]>([]);
+  const [prodottiRecords, setProdottiRecords] = useState<AppRecord[]>([]);
+  const [ordiniRecords, setOrdiniRecords] = useState<AppRecord[]>([]);
+  // Tabelle personalizzate create dall'utente
+  const [customTables, setCustomTables] = useState<any[]>([]);
+  const [customTablesLoading, setCustomTablesLoading] = useState(false);
+  const [customRecords, setCustomRecords] = useState<any[]>([]);
+  const [customRecordsLoading, setCustomRecordsLoading] = useState(false);
+  const [showCreateCustomTable, setShowCreateCustomTable] = useState(false);
+  const [creatingCustomTable, setCreatingCustomTable] = useState(false);
+  const [customModalRecord, setCustomModalRecord] = useState<any | null | 'new'>(null);
+  const [customSaving, setCustomSaving] = useState(false);
 
   const [prefs, setPrefs] = useState<UserPrefs>({
     layout: 'modern',
@@ -1745,6 +1755,22 @@ export default function ViewerProFinal() {
     document.head.appendChild(link);
   }, [slug]);
 
+  // ─── Detect mobile viewport ──────────────────────────────────────────────
+
+  useEffect(() => {
+    const checkMobile = () => {
+      const mobile = window.innerWidth < 768;
+      setIsMobile(mobile);
+      if (mobile) {
+        setSidebarOpen(false);
+      }
+    };
+
+    checkMobile();
+    window.addEventListener('resize', checkMobile);
+    return () => window.removeEventListener('resize', checkMobile);
+  }, []);
+
   // ─── Check session on mount ──────────────────────────────────────────────
 
   useEffect(() => {
@@ -1806,6 +1832,162 @@ export default function ViewerProFinal() {
     }
     setSearchQuery('');
   }, [activeTable, session, loadRecords]);
+
+  // ─── Load custom tables from backend ────────────────────────────────────
+
+  const loadCustomTables = useCallback(async () => {
+    if (!session) return;
+    setCustomTablesLoading(true);
+    try {
+      const res = await fetch(`/api/client/apps/${session.appInfo.id}/custom-tables`, {
+        headers: { Authorization: `Bearer ${session.password}` },
+      });
+      if (!res.ok) throw new Error('Failed to load custom tables');
+      const data = await res.json();
+      setCustomTables(data.tables || []);
+    } catch (err) {
+      console.error('Error loading custom tables:', err);
+      setCustomTables([]);
+    } finally {
+      setCustomTablesLoading(false);
+    }
+  }, [session]);
+
+  // Load custom tables on session change
+  useEffect(() => {
+    if (session) {
+      loadCustomTables();
+    } else {
+      setCustomTables([]);
+    }
+  }, [session, loadCustomTables]);
+
+  // ─── Load custom records when activeView is a custom table ──────────────
+
+  const activeCustomTable = useMemo(() => {
+    return customTables.find((t: any) => `custom_${t.name}` === activeView) || null;
+  }, [customTables, activeView]);
+
+  const loadCustomRecords = useCallback(async (tableName: string) => {
+    if (!session) return;
+    setCustomRecordsLoading(true);
+    try {
+      const res = await fetch(`/api/client/apps/${session.appInfo.id}/custom-records/${tableName}`, {
+        headers: { Authorization: `Bearer ${session.password}` },
+      });
+      if (!res.ok) throw new Error('Failed to load custom records');
+      const data = await res.json();
+      setCustomRecords(data.records || []);
+    } catch (err) {
+      console.error('Error loading custom records:', err);
+      setCustomRecords([]);
+    } finally {
+      setCustomRecordsLoading(false);
+    }
+  }, [session]);
+
+  useEffect(() => {
+    if (activeCustomTable && session) {
+      loadCustomRecords(activeCustomTable.name);
+    } else {
+      setCustomRecords([]);
+    }
+    setSearchQuery('');
+  }, [activeCustomTable, session, loadCustomRecords]);
+
+  // ─── Custom table CRUD handlers ─────────────────────────────────────────
+
+  const handleCreateCustomTable = useCallback(async (tableData: any) => {
+    if (!session) return;
+    setCreatingCustomTable(true);
+    try {
+      const res = await fetch(`/api/client/apps/${session.appInfo.id}/custom-tables`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${session.password}`,
+        },
+        body: JSON.stringify(tableData),
+      });
+      if (!res.ok) {
+        const err = await res.json();
+        throw new Error(err.error || 'Errore creazione tabella');
+      }
+      setShowCreateCustomTable(false);
+      await loadCustomTables();
+    } catch (err) {
+      alert(err instanceof Error ? err.message : 'Errore');
+    } finally {
+      setCreatingCustomTable(false);
+    }
+  }, [session, loadCustomTables]);
+
+  const handleCreateCustomRecord = useCallback(async (formData: Record<string, unknown>) => {
+    if (!session || !activeCustomTable) return;
+    setCustomSaving(true);
+    try {
+      const res = await fetch(`/api/client/apps/${session.appInfo.id}/custom-records/${activeCustomTable.name}`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${session.password}`,
+        },
+        body: JSON.stringify({ data: formData }),
+      });
+      if (!res.ok) throw new Error('Errore nella creazione');
+      setCustomModalRecord(null);
+      await loadCustomRecords(activeCustomTable.name);
+    } catch (err) {
+      alert(err instanceof Error ? err.message : 'Errore');
+    } finally {
+      setCustomSaving(false);
+    }
+  }, [session, activeCustomTable, loadCustomRecords]);
+
+  const handleUpdateCustomRecord = useCallback(async (formData: Record<string, unknown>) => {
+    if (!session || !activeCustomTable || !customModalRecord || customModalRecord === 'new') return;
+    setCustomSaving(true);
+    try {
+      const res = await fetch(`/api/client/apps/${session.appInfo.id}/custom-records/${activeCustomTable.name}/${customModalRecord.id}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${session.password}`,
+        },
+        body: JSON.stringify({ data: formData }),
+      });
+      if (!res.ok) throw new Error('Errore nella modifica');
+      setCustomModalRecord(null);
+      await loadCustomRecords(activeCustomTable.name);
+    } catch (err) {
+      alert(err instanceof Error ? err.message : 'Errore');
+    } finally {
+      setCustomSaving(false);
+    }
+  }, [session, activeCustomTable, customModalRecord, loadCustomRecords]);
+
+  const handleDeleteCustomRecord = useCallback(async (recordId: string) => {
+    if (!session || !activeCustomTable) return;
+    if (!confirm('Sei sicuro di voler eliminare questo record?')) return;
+    try {
+      const res = await fetch(`/api/client/apps/${session.appInfo.id}/custom-records/${activeCustomTable.name}/${recordId}`, {
+        method: 'DELETE',
+        headers: { Authorization: `Bearer ${session.password}` },
+      });
+      if (!res.ok) throw new Error('Errore nella eliminazione');
+      await loadCustomRecords(activeCustomTable.name);
+    } catch (err) {
+      alert(err instanceof Error ? err.message : 'Errore');
+    }
+  }, [session, activeCustomTable, loadCustomRecords]);
+
+  const handleCustomModalSave = useCallback((data: Record<string, unknown>) => {
+    if (customModalRecord === 'new') {
+      handleCreateCustomRecord(data);
+    } else {
+      handleUpdateCustomRecord(data);
+    }
+  }, [customModalRecord, handleCreateCustomRecord, handleUpdateCustomRecord]);
 
   // ─── Login handler ──────────────────────────────────────────────────────
 
@@ -1975,20 +2157,41 @@ export default function ViewerProFinal() {
 
   return (
     <div style={{ display: 'flex', minHeight: '100vh', background: colors.bg, transition: 'background 0.3s' }}>
+      {/* Mobile overlay */}
+      {isMobile && sidebarOpen && (
+        <div
+          onClick={() => setSidebarOpen(false)}
+          style={{
+            position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)',
+            zIndex: 15, transition: 'opacity 0.3s',
+          }}
+        />
+      )}
+
       {/* Sidebar */}
-      <aside
-        className={`${layoutCfg.sidebarWidth}`}
-        style={{
-          background: colors.primary,
-          borderRight: `1px solid ${colors.border}`,
-          display: 'flex',
-          flexDirection: 'column',
-          transition: 'width 0.3s, transform 0.3s',
-          position: 'relative',
-          zIndex: 20,
-          flexShrink: 0,
-        }}
-      >
+      {(!isMobile || sidebarOpen) && (
+        <aside
+          className={`${layoutCfg.sidebarWidth}`}
+          style={{
+            background: colors.primary,
+            borderRight: `1px solid ${colors.border}`,
+            display: 'flex',
+            flexDirection: 'column',
+            transition: 'width 0.3s, transform 0.3s',
+            position: 'relative',
+            zIndex: 20,
+            flexShrink: 0,
+            // Mobile: off-canvas by default
+            ...(isMobile ? {
+              position: 'fixed',
+              left: '0',
+              top: 0,
+              bottom: 0,
+              width: '280px',
+              boxShadow: '4px 0 24px rgba(0,0,0,0.3)',
+            } : {}),
+          }}
+        >
         {/* Logo */}
         <div style={{
           padding: '24px 20px', borderBottom: `1px solid rgba(255,255,255,0.2)`,
@@ -2019,7 +2222,7 @@ export default function ViewerProFinal() {
             primaryColor={primaryColor}
           />
 
-          {/* Tables */}
+          {/* Tables fisse */}
           {tables.map((table) => (
             <SidebarItem
               key={table.name}
@@ -2031,6 +2234,39 @@ export default function ViewerProFinal() {
               primaryColor={primaryColor}
             />
           ))}
+
+          {/* Tabelle personalizzate */}
+          <div style={{ marginTop: '8px', paddingTop: '8px', borderTop: `1px solid rgba(255,255,255,0.2)` }}>
+            <div style={{ padding: '0 14px 8px', fontSize: '11px', fontWeight: 600, color: 'rgba(255,255,255,0.6)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+              Personalizzate
+            </div>
+            {customTables.map((ct: any) => (
+              <SidebarItem
+                key={`custom_${ct.name}`}
+                icon={<LayoutDashboard size={18} />}
+                label={ct.labelPlural || ct.label + 'i'}
+                active={activeView === `custom_${ct.name}`}
+                onClick={() => setActiveView(`custom_${ct.name}`)}
+                colors={colors}
+                primaryColor={primaryColor}
+              />
+            ))}
+            <button
+              onClick={() => setShowCreateCustomTable(true)}
+              style={{
+                display: 'flex', alignItems: 'center', gap: '8px',
+                padding: '8px 14px', borderRadius: '8px', border: 'none',
+                background: 'rgba(255,255,255,0.1)', color: '#fff',
+                fontSize: '13px', fontWeight: 500, cursor: 'pointer',
+                width: '100%', justifyContent: 'center', marginTop: '4px',
+                transition: 'background 0.2s',
+              }}
+              onMouseEnter={(e) => { e.currentTarget.style.background = 'rgba(255,255,255,0.2)'; }}
+              onMouseLeave={(e) => { e.currentTarget.style.background = 'rgba(255,255,255,0.1)'; }}
+            >
+              <Plus size={14} /> Nuova Tabella
+            </button>
+          </div>
 
           {/* Comunicazioni */}
           <div style={{ marginTop: '8px', paddingTop: '8px', borderTop: `1px solid rgba(255,255,255,0.2)` }}>
@@ -2091,6 +2327,7 @@ export default function ViewerProFinal() {
           </p>
         </div>
       </aside>
+      )}
 
       {/* Main Content */}
       <main style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
@@ -2106,7 +2343,7 @@ export default function ViewerProFinal() {
             style={{
               background: 'none', border: 'none', cursor: 'pointer',
               color: colors.textSecondary, padding: '4px',
-              display: 'none', // shown via media query in real app
+              display: 'block',
               position: 'absolute',
               left: '24px',
             }}
@@ -2114,7 +2351,7 @@ export default function ViewerProFinal() {
             <Menu size={22} />
           </button>
           <div style={{ color: colors.text, fontSize: '16px', fontWeight: 700 }}>
-            {activeView === 'dashboard' ? companyName : activeTable?.labelPlural || companyName}
+            {activeView === 'dashboard' ? companyName : activeTable?.labelPlural || activeCustomTable?.labelPlural || companyName}
           </div>
           <div style={{ width: '30px', position: 'absolute', right: '24px' }} />
         </header>
@@ -2130,7 +2367,7 @@ export default function ViewerProFinal() {
                 companyName={companyName}
               />
             ) : activeTable ? (
-              <DataTable
+              <DynamicDataTable
                 table={activeTable}
                 records={records}
                 loading={recordsLoading}
@@ -2145,6 +2382,20 @@ export default function ViewerProFinal() {
                 appId={session?.appInfo?.id}
                 password={session?.password}
               />
+            ) : activeCustomTable ? (
+              <CustomTableRenderer
+                tableDef={activeCustomTable}
+                records={customRecords}
+                loading={customRecordsLoading}
+                searchQuery={searchQuery}
+                onSearchChange={setSearchQuery}
+                onEdit={(r) => setCustomModalRecord(r)}
+                onDelete={handleDeleteCustomRecord}
+                onAddNew={() => setCustomModalRecord('new')}
+                colors={colors}
+                radius={layoutCfg.radius}
+                shadow={layoutCfg.shadow}
+              />
             ) : (
               <div style={{ color: colors.textSecondary, textAlign: 'center', padding: '60px' }}>
                 Seleziona una voce dal menu
@@ -2154,15 +2405,18 @@ export default function ViewerProFinal() {
         </div>
       </main>
 
-      {/* Record Modal */}
+      {/* Record Modal con colonne dinamiche */}
       {modalRecord !== null && activeTable && (
-        <RecordModal
+        <DynamicRecordModal
           table={activeTable}
           record={modalRecord === 'new' ? null : modalRecord}
           onSave={handleModalSave}
           onClose={() => setModalRecord(null)}
           saving={saving}
           colors={colors}
+          clientiRecords={clientiRecords}
+          prodottiRecords={prodottiRecords}
+          ordiniRecords={ordiniRecords}
         />
       )}
 
@@ -2176,6 +2430,29 @@ export default function ViewerProFinal() {
           onChangePassword={handleChangePassword}
           colors={colors}
           slug={slug}
+        />
+      )}
+
+      {/* Create Custom Table Modal */}
+      {showCreateCustomTable && (
+        <CreateCustomTableModal
+          onSave={handleCreateCustomTable}
+          onClose={() => setShowCreateCustomTable(false)}
+          saving={creatingCustomTable}
+          colors={colors}
+        />
+      )}
+
+      {/* Custom Record Modal */}
+      {customModalRecord !== null && activeCustomTable && (
+        <CustomRecordModal
+          columns={activeCustomTable.columns}
+          record={customModalRecord === 'new' ? null : customModalRecord}
+          onSave={handleCustomModalSave}
+          onClose={() => setCustomModalRecord(null)}
+          saving={customSaving}
+          colors={colors}
+          tableLabel={activeCustomTable.label}
         />
       )}
     </div>
