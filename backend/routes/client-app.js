@@ -303,7 +303,7 @@ router.post('/client/apps/:appId/import', clientAuthMiddleware, upload.single('f
 router.put('/client/apps/:appId/tables/:tableName', clientAuthMiddleware, async (req, res) => {
   try {
     const { tableName } = req.params;
-    const { fields } = req.body;
+    const { name, label, labelPlural, fields } = req.body;
 
     if (!fields || !Array.isArray(fields)) {
       return res.status(400).json({ error: 'fields (array) obbligatorio' });
@@ -337,7 +337,10 @@ router.put('/client/apps/:appId/tables/:tableName', clientAuthMiddleware, async 
     // Aggiorna i campi della tabella
     tables[tableIndex] = {
       ...tables[tableIndex],
-        fields: fields.map((f) => ({
+      ...(name && name !== tableName ? { name } : {}),
+      ...(label ? { label } : {}),
+      ...(labelPlural ? { labelPlural } : {}),
+      fields: fields.map((f) => ({
         name: f.name,
         label: f.label,
         type: f.type || 'text',
@@ -367,7 +370,7 @@ router.put('/client/apps/:appId/tables/:tableName', clientAuthMiddleware, async 
       return res.status(500).json({ error: updateError.message });
     }
 
-    res.json({ success: true, table: tables[tableIndex] });
+    res.json({ success: true, table: updatedTable });
   } catch (err) {
     console.error('PUT table-def exception:', err);
     res.status(500).json({ error: err.message });

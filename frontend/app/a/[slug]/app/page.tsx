@@ -2136,7 +2136,7 @@ export default function ViewerProFinal() {
 
   // ─── Edit table handler ─────────────────────────────────────────────────
 
-  const handleEditTableSave = useCallback(async (fields: any[]) => {
+  const handleEditTableSave = useCallback(async (data: { name?: string; label?: string; labelPlural?: string; fields: any[] }) => {
     if (!session || !editTable) return;
     setEditTableSaving(true);
     try {
@@ -2146,11 +2146,15 @@ export default function ViewerProFinal() {
           'Content-Type': 'application/json',
           Authorization: `Bearer ${session.password}`,
         },
-        body: JSON.stringify({ fields }),
+        body: JSON.stringify(data),
       });
       if (!res.ok) {
         const err = await res.json();
         throw new Error(err.error || 'Errore salvataggio tabella');
+      }
+      // If table name changed, update activeView
+      if (data.name && data.name !== editTable.name && activeView === editTable.name) {
+        setActiveView(data.name);
       }
       setEditTable(null);
       // Refresh session to get updated config
@@ -2160,7 +2164,7 @@ export default function ViewerProFinal() {
     } finally {
       setEditTableSaving(false);
     }
-  }, [session, editTable, refreshSession]);
+  }, [session, editTable, activeView, refreshSession]);
 
   const handleLogout = useCallback(() => {
     localStorage.removeItem(sessionKey);
