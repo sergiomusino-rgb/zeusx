@@ -15,11 +15,20 @@ const PORT = process.env.PORT || 5005;
 
 // Configurazione CORS
 const allowedOrigins = (process.env.ALLOWED_ORIGINS || '*').split(',').map(s => s.trim());
+const isDevelopment = process.env.NODE_ENV !== 'production';
+
 app.use(cors({
   origin: (origin, callback) => {
+    // In development, permetti tutti gli origin
+    if (isDevelopment) {
+      return callback(null, true);
+    }
+    
+    // In production, controlla la whitelist
     if (!origin || allowedOrigins.includes('*') || allowedOrigins.includes(origin)) {
       callback(null, true);
     } else {
+      console.log(`[CORS] Origin bloccato: ${origin}`);
       callback(new Error(`Origin ${origin} non autorizzato`));
     }
   },
