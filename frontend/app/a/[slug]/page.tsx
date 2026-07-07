@@ -202,7 +202,7 @@ export default function ClientLoginPage() {
           </div>
         )}
 
-        <form onSubmit={handleLogin} className="space-y-6" autoComplete="off">
+        <form onSubmit={handleLogin} className="space-y-6">
           <div>
             <label className="text-xs font-semibold text-slate-400">Email</label>
             <input
@@ -211,7 +211,7 @@ export default function ClientLoginPage() {
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               placeholder="nome@esempio.com"
-              autoComplete="off"
+              autoComplete="username"
               className="mt-1 w-full rounded-xl border border-slate-800 bg-slate-950 p-3 text-sm text-white placeholder-slate-600 focus:border-indigo-500 focus:outline-none transition"
             />
           </div>
@@ -225,6 +225,7 @@ export default function ClientLoginPage() {
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 placeholder="Inserisci la password"
+                autoComplete="current-password"
                 className="w-full rounded-xl border border-slate-800 bg-slate-950 p-3 pr-11 text-sm text-white placeholder-slate-600 focus:border-indigo-500 focus:outline-none transition"
               />
               <button
