@@ -17,7 +17,7 @@ import {
   X, ChevronDown, Users, ShoppingCart, Package, DollarSign, TrendingUp,
   AlertTriangle, Calendar, CheckCircle, Clock, XCircle, Menu,
   Download, Upload, Download as InstallIcon, MessageSquare, Mail, MessageCircle,
-  Settings2,
+  Settings2, FileText, FileSpreadsheet, File as FileIcon,
 } from 'lucide-react';
 import { QRCodeCanvas } from 'qrcode.react';
 
@@ -2375,6 +2375,77 @@ export default function ViewerProFinal() {
               primaryColor={primaryColor}
             />
           </div>
+
+          {/* Importazioni */}
+          <div style={{ marginTop: '8px', paddingTop: '8px', borderTop: `1px solid rgba(255,255,255,0.2)` }}>
+            <div style={{ padding: '0 14px 8px', fontSize: '11px', fontWeight: 600, color: 'rgba(255,255,255,0.6)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+              Importazioni
+            </div>
+            <SidebarItem
+              icon={<Upload size={18} />}
+              label="Importa CSV"
+              active={activeView === 'import_csv'}
+              onClick={() => setActiveView('import_csv')}
+              colors={colors}
+              primaryColor={primaryColor}
+            />
+            <SidebarItem
+              icon={<Download size={18} />}
+              label="Esporta CSV"
+              active={activeView === 'export_csv'}
+              onClick={() => setActiveView('export_csv')}
+              colors={colors}
+              primaryColor={primaryColor}
+            />
+            <SidebarItem
+              icon={<FileText size={18} />}
+              label="Importa PDF"
+              active={activeView === 'import_pdf'}
+              onClick={() => setActiveView('import_pdf')}
+              colors={colors}
+              primaryColor={primaryColor}
+            />
+            <SidebarItem
+              icon={<FileText size={18} />}
+              label="Esporta PDF"
+              active={activeView === 'export_pdf'}
+              onClick={() => setActiveView('export_pdf')}
+              colors={colors}
+              primaryColor={primaryColor}
+            />
+            <SidebarItem
+              icon={<FileSpreadsheet size={18} />}
+              label="Importa Excel"
+              active={activeView === 'import_excel'}
+              onClick={() => setActiveView('import_excel')}
+              colors={colors}
+              primaryColor={primaryColor}
+            />
+            <SidebarItem
+              icon={<FileSpreadsheet size={18} />}
+              label="Esporta Excel"
+              active={activeView === 'export_excel'}
+              onClick={() => setActiveView('export_excel')}
+              colors={colors}
+              primaryColor={primaryColor}
+            />
+            <SidebarItem
+              icon={<FileIcon size={18} />}
+              label="Importa JSON"
+              active={activeView === 'import_json'}
+              onClick={() => setActiveView('import_json')}
+              colors={colors}
+              primaryColor={primaryColor}
+            />
+            <SidebarItem
+              icon={<FileIcon size={18} />}
+              label="Esporta JSON"
+              active={activeView === 'export_json'}
+              onClick={() => setActiveView('export_json')}
+              colors={colors}
+              primaryColor={primaryColor}
+            />
+          </div>
         </nav>
 
         {/* Bottom actions */}
@@ -2428,7 +2499,7 @@ export default function ViewerProFinal() {
             <Menu size={22} />
           </button>
           <div style={{ color: colors.text, fontSize: '16px', fontWeight: 700 }}>
-            {activeView === 'dashboard' ? companyName : activeTable?.labelPlural || activeCustomTable?.labelPlural || companyName}
+            {activeView === 'dashboard' ? companyName : activeTable?.labelPlural || activeCustomTable?.labelPlural || (activeView.startsWith('import_') || activeView.startsWith('export_') ? getViewLabel(activeView) : companyName)}
           </div>
           <div style={{ width: '30px', position: 'absolute', right: '24px' }} />
         </header>
@@ -2472,6 +2543,15 @@ export default function ViewerProFinal() {
                 colors={colors}
                 radius={layoutCfg.radius}
                 shadow={layoutCfg.shadow}
+              />
+            ) : activeView.startsWith('import_') || activeView.startsWith('export_') ? (
+              <ImportExportPanel
+                view={activeView}
+                colors={colors}
+                radius={layoutCfg.radius}
+                shadow={layoutCfg.shadow}
+                appId={session?.appInfo?.id}
+                password={session?.password}
               />
             ) : (
               <div style={{ color: colors.textSecondary, textAlign: 'center', padding: '60px' }}>
@@ -2543,6 +2623,224 @@ export default function ViewerProFinal() {
           colors={colors}
         />
       )}
+    </div>
+  );
+}
+
+// ─── ImportExportPanel Component ─────────────────────────────────────────────
+
+interface ImportExportPanelProps {
+  view: string;
+  colors: ReturnType<typeof getThemeVars>;
+  radius: string;
+  shadow: string;
+  appId?: string;
+  password?: string;
+}
+
+function getViewLabel(view: string): string {
+  const labels: Record<string, string> = {
+    import_csv: 'Importa CSV',
+    export_csv: 'Esporta CSV',
+    import_pdf: 'Importa PDF',
+    export_pdf: 'Esporta PDF',
+    import_excel: 'Importa Excel',
+    export_excel: 'Esporta Excel',
+    import_json: 'Importa JSON',
+    export_json: 'Esporta JSON',
+  };
+  return labels[view] || view;
+}
+
+function ImportExportPanel({ view, colors, radius, shadow, appId, password }: ImportExportPanelProps) {
+  const isImport = view.startsWith('import_');
+  const format = view.replace(/^(import|export)_/, '').toUpperCase();
+  const IconComponent = isImport ? Upload : Download;
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [processing, setProcessing] = useState(false);
+  const [message, setMessage] = useState<{ text: string; type: 'success' | 'error' } | null>(null);
+
+  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      setSelectedFile(file);
+      setMessage(null);
+    }
+  };
+
+  const handleImport = async () => {
+    if (!selectedFile || !appId || !password) {
+      setMessage({ text: 'Seleziona un file da importare', type: 'error' });
+      return;
+    }
+    setProcessing(true);
+    setMessage(null);
+    try {
+      const formData = new FormData();
+      formData.append('file', selectedFile);
+      formData.append('format', format.toLowerCase());
+      const res = await fetch(`/api/client/apps/${appId}/import`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${password}` },
+        body: formData,
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Errore importazione');
+      setMessage({ text: `${data.imported || 0} record importati con successo`, type: 'success' });
+      setSelectedFile(null);
+    } catch (err) {
+      setMessage({ text: err instanceof Error ? err.message : 'Errore importazione', type: 'error' });
+    } finally {
+      setProcessing(false);
+    }
+  };
+
+  const handleExport = async () => {
+    if (!appId || !password) {
+      setMessage({ text: 'Nessuna app collegata', type: 'error' });
+      return;
+    }
+    setProcessing(true);
+    setMessage(null);
+    try {
+      const res = await fetch(`/api/client/apps/${appId}/export?format=${format.toLowerCase()}`, {
+        headers: { Authorization: `Bearer ${password}` },
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data.error || `Errore ${res.statusText}`);
+      }
+      const blob = await res.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `export-${new Date().toISOString().split('T')[0]}.${format.toLowerCase()}`;
+      a.click();
+      window.URL.revokeObjectURL(url);
+      setMessage({ text: 'File esportato con successo', type: 'success' });
+    } catch (err) {
+      setMessage({ text: err instanceof Error ? err.message : 'Errore esportazione', type: 'error' });
+    } finally {
+      setProcessing(false);
+    }
+  };
+
+  const cardStyle: React.CSSProperties = {
+    background: colors.cardBg,
+    border: `1px solid ${colors.border}`,
+    borderRadius: '16px',
+    padding: '48px',
+    textAlign: 'center',
+    maxWidth: '480px',
+    margin: '0 auto',
+  };
+
+  const dropZoneStyle: React.CSSProperties = {
+    border: `2px dashed ${colors.border}`,
+    borderRadius: '12px',
+    padding: '40px 24px',
+    marginBottom: '24px',
+    background: colors.cardBgAlt,
+    cursor: 'pointer',
+    transition: 'all 0.2s',
+    color: colors.textSecondary,
+  };
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '24px', alignItems: 'center' }}>
+      <div style={{ textAlign: 'center', marginBottom: '8px' }}>
+        <h2 style={{ color: colors.text, fontSize: '24px', fontWeight: 700, margin: '0 0 8px 0' }}>
+          {getViewLabel(view)}
+        </h2>
+        <p style={{ color: colors.textSecondary, fontSize: '14px', margin: 0 }}>
+          {isImport
+            ? `Seleziona un file ${format} da importare nei tuoi dati`
+            : `Esporta i tuoi dati in formato ${format}`}
+        </p>
+      </div>
+
+      <div className={`${radius} ${shadow}`} style={cardStyle}>
+        {isImport ? (
+          <>
+            <div
+              style={dropZoneStyle}
+              onClick={() => fileInputRef.current?.click()}
+              onMouseEnter={(e) => { e.currentTarget.style.borderColor = colors.primary; e.currentTarget.style.background = colors.primary + '10'; }}
+              onMouseLeave={(e) => { e.currentTarget.style.borderColor = colors.border; e.currentTarget.style.background = colors.cardBgAlt; }}
+            >
+              <IconComponent size={48} style={{ color: colors.primary, marginBottom: '16px' }} />
+              <div style={{ fontSize: '16px', fontWeight: 600, color: colors.text, marginBottom: '8px' }}>
+                {selectedFile ? selectedFile.name : 'Clicca per selezionare un file'}
+              </div>
+              <div style={{ fontSize: '13px' }}>
+                {selectedFile
+                  ? `${(selectedFile.size / 1024).toFixed(1)} KB`
+                  : `Formati supportati: ${format}`}
+              </div>
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept={`.${format.toLowerCase()}`}
+                onChange={handleFileSelect}
+                style={{ display: 'none' }}
+              />
+            </div>
+            <button
+              onClick={handleImport}
+              disabled={!selectedFile || processing}
+              style={{
+                padding: '14px 28px', borderRadius: '10px', border: 'none',
+                background: processing ? colors.textSecondary : colors.primary,
+                color: '#fff', fontSize: '15px', fontWeight: 600,
+                cursor: processing || !selectedFile ? 'not-allowed' : 'pointer',
+                display: 'flex', alignItems: 'center', gap: '8px',
+                margin: '0 auto',
+              }}
+            >
+              <Upload size={18} />
+              {processing ? 'Importazione in corso...' : 'Importa File'}
+            </button>
+          </>
+        ) : (
+          <>
+            <div style={{ padding: '40px 24px', marginBottom: '24px' }}>
+              <IconComponent size={64} style={{ color: colors.primary, marginBottom: '16px' }} />
+              <div style={{ fontSize: '16px', fontWeight: 600, color: colors.text, marginBottom: '8px' }}>
+                Esporta in formato {format}
+              </div>
+              <div style={{ fontSize: '13px', color: colors.textSecondary }}>
+                Scarica tutti i tuoi dati in un file {format}
+              </div>
+            </div>
+            <button
+              onClick={handleExport}
+              disabled={processing}
+              style={{
+                padding: '14px 28px', borderRadius: '10px', border: 'none',
+                background: processing ? colors.textSecondary : colors.primary,
+                color: '#fff', fontSize: '15px', fontWeight: 600,
+                cursor: processing ? 'not-allowed' : 'pointer',
+                display: 'flex', alignItems: 'center', gap: '8px',
+                margin: '0 auto',
+              }}
+            >
+              <Download size={18} />
+              {processing ? 'Esportazione in corso...' : 'Scarica File'}
+            </button>
+          </>
+        )}
+
+        {message && (
+          <div style={{
+            marginTop: '20px', padding: '12px 16px', borderRadius: '8px', fontSize: '14px',
+            background: message.type === 'success' ? colors.success + '20' : colors.danger + '20',
+            color: message.type === 'success' ? colors.success : colors.danger,
+          }}>
+            {message.text}
+          </div>
+        )}
+      </div>
     </div>
   );
 }

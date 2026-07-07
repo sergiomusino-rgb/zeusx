@@ -17,10 +17,6 @@ import {
   Database,
   ArrowLeft,
   X,
-  Upload,
-  Download,
-  FileText,
-  FileSpreadsheet,
 } from 'lucide-react';
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -133,61 +129,6 @@ export default function Sidebar({
       },
     ],
     [pathname, showTableNavigation]
-  );
-
-  // ─── Importazioni Navigation Items ────────────────────────────────────────
-  const importNavItems: NavItem[] = useMemo(
-    () => [
-      {
-        label: 'Importa CSV',
-        href: '/dashboard/import/csv',
-        icon: <Upload size={18} />,
-        isActive: isPathActive(pathname, '/dashboard/import/csv'),
-      },
-      {
-        label: 'Esporta CSV',
-        href: '/dashboard/export/csv',
-        icon: <Download size={18} />,
-        isActive: isPathActive(pathname, '/dashboard/export/csv'),
-      },
-      {
-        label: 'Importa PDF',
-        href: '/dashboard/import/pdf',
-        icon: <FileText size={18} />,
-        isActive: isPathActive(pathname, '/dashboard/import/pdf'),
-      },
-      {
-        label: 'Esporta PDF',
-        href: '/dashboard/export/pdf',
-        icon: <FileText size={18} />,
-        isActive: isPathActive(pathname, '/dashboard/export/pdf'),
-      },
-      {
-        label: 'Importa Excel',
-        href: '/dashboard/import/excel',
-        icon: <FileSpreadsheet size={18} />,
-        isActive: isPathActive(pathname, '/dashboard/import/excel'),
-      },
-      {
-        label: 'Esporta Excel',
-        href: '/dashboard/export/excel',
-        icon: <FileSpreadsheet size={18} />,
-        isActive: isPathActive(pathname, '/dashboard/export/excel'),
-      },
-      {
-        label: 'Importa JSON',
-        href: '/dashboard/import/json',
-        icon: <Upload size={18} />,
-        isActive: isPathActive(pathname, '/dashboard/import/json'),
-      },
-      {
-        label: 'Esporta JSON',
-        href: '/dashboard/export/json',
-        icon: <Download size={18} />,
-        isActive: isPathActive(pathname, '/dashboard/export/json'),
-      },
-    ],
-    [pathname]
   );
 
   // ─── Table Navigation Items ─────────────────────────────────────────────
@@ -328,40 +269,6 @@ export default function Sidebar({
             )}
           </div>
         )}
-        {/* Importazioni Section */}
-        {!showTableNavigation && (
-          <div className="mt-4 border-t border-slate-800/60 pt-3">
-            <div className="flex items-center gap-2 px-3 pb-1">
-              <Upload size={14} className="text-slate-500" />
-              <span className="text-[10px] font-semibold uppercase tracking-widest text-slate-500">
-                Importazioni
-              </span>
-            </div>
-            <div className="space-y-1">
-              {importNavItems.map((item) => {
-                const handleClick = onClose
-                  ? () => setTimeout(() => onClose(), 150)
-                  : undefined;
-                return (
-                  <Link
-                    key={item.href}
-                    href={item.href}
-                    onClick={handleClick}
-                    className={`flex items-center gap-3 rounded-xl px-3 py-2 text-sm font-medium transition-all ${
-                      item.isActive
-                        ? 'border border-indigo-500/30 bg-gradient-to-r from-indigo-500/20 to-purple-500/20 text-indigo-400 shadow-sm shadow-indigo-500/10'
-                        : 'border border-transparent text-slate-400 hover:bg-slate-800/50 hover:text-white'
-                    }`}
-                  >
-                    <span className="flex-shrink-0">{item.icon}</span>
-                    <span className="truncate">{item.label}</span>
-                  </Link>
-                );
-              })}
-            </div>
-          </div>
-        )}
-
         {/* Quick access to Pricing when not in table view */}
         {!showTableNavigation && (
           <div className="mt-4 border-t border-slate-800/60 pt-3">
