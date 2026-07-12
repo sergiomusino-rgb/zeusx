@@ -2,6 +2,7 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import { ChevronLeft, ChevronRight, Plus, X } from 'lucide-react';
+import { useLanguage } from '@/src/lib/LanguageContext';
 
 interface Event {
   id: string;
@@ -21,6 +22,7 @@ export default function CalendarPage() {
   const [showModal, setShowModal] = useState(false);
   const [selectedDate, setSelectedDate] = useState<string>('');
   const [newEvent, setNewEvent] = useState({ title: '', time: '', color: '#6366f1' });
+  const { t } = useLanguage();
 
   const year = currentDate.getFullYear();
   const month = currentDate.getMonth();
@@ -30,8 +32,12 @@ export default function CalendarPage() {
   const daysInMonth = lastDay.getDate();
   const startingDay = firstDay.getDay();
 
-  const monthNames = ['Gennaio', 'Febbraio', 'Marzo', 'Aprile', 'Maggio', 'Giugno', 'Luglio', 'Agosto', 'Settembre', 'Ottobre', 'Novembre', 'Dicembre'];
-  const dayNames = ['Dom', 'Lun', 'Mar', 'Mer', 'Gio', 'Ven', 'Sab'];
+  const monthNames = [
+    t('month_jan'), t('month_feb'), t('month_mar'), t('month_apr'), 
+    t('month_may'), t('month_jun'), t('month_jul'), t('month_aug'), 
+    t('month_sep'), t('month_oct'), t('month_nov'), t('month_dec')
+  ];
+  const dayNames = [t('day_sun'), t('day_mon'), t('day_tue'), t('day_wed'), t('day_thu'), t('day_fri'), t('day_sat')];
 
   const goToPreviousMonth = () => setCurrentDate(new Date(year, month - 1, 1));
   const goToNextMonth = () => setCurrentDate(new Date(year, month + 1, 1));
@@ -53,7 +59,7 @@ export default function CalendarPage() {
       time: newEvent.time || undefined,
       color: newEvent.color,
     };
-    
+
     setEvents([...events, event]);
     setNewEvent({ title: '', time: '', color: '#6366f1' });
     setShowModal(false);
@@ -111,7 +117,7 @@ export default function CalendarPage() {
               ))}
               {dayEvents.length > 3 && (
                 <div className="text-xs text-slate-500 px-2">
-                  +{dayEvents.length - 3} altri
+                  {t('calendar_more_events').replace('{count}', String(dayEvents.length - 3))}
                 </div>
               )}
             </div>
@@ -128,8 +134,8 @@ export default function CalendarPage() {
         {/* Header */}
         <div className="flex items-center justify-between mb-6">
           <div>
-            <h1 className="text-3xl font-bold">Calendario</h1>
-            <p className="text-slate-400 mt-1">Gestisci i tuoi appuntamenti e scadenze</p>
+            <h1 className="text-3xl font-bold">{t('calendar_title')}</h1>
+            <p className="text-slate-400 mt-1">{t('calendar_subtitle')}</p>
           </div>
           <button
             onClick={() => {
@@ -139,7 +145,7 @@ export default function CalendarPage() {
             className="flex items-center gap-2 px-4 py-2 bg-indigo-600 hover:bg-indigo-700 rounded-lg font-medium transition"
           >
             <Plus size={18} />
-            Nuovo Evento
+            {t('calendar_new_event')}
           </button>
         </div>
 
@@ -166,7 +172,7 @@ export default function CalendarPage() {
             onClick={goToToday}
             className="px-4 py-2 bg-slate-800 hover:bg-slate-700 rounded-lg font-medium transition"
           >
-            Oggi
+            {t('calendar_today')}
           </button>
         </div>
 
@@ -189,7 +195,7 @@ export default function CalendarPage() {
 
         {/* Upcoming Events */}
         <div className="mt-6">
-          <h3 className="text-lg font-semibold mb-3">Prossimi Eventi</h3>
+          <h3 className="text-lg font-semibold mb-3">{t('calendar_upcoming_events')}</h3>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {events
               .filter(e => e.date >= new Date().toISOString().split('T')[0])
@@ -205,7 +211,7 @@ export default function CalendarPage() {
                       className="text-xs px-2 py-1 rounded font-medium"
                       style={{ background: `${event.color}20`, color: event.color }}
                     >
-                      {event.time || 'Tutto il giorno'}
+                      {event.time || t('calendar_all_day')}
                     </div>
                     <button
                       onClick={() => handleDeleteEvent(event.id)}
@@ -234,7 +240,7 @@ export default function CalendarPage() {
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
           <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 max-w-md w-full">
             <div className="flex justify-between items-center mb-6">
-              <h3 className="text-xl font-bold">Nuovo Evento</h3>
+              <h3 className="text-xl font-bold">{t('calendar_new_event_title')}</h3>
               <button
                 onClick={() => setShowModal(false)}
                 className="text-slate-400 hover:text-white transition"
@@ -246,20 +252,20 @@ export default function CalendarPage() {
             <div className="space-y-4">
               <div>
                 <label className="block text-sm font-medium mb-2 text-slate-300">
-                  Titolo <span className="text-red-400">*</span>
+                  {t('calendar_event_title')} <span className="text-red-400">{t('calendar_event_title_required')}</span>
                 </label>
                 <input
                   type="text"
                   value={newEvent.title}
                   onChange={(e) => setNewEvent({ ...newEvent, title: e.target.value })}
                   className="w-full p-3 rounded-lg bg-slate-800 border border-slate-700 text-white focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 outline-none"
-                  placeholder="Es: Riunione con cliente"
+                  placeholder={t('calendar_event_placeholder')}
                 />
               </div>
 
               <div>
                 <label className="block text-sm font-medium mb-2 text-slate-300">
-                  Data
+                  {t('calendar_event_date')}
                 </label>
                 <input
                   type="text"
@@ -271,7 +277,7 @@ export default function CalendarPage() {
 
               <div>
                 <label className="block text-sm font-medium mb-2 text-slate-300">
-                  Ora (opzionale)
+                  {t('calendar_event_time')}
                 </label>
                 <input
                   type="time"
@@ -283,7 +289,7 @@ export default function CalendarPage() {
 
               <div>
                 <label className="block text-sm font-medium mb-2 text-slate-300">
-                  Colore
+                  {t('calendar_event_color')}
                 </label>
                 <div className="flex gap-2 flex-wrap">
                   {['#6366f1', '#ef4444', '#10b981', '#f59e0b', '#ec4899', '#06b6d4'].map((color) => (
@@ -305,13 +311,13 @@ export default function CalendarPage() {
                 onClick={() => setShowModal(false)}
                 className="flex-1 px-4 py-3 bg-slate-800 hover:bg-slate-700 rounded-lg font-medium transition"
               >
-                Annulla
+                {t('calendar_cancel')}
               </button>
               <button
                 onClick={handleAddEvent}
                 className="flex-1 px-4 py-3 bg-indigo-600 hover:bg-indigo-700 rounded-lg font-medium transition"
               >
-                Crea Evento
+                {t('calendar_create_event')}
               </button>
             </div>
           </div>

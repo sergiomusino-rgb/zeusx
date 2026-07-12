@@ -5,6 +5,9 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { createClient } from '@supabase/supabase-js';
 import Link from 'next/link';
 import { Eye, EyeOff, Loader2, AlertTriangle, CheckCircle } from 'lucide-react';
+import { useLanguage } from '@/src/lib/LanguageContext';
+import LanguageSelector from '@/components/LanguageSelector';
+
 
 // ═══════════════════════════════════════════════════════════════════════════
 // LoginForm Component (inner, uses useSearchParams)
@@ -21,14 +24,15 @@ function LoginForm() {
   const [error, setError] = useState('');
   const [successMsg, setSuccessMsg] = useState('');
   const [mode, setMode] = useState<'login' | 'register' | 'reset'>('login');
+  const { t } = useLanguage();
 
   // Messaggio di redirect dopo registrazione
   useEffect(() => {
     const registered = searchParams.get('registered');
     if (registered === 'true') {
-      setSuccessMsg('Registrazione completata! Accedi con le tue credenziali.');
+      setSuccessMsg(t('login_success_registered'));
     }
-  }, [searchParams]);
+  }, [searchParams, t]);
 
   // ─── Handle Login ────────────────────────────────────────────────────────
   const handleLogin = async (e: React.FormEvent) => {
@@ -49,9 +53,9 @@ function LoginForm() {
 
       if (loginError) {
         if (loginError.message.includes('Invalid login credentials')) {
-          setError('Email o password non validi.');
+          setError(t('login_error_invalid_credentials'));
         } else if (loginError.message.includes('Email not confirmed')) {
-          setError('Email non confermata. Controlla la tua casella di posta.');
+          setError(t('login_error_email_not_confirmed'));
         } else {
           setError(loginError.message);
         }
@@ -66,7 +70,7 @@ function LoginForm() {
         router.push(`${target}?t=${Date.now()}`);
       }
     } catch (err) {
-      setError('Errore di connessione. Riprova più tardi.');
+      setError(t('login_error_connection'));
       setLoading(false);
     }
   };
@@ -79,7 +83,7 @@ function LoginForm() {
     setLoading(true);
 
     if (password.length < 6) {
-      setError('La password deve contenere almeno 6 caratteri.');
+      setError(t('login_error_password_length'));
       setLoading(false);
       return;
     }
@@ -99,7 +103,7 @@ function LoginForm() {
 
       if (signUpError) {
         if (signUpError.message.includes('already registered')) {
-          setError('Un account con questa email esiste già. Prova ad accedere.');
+          setError(t('login_error_already_registered'));
         } else {
           setError(signUpError.message);
         }
@@ -112,14 +116,12 @@ function LoginForm() {
         if (data.session) {
           router.push('/dashboard?t=' + Date.now());
         } else {
-          setSuccessMsg(
-            'Registrazione completata! Controlla la tua email per confermare l\'account, poi accedi.'
-          );
+          setSuccessMsg(t('login_success_register_confirm'));
           setMode('login');
         }
       }
     } catch (err) {
-      setError('Errore di connessione. Riprova più tardi.');
+      setError(t('login_error_connection'));
     } finally {
       setLoading(false);
     }
@@ -145,10 +147,10 @@ function LoginForm() {
       if (resetError) {
         setError(resetError.message);
       } else {
-        setSuccessMsg('Email di recupero inviata! Controlla la tua casella di posta.');
+        setSuccessMsg(t('login_success_reset'));
       }
     } catch (err) {
-      setError('Errore di connessione. Riprova più tardi.');
+      setError(t('login_error_connection'));
     } finally {
       setLoading(false);
     }
@@ -171,9 +173,9 @@ function LoginForm() {
             ZEUSX
           </Link>
           <p className="mt-2 text-sm text-slate-400">
-            {isLogin && 'Accedi al tuo account'}
-            {isRegister && 'Crea un nuovo account'}
-            {isReset && 'Recupera la tua password'}
+            {isLogin && t('login_title_login')}
+            {isRegister && t('login_title_register')}
+            {isReset && t('login_title_reset')}
           </p>
         </div>
 
@@ -203,14 +205,14 @@ function LoginForm() {
             {/* Email */}
             <div>
               <label className="mb-1.5 block text-xs font-semibold uppercase tracking-wider text-slate-400">
-                Email
+                {t('login_email_label')}
               </label>
               <input
                 type="email"
                 required
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                placeholder="nome@esempio.com"
+                placeholder={t('login_placeholder_email')}
                 autoComplete="email"
                 className="w-full rounded-xl border border-slate-700 bg-slate-800 px-4 py-3 text-sm text-white placeholder-slate-500 outline-none transition-colors focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20"
               />
@@ -220,7 +222,7 @@ function LoginForm() {
             {!isReset && (
               <div>
                 <label className="mb-1.5 block text-xs font-semibold uppercase tracking-wider text-slate-400">
-                  Password
+                  {t('login_password_label')}
                 </label>
                 <div className="relative">
                   <input
@@ -228,7 +230,7 @@ function LoginForm() {
                     required
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
-                    placeholder={isRegister ? 'Minimo 6 caratteri' : 'Inserisci la password'}
+                    placeholder={isRegister ? t('login_placeholder_password_register') : t('login_placeholder_password')}
                     autoComplete={isLogin ? 'current-password' : 'new-password'}
                     className="w-full rounded-xl border border-slate-700 bg-slate-800 py-3 pl-4 pr-11 text-sm text-white placeholder-slate-500 outline-none transition-colors focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20"
                   />
@@ -251,9 +253,9 @@ function LoginForm() {
               className="flex w-full items-center justify-center gap-2 rounded-xl bg-indigo-600 py-3 text-sm font-bold text-white transition-colors hover:bg-indigo-500 disabled:cursor-not-allowed disabled:opacity-50"
             >
               {loading && <Loader2 size={18} className="animate-spin" />}
-              {isLogin && (loading ? 'Accesso in corso...' : 'Accedi')}
-              {isRegister && (loading ? 'Registrazione...' : 'Crea Account')}
-              {isReset && (loading ? 'Invio in corso...' : 'Invia Email di Recupero')}
+              {isLogin && (loading ? t('login_button_login_loading') : t('login_button_login'))}
+              {isRegister && (loading ? t('login_button_register_loading') : t('login_button_register'))}
+              {isReset && (loading ? t('login_button_reset_loading') : t('login_button_reset'))}
             </button>
           </form>
 
@@ -265,15 +267,15 @@ function LoginForm() {
                   onClick={() => { setMode('reset'); setError(''); setSuccessMsg(''); }}
                   className="block w-full text-slate-400 transition-colors hover:text-indigo-400"
                 >
-                  Password dimenticata?
+                  {t('login_forgot_password')}
                 </button>
                 <p className="text-slate-500">
-                  Non hai un account?{' '}
+                  {t('login_no_account')}{' '}
                   <button
                     onClick={() => { setMode('register'); setError(''); setSuccessMsg(''); }}
                     className="font-semibold text-indigo-400 transition-colors hover:text-indigo-300"
                   >
-                    Registrati
+                    {t('login_register_link')}
                   </button>
                 </p>
               </>
@@ -281,12 +283,12 @@ function LoginForm() {
 
             {isRegister && (
               <p className="text-slate-500">
-                Hai già un account?{' '}
+                {t('login_has_account')}{' '}
                 <button
                   onClick={() => { setMode('login'); setError(''); setSuccessMsg(''); }}
                   className="font-semibold text-indigo-400 transition-colors hover:text-indigo-300"
                 >
-                  Accedi
+                  {t('login_login_link')}
                 </button>
               </p>
             )}
@@ -296,7 +298,7 @@ function LoginForm() {
                 onClick={() => { setMode('login'); setError(''); setSuccessMsg(''); }}
                 className="font-semibold text-indigo-400 transition-colors hover:text-indigo-300"
               >
-                ← Torna al Login
+                ← {t('login_back_to_login')}
               </button>
             )}
           </div>
@@ -306,6 +308,11 @@ function LoginForm() {
         <p className="text-center text-xs text-slate-600">
           © {new Date().getFullYear()} ZeusX by MUSINO. Tutti i diritti riservati.
         </p>
+
+        {/* Language Selector */}
+        <div className="mt-4 flex justify-center">
+          <LanguageSelector />
+        </div>
       </div>
     </div>
   );
