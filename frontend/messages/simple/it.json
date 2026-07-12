@@ -21,6 +21,8 @@
   "sidebar_app_badge": "App",
   "sidebar_by": "by MUSINO",
   "sidebar_plan_pro": "Piano PRO",
+  "sidebar_tables": "Tabelle",
+  "sidebar_no_tables_access": "Nessun accesso a tabelle",
   "header_back_to_dashboard": "Torna alla Dashboard",
   "header_dashboard_title": "Dashboard",
   "header_logout": "Esci",
@@ -293,16 +295,3 @@
   "dashboard_orders_by_status": "Ordini per Stato",
   "dashboard_agenda": "Agenda"
 }
-
-
-
-
-
-
-
-
-
-
-
-
-
