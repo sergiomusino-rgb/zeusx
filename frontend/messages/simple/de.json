@@ -282,7 +282,16 @@
   "login_generate_password": "Passwort generieren",
   "login_cancel": "Abbrechen",
   "login_error": "Fehler",
-  "login_new_password": "Neues Passwort generiert"
+  "login_new_password": "Neues Passwort generiert",
+  "dashboard_overview": "Aktivitätsübersicht für",
+  "dashboard_revenue_today": "Umsatz Heute",
+  "dashboard_new_customers": "Neue Kunden",
+  "dashboard_open_orders": "Offene Bestellungen",
+  "dashboard_critical_stock": "Kritischer Bestand",
+  "dashboard_vs_last_month": "vs letzter Monat",
+  "dashboard_monthly_revenue": "Monatlicher Umsatz",
+  "dashboard_orders_by_status": "Bestellungen nach Status",
+  "dashboard_agenda": "Agenda"
 }
 
 
