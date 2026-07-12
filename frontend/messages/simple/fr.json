@@ -264,7 +264,24 @@
   "terms_content": "Insérez le texte des conditions générales de ZeusX ici...",
   "nav_privacy": "Politique de Confidentialité",
   "privacy_title": "Politique de Confidentialité",
-  "privacy_content": "Insérez le texte de la politique de confidentialité de ZeusX ici..."
+  "privacy_content": "Insérez le texte de la politique de confidentialité de ZeusX ici...",
+  "login_loading": "Chargement...",
+  "login_enter_password": "Entrez votre mot de passe",
+  "login_configure_access": "Configurez votre accès",
+  "login_error_not_found": "App non trouvée",
+  "login_error_blocked": "App bloquée",
+  "login_error_wrong_password": "Mot de passe incorrect",
+  "login_error_connection": "Erreur de connexion",
+  "login_password_placeholder": "Entrez votre mot de passe",
+  "login_verifying": "Vérification...",
+  "login_access": "Se connecter",
+  "login_recover_password": "Récupérer le mot de passe",
+  "login_recover_password_desc": "Entrez votre email pour générer un nouveau mot de passe",
+  "login_generating": "Génération...",
+  "login_generate_password": "Générer le mot de passe",
+  "login_cancel": "Annuler",
+  "login_error": "Erreur",
+  "login_new_password": "Nouveau mot de passe généré"
 }
 
 

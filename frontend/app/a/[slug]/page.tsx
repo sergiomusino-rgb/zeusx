@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { useParams } from 'next/navigation';
 import { createClient } from '@supabase/supabase-js';
 import { Eye, EyeOff } from 'lucide-react';
+import { useLanguage } from '@/src/lib/LanguageContext';
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
@@ -17,6 +18,7 @@ const supabase = createClient(supabaseUrl, supabaseAnonKey);
 export default function ClientLoginPage() {
   const params = useParams();
   const slug = params.slug as string;
+  const { t } = useLanguage();
 
   const [app, setApp] = useState<{ name: string; client_email: string | null } | null>(null);
   const [loading, setLoading] = useState(true);
@@ -67,19 +69,19 @@ export default function ClientLoginPage() {
         .single();
 
       if (appError || !appData) {
-        setError('App non trovata');
+        setError(t('login_error_not_found'));
         setSubmitting(false);
         return;
       }
 
       if (!appData.client_active) {
-        setError('App bloccata');
+        setError(t('login_error_blocked'));
         setSubmitting(false);
         return;
       }
 
       if (appData.client_password !== password) {
-        setError('Password errata');
+        setError(t('login_error_wrong_password'));
         setSubmitting(false);
         return;
       }
@@ -142,7 +144,7 @@ export default function ClientLoginPage() {
       localStorage.setItem(`app_session_${slug}`, JSON.stringify(sessionData));
       window.location.href = `/a/${slug}/app`;
     } catch {
-      setError('Errore di connessione');
+      setError(t('login_error_connection'));
       setSubmitting(false);
     }
   }
@@ -162,15 +164,15 @@ export default function ClientLoginPage() {
       const data = await res.json();
 
       if (!res.ok) {
-        setResetMessage(`Errore: ${data.error}`);
+        setResetMessage(`${t('login_error')}: ${data.error}`);
         setResetting(false);
         return;
       }
 
-      setResetMessage(`Nuova password generata: ${data.new_password}`);
+      setResetMessage(`${t('login_new_password')}: ${data.new_password}`);
       setResetting(false);
     } catch {
-      setResetMessage('Errore di connessione');
+      setResetMessage(t('login_error_connection'));
       setResetting(false);
     }
   }
@@ -178,7 +180,7 @@ export default function ClientLoginPage() {
   if (loading) {
     return (
       <div className="min-h-screen bg-slate-950 text-white flex items-center justify-center">
-        <div className="text-xl">Caricamento...</div>
+        <div className="text-xl">{t('login_loading')}</div>
       </div>
     );
   }
@@ -192,7 +194,7 @@ export default function ClientLoginPage() {
           </h1>
           <p className="mt-2 text-lg font-semibold text-white">{app?.name}</p>
           <p className="mt-1 text-sm text-slate-400">
-            {app?.client_email ? 'Inserisci la tua password' : 'Configura il tuo accesso'}
+            {app?.client_email ? t('login_enter_password') : t('login_configure_access')}
           </p>
         </div>
 
@@ -204,7 +206,7 @@ export default function ClientLoginPage() {
 
         <form onSubmit={handleLogin} className="space-y-6">
           <div>
-            <label className="text-xs font-semibold text-slate-400">Email</label>
+            <label className="text-xs font-semibold text-slate-400">{t('login_email')}</label>
             <input
               type="email"
               required
@@ -217,14 +219,14 @@ export default function ClientLoginPage() {
           </div>
 
           <div>
-            <label className="text-xs font-semibold text-slate-400">Password</label>
+            <label className="text-xs font-semibold text-slate-400">{t('login_password')}</label>
             <div className="relative mt-1">
               <input
                 type={showPassword ? 'text' : 'password'}
                 required
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                placeholder="Inserisci la password"
+                placeholder={t('login_password_placeholder')}
                 autoComplete="current-password"
                 className="w-full rounded-xl border border-slate-800 bg-slate-950 p-3 pr-11 text-sm text-white placeholder-slate-600 focus:border-indigo-500 focus:outline-none transition"
               />
@@ -247,7 +249,7 @@ export default function ClientLoginPage() {
               }}
               className="text-xs text-slate-400 hover:text-indigo-400 transition underline"
             >
-              Password dimenticata?
+              {t('login_forgot_password')}
             </button>
           )}
 
@@ -256,21 +258,21 @@ export default function ClientLoginPage() {
             disabled={submitting}
             className="w-full rounded-xl bg-indigo-600 py-3 text-sm font-bold text-white hover:bg-indigo-500 transition shadow-lg shadow-indigo-600/20 disabled:opacity-50"
           >
-            {submitting ? 'Verifica...' : 'Accedi'}
+            {submitting ? t('login_verifying') : t('login_access')}
           </button>
         </form>
 
         {showReset && (
           <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50">
             <div className="bg-slate-900 border border-slate-800 rounded-2xl p-8 max-w-md w-full mx-4">
-              <h3 className="text-2xl font-bold mb-4">Recupera Password</h3>
+              <h3 className="text-2xl font-bold mb-4">{t('login_recover_password')}</h3>
               <p className="text-sm text-slate-400 mb-6">
-                Inserisci la tua email per generare una nuova password
+                {t('login_recover_password_desc')}
               </p>
               
               <form onSubmit={handleReset} className="space-y-4">
                 <div>
-                  <label className="text-xs font-semibold text-slate-400">Email</label>
+                  <label className="text-xs font-semibold text-slate-400">{t('login_email')}</label>
                   <input
                     type="email"
                     required
@@ -296,14 +298,14 @@ export default function ClientLoginPage() {
                     }}
                     className="flex-1 rounded-xl border border-slate-800 py-3 text-sm font-medium text-slate-400 hover:bg-slate-800 transition"
                   >
-                    Annulla
+                    {t('login_cancel')}
                   </button>
                   <button
                     type="submit"
                     disabled={resetting}
                     className="flex-1 rounded-xl bg-indigo-600 py-3 text-sm font-bold text-white hover:bg-indigo-500 transition disabled:opacity-50"
                   >
-                    {resetting ? 'Generazione...' : 'Genera Password'}
+                    {resetting ? t('login_generating') : t('login_generate_password')}
                   </button>
                 </div>
               </form>
