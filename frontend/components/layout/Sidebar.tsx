@@ -137,6 +137,12 @@ export default function Sidebar({
         icon: <FileText size={18} />,
         isActive: isPathActive(pathname, '/dashboard/terms'),
       },
+      {
+        label: t('nav_privacy'),
+        href: '/dashboard/privacy',
+        icon: <Shield size={18} />,
+        isActive: isPathActive(pathname, '/dashboard/privacy'),
+      },
     ],
     [pathname, showTableNavigation, t]
   );

@@ -261,8 +261,12 @@
   "sector_custom_desc": "Décrivez votre secteur",
   "nav_terms": "Conditions Générales",
   "terms_title": "Conditions Générales",
-  "terms_content": "Insérez le texte des conditions générales de ZeusX ici..."
+  "terms_content": "Insérez le texte des conditions générales de ZeusX ici...",
+  "nav_privacy": "Politique de Confidentialité",
+  "privacy_title": "Politique de Confidentialité",
+  "privacy_content": "Insérez le texte de la politique de confidentialité de ZeusX ici..."
 }
+
 
 
 

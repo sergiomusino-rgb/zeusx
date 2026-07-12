@@ -261,8 +261,12 @@
   "sector_custom_desc": "Beschreiben Sie Ihren Sektor",
   "nav_terms": "AGB",
   "terms_title": "AGB",
-  "terms_content": "Fügen Sie hier den AGB-Text von ZeusX ein..."
+  "terms_content": "Fügen Sie hier den AGB-Text von ZeusX ein...",
+  "nav_privacy": "Datenschutzrichtlinien",
+  "privacy_title": "Datenschutzrichtlinien",
+  "privacy_content": "Fügen Sie hier den Datenschutzrichtlinien-Text von ZeusX ein..."
 }
+
 
 
 
