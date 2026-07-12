@@ -364,7 +364,7 @@ export default function EditTableModal({
             </button>
             <button
               type="submit"
-              disabled={saving || fields.filter(f => f.name.trim()).length === 0}
+               disabled={saving || fields.filter(f => f.name && f.name.trim()).length === 0}
               style={{
                 padding: '10px 24px', borderRadius: '10px', border: 'none',
                 background: saving ? colors.textSecondary : colors.primary,
