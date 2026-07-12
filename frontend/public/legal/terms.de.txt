@@ -1,1 +1,23 @@
-Fügen Sie hier den AGB-Text von ZeusX ein...
+Allgemeine Geschäftsbedingungen
+Letzte Aktualisierung: 12. Juli 2026
+
+Bitte lesen Sie diese Allgemeinen Geschäftsbedingungen sorgfältig durch, bevor Sie Unseren Dienst nutzen.
+
+Begriffsbestimmungen
+- Land bezieht sich auf: Italien
+- Unternehmen (in diesem Vertrag als "das Unternehmen", "Wir", "Uns" oder "Unser" bezeichnet) bezieht sich auf zeusx.
+- Dienst bezieht sich auf die Website.
+- Website bezieht sich auf zeusx, erreichbar unter https://zeusxapps.com
+- Benutzer bezeichnet die Person oder Organisation, die auf den Dienst zugreift.
+
+Benutzerkonten und Inhalte
+Wenn Sie ein Konto bei uns erstellen (unterstützt durch die Supabase-Infrastruktur), müssen Sie korrekte Daten angeben. Der Benutzer behält alle Eigentumsrechte an den Inhalten, die über den Dienst erstellt werden.
+
+Abonnements und Abrechnung
+Alle Abonnements und Finanztransaktionen werden ausschließlich von Lemon Squeezy, LLC als unserem Merchant of Record abgewickelt. Lemon Squeezy ist für die Rechnungsstellung und Zahlungsabwicklung verantwortlich.
+
+Haftungsbeschränkung
+Soweit gesetzlich zulässig, ist die Haftung des Unternehmens auf den Betrag beschränkt, den der Benutzer über den Dienst bezahlt hat, oder auf 100 USD, falls nichts erworben wurde.
+
+Kontakt
+Wenn Sie Fragen haben, kontaktieren Sie uns per E-Mail: support@zeusxapps.com
