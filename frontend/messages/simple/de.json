@@ -227,8 +227,20 @@
   "generator_generating_hint": "Dies kann einige Sekunden dauern",
   "generator_error_login": "Sie müssen sich anmelden, um eine App zu erstellen",
   "generator_error_name": "Geben Sie einen Namen für die App ein",
-  "generator_error_generic": "Fehler bei der Generierung"
+  "generator_error_generic": "Fehler bei der Generierung",
+  "success_error": "Fehler",
+  "success_missing_params": "Fehlende Parameter",
+  "success_back_generator": "Zurück zum Generator",
+  "success_congrats": "🎉 Herzlichen Glückwunsch!",
+  "success_app_created": "Ihre Verwaltungssoftware wurde erfolgreich erstellt!",
+  "success_app_id": "App-ID:",
+  "success_active": "✓ Aktiv",
+  "success_password_label": "Temporaries Passwort (automatisch kopiert)",
+  "success_open_app": "Verwaltungssoftware öffnen",
+  "success_back_dashboard": "Zurück zum Dashboard",
+  "success_password_hint": "Wir empfehlen, das temporäre Passwort bei der ersten Anmeldung zu ändern."
 }
+
 
 
 

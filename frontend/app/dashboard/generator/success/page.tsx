@@ -4,6 +4,7 @@ import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { Sparkles, Copy, Check, ExternalLink } from 'lucide-react';
 import { useState, useEffect } from 'react';
+import { useLanguage } from '@/src/lib/LanguageContext';
 
 export default function SuccessPage() {
   const searchParams = useSearchParams();
@@ -11,6 +12,7 @@ export default function SuccessPage() {
   const slug = searchParams.get('slug');
   const password = searchParams.get('password');
   const appName = searchParams.get('appName');
+  const { t } = useLanguage();
 
   const [copied, setCopied] = useState(false);
 
@@ -26,13 +28,13 @@ export default function SuccessPage() {
     return (
       <div className="min-h-screen bg-gray-950 text-white p-8 flex items-center justify-center">
         <div className="text-center">
-          <h1 className="text-2xl font-bold mb-4">Errore</h1>
-          <p className="text-gray-400 mb-8">Parametri mancanti</p>
+          <h1 className="text-2xl font-bold mb-4">{t('success_error')}</h1>
+          <p className="text-gray-400 mb-8">{t('success_missing_params')}</p>
           <Link
             href="/dashboard/generator"
             className="text-indigo-400 hover:text-indigo-300"
           >
-            Torna al generatore
+            {t('success_back_generator')}
           </Link>
         </div>
       </div>
@@ -49,9 +51,9 @@ export default function SuccessPage() {
           <div className="inline-flex items-center justify-center w-20 h-20 rounded-2xl bg-gradient-to-br from-indigo-500 to-purple-600 mb-6">
             <Sparkles className="w-10 h-10 text-white" />
           </div>
-          <h1 className="text-4xl font-bold mb-4">🎉 Complimenti!</h1>
+          <h1 className="text-4xl font-bold mb-4">{t('success_congrats')}</h1>
           <p className="text-xl text-gray-300">
-            Il tuo gestionale è stato creato con successo!
+            {t('success_app_created')}
           </p>
         </div>
 
@@ -60,10 +62,10 @@ export default function SuccessPage() {
           <div className="flex items-center justify-between mb-6">
             <div>
               <h2 className="text-2xl font-bold">{appName || 'Il tuo Gestionale'}</h2>
-              <p className="text-gray-400">App ID: {appId}</p>
+              <p className="text-gray-400">{t('success_app_id')} {appId}</p>
             </div>
             <div className="px-4 py-2 bg-green-500/20 border border-green-500/30 rounded-lg">
-              <span className="text-green-400 font-medium">✓ Attiva</span>
+              <span className="text-green-400 font-medium">{t('success_active')}</span>
             </div>
           </div>
 
@@ -71,7 +73,7 @@ export default function SuccessPage() {
           {password && (
             <div className="mb-6 p-4 bg-gray-800 rounded-xl">
               <label className="block text-sm font-medium text-gray-400 mb-2">
-                Password temporanea (copiata automaticamente)
+                {t('success_password_label')}
               </label>
               <div className="flex items-center gap-3">
                 <code className="flex-1 text-2xl font-mono text-indigo-400">
@@ -102,20 +104,20 @@ export default function SuccessPage() {
               className="flex-1 flex items-center justify-center gap-2 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white font-bold py-4 px-6 rounded-xl transition-all"
             >
               <ExternalLink className="w-5 h-5" />
-              Apri il Gestionale
+              {t('success_open_app')}
             </a>
             <Link
               href="/dashboard"
               className="flex-1 flex items-center justify-center gap-2 bg-gray-800 hover:bg-gray-700 text-white font-medium py-4 px-6 rounded-xl transition-all"
             >
-              Torna alla Dashboard
+              {t('success_back_dashboard')}
             </Link>
           </div>
         </div>
 
         {/* Help Text */}
         <div className="text-center text-gray-500 text-sm">
-          <p>La prima volta che accedi ti consigliamo di cambiare la password temporanea.</p>
+          <p>{t('success_password_hint')}</p>
         </div>
       </div>
     </div>

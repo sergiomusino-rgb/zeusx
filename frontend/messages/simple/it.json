@@ -227,8 +227,20 @@
   "generator_generating_hint": "Questo potrebbe richiedere qualche secondo",
   "generator_error_login": "Devi effettuare il login per creare un'app",
   "generator_error_name": "Inserisci un nome per l'app",
-  "generator_error_generic": "Errore nella generazione"
+  "generator_error_generic": "Errore nella generazione",
+  "success_error": "Errore",
+  "success_missing_params": "Parametri mancanti",
+  "success_back_generator": "Torna al generatore",
+  "success_congrats": "🎉 Complimenti!",
+  "success_app_created": "Il tuo gestionale è stato creato con successo!",
+  "success_app_id": "App ID:",
+  "success_active": "✓ Attiva",
+  "success_password_label": "Password temporanea (copiata automaticamente)",
+  "success_open_app": "Apri il Gestionale",
+  "success_back_dashboard": "Torna alla Dashboard",
+  "success_password_hint": "La prima volta che accedi ti consigliamo di cambiare la password temporanea."
 }
+
 
 
 
