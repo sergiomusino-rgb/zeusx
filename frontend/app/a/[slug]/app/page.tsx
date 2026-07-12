@@ -234,21 +234,22 @@ interface DashboardProps {
 }
 
 function Dashboard({ colors, radius, shadow, companyName }: DashboardProps) {
+  const { t } = useLanguage();
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
       <div>
         <h1 style={{ color: colors.text, fontSize: '28px', fontWeight: 700, margin: 0 }}>
-          Dashboard
+          {t('nav_dashboard')}
         </h1>
         <p style={{ color: colors.textSecondary, fontSize: '14px', marginTop: '4px' }}>
-          Panoramica attivita per {companyName}
+          {t('dashboard_overview')} {companyName}
         </p>
       </div>
 
       {/* KPI Cards */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '20px' }}>
         <KpiCard
-          title="Fatturato Oggi"
+          title={t('dashboard_revenue_today')}
           value="EUR 4.280"
           icon={<DollarSign size={22} />}
           trend="+12.5%"
@@ -257,7 +258,7 @@ function Dashboard({ colors, radius, shadow, companyName }: DashboardProps) {
           radius={radius}
         />
         <KpiCard
-          title="Nuovi Clienti"
+          title={t('dashboard_new_customers')}
           value="23"
           icon={<Users size={22} />}
           trend="+8.1%"
@@ -266,7 +267,7 @@ function Dashboard({ colors, radius, shadow, companyName }: DashboardProps) {
           radius={radius}
         />
         <KpiCard
-          title="Ordini Aperti"
+          title={t('dashboard_open_orders')}
           value="67"
           icon={<ShoppingCart size={22} />}
           trend="-3.2%"
@@ -275,7 +276,7 @@ function Dashboard({ colors, radius, shadow, companyName }: DashboardProps) {
           radius={radius}
         />
         <KpiCard
-          title="Stock Critico"
+          title={t('dashboard_critical_stock')}
           value="5"
           icon={<AlertTriangle size={22} />}
           trend="+2"
@@ -293,7 +294,7 @@ function Dashboard({ colors, radius, shadow, companyName }: DashboardProps) {
           style={{ background: colors.cardBg, border: `1px solid ${colors.border}`, padding: '24px' }}
         >
           <h3 style={{ color: colors.text, fontSize: '16px', fontWeight: 600, margin: '0 0 16px 0' }}>
-            Fatturato Mensile
+            {t('dashboard_monthly_revenue')}
           </h3>
           <ResponsiveContainer width="100%" height={280}>
             <LineChart data={MONTHLY_REVENUE}>
