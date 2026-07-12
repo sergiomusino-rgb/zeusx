@@ -258,8 +258,12 @@
   "sector_association": "Verein",
   "sector_association_desc": "Mitglieder, Gebühren, Veranstaltungen",
   "sector_custom": "Benutzerdefiniert",
-  "sector_custom_desc": "Beschreiben Sie Ihren Sektor"
+  "sector_custom_desc": "Beschreiben Sie Ihren Sektor",
+  "nav_terms": "AGB",
+  "terms_title": "AGB",
+  "terms_content": "Fügen Sie hier den AGB-Text von ZeusX ein..."
 }
+
 
 
 

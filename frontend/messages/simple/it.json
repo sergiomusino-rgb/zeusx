@@ -258,8 +258,12 @@
   "sector_association": "Associazione",
   "sector_association_desc": "Soci, quote, eventi",
   "sector_custom": "Personalizzato",
-  "sector_custom_desc": "Descrivi il tuo settore"
+  "sector_custom_desc": "Descrivi il tuo settore",
+  "nav_terms": "Termini e Condizioni",
+  "terms_title": "Termini e Condizioni",
+  "terms_content": "Inserisci qui il testo dei termini e condizioni di ZeusX..."
 }
+
 
 
 
