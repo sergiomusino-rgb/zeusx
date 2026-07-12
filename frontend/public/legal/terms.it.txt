@@ -1,1 +1,105 @@
-Inserisci qui il testo dei termini e condizioni di ZeusX...
+Terms and Conditions
+
+Ultimo aggiornamento: 12 Luglio 2026
+
+Si prega di leggere attentamente questi termini e condizioni prima di utilizzare il Nostro Servizio.
+
+Interpretazione e Definizioni
+
+Interpretazione
+Le parole con la lettera iniziale maiuscola hanno significati definiti alle seguenti condizioni. Le seguenti definizioni avranno lo stesso significato indipendentemente dal fatto che appaiano al singolare o al plurale.
+
+Definizioni
+Ai fini dei presenti Termini e Condizioni:
+- Affiliata indica un'entità che controlla, è controllata da o è sotto il controllo comune di una parte, dove "controllo" indica la proprietà del 50% o più delle azioni, quote o altri titoli aventi diritto di voto per l'elezione degli amministratori o di altre autorità di gestione.
+- Paese si riferisce a: Italia
+- Società (indicata come "la Società", "Noi", "Ci" o "Nostro" nel presente Contratto) si riferisce a zeusx.
+- Dispositivo indica qualsiasi dispositivo in grado di accedere al Servizio, come un computer, un telefono cellulare o un tablet digitale.
+- Servizio si riferisce al Sito Web.
+- Termini e Condizioni (anche denominati "Termini") indicano i presenti Termini e Condizioni, inclusi eventuali documenti espressamente richiamati, che regolano l'accesso e l'uso del Servizio da parte dell'Utente e costituiscono l'intero accordo tra l'Utente e la Società in merito al Servizio.
+- Servizio Social Media di Terze Parti indica qualsiasi servizio o contenuto (inclusi dati, informazioni, prodotti o servizi) fornito da una terza parte che viene visualizzato, incluso, reso disponibile o collegato tramite il Servizio.
+- Sito Web si riferisce a zeusx, accessibile da https://zeusxapps.com
+- Utente (indicato anche come "Soggetto", "Tu" o "Vostro") indica l'individuo che accede o utilizza il Servizio, o la società o altra entità legale per conto della quale tale individuo accede o utilizza il Servizio, a seconda dei casi.
+
+Riconoscimento
+Questi sono i Termini e Condizioni che regolano l'uso di questo Servizio e l'accordo in essere tra l'Utente e la Società. I presenti Termini e Condizioni stabiliscono i diritti e gli obblighi di tutti gli utenti in merito all'utilizzo del Servizio.
+
+L'accesso e l'utilizzo del Servizio sono condizionati dall'accettazione e dal rispetto dei presenti Termini e Condizioni. I presenti Termini e Condizioni si applicano a tutti i visitatori, utenti e altri soggetti che accedono o utilizzano il Servizio.
+
+Accedendo o utilizzando il Servizio, l'Utente accetta di essere vincolato dai presenti Termini e Condizioni. Se l'Utente non concorda con una qualsiasi parte dei presenti Termini e Condizioni, non potrà accedere al Servizio.
+
+L'Utente dichiara di avere un'età superiore ai 18 anni. La Società non consente l'utilizzo del Servizio ai minori di 18 anni.
+
+L'accesso e l'utilizzo del Servizio sono inoltre subordinati all'accettazione della Nostra Informativa sulla Privacy (Privacy Policy). Si prega di leggere attentamente la Nostra Informativa sulla Privacy prima di utilizzare il Nostro Servizio.
+
+Account Utente e Contenuti dell'Utente
+
+Creazione dell'Account
+Quando l'Utente crea un account con Noi, alimentato dalla nostra infrastruttura di autenticazione (Supabase), è tenuto a fornirci informazioni accurate, complete e aggiornate in ogni momento. La mancata osservanza di ciò costituisce una violazione dei Termini, che può comportare la chiusura immediata dell'account sul Nostro Servizio.
+
+L'Utente è responsabile della salvaguardia delle credenziali utilizzate per accedere al Servizio e di qualsiasi attività o azione compiuta sotto la propria password. L'Utente si impegna a non divulgare la propria password a terzi. È fatto obbligo di notificarci immediatamente non appena si venga a conoscenza di qualsiasi violazione della sicurezza o uso non autorizzato del proprio account.
+
+Contenuti dell'Utente e Proprietà Intellettuale
+Il Nostro Servizio consente all'Utente di inserire, archiviare, elaborare e generare contenuti digitali ("Contenuti dell'Utente"). L'Utente conserva tutti i diritti di proprietà sui Contenuti dell'Utente inviati o generati tramite il Servizio. La Società non rivendica alcun diritto di proprietà intellettuale sul materiale o sugli asset forniti dall'Utente al Servizio.
+
+Tuttavia, caricando o elaborando contenuti tramite il Servizio, l'Utente concede a Noi una licenza tecnica, mondiale, non esclusiva e royalty-free per ospitare, archiviare ed elaborare tali contenuti al solo scopo di operare, erogare e mantenere le funzionalità della piattaforma a favore dell'Utente stesso.
+
+Abbonamenti, Fatturazione e Termini Commerciali
+
+Merchant of Record
+Tutti i piani di abbonamento, i livelli commerciali e le transazioni finanziarie sono gestiti esclusivamente da Lemon Squeezy, LLC in qualità di nostro Merchant of Record. Lemon Squeezy è responsabile della fatturazione, della conformità dei circuiti di pagamento, della riscossione delle imposte, del ciclo di vita degli abbonamenti e della gestione dei rimborsi.
+
+Acquistando un piano di abbonamento a pagamento o un livello di prodotto per accedere a funzionalità specifiche di zeusx, l'Utente accetta di rispettare i termini di servizio e le condizioni di fatturazione di Lemon Squeezy in aggiunta ai presenti Termini. Le controversie finanziarie, gli errori di pagamento e le richieste relative alle fatture devono essere indirizzate al desk di assistenza clienti di Lemon Squeezy.
+
+Tariffe e Cancellazioni
+La Società si riserva il diritto di modificare le tariffe o i livelli di abbonamento in qualsiasi momento, con un preavviso minimo di 30 giorni agli utenti attivi. L'Utente può annullare il proprio piano di abbonamento in qualsiasi momento tramite il pannello delle impostazioni dell'account interno, nella sezione di fatturazione gestita da Lemon Squeezy. In caso di annullamento, l'accesso alle funzionalità premium continuerà fino al termine del ciclo di fatturazione corrente.
+
+Collegamenti ad Altri Siti Web
+Il Nostro Servizio può contenere collegamenti a siti web o servizi di terze parti che non sono di proprietà o sotto il controllo della Società.
+
+La Società non ha alcun controllo e non si assume alcuna responsabilità per i contenuti, le informative sulla privacy o le pratiche di siti web o servizi di terze parti. L'Utente riconosce e accetta inoltre che la Società non sarà responsabile, direttamente o indirettamente, per eventuali danni o perdite causati o presumibilmente causati da o in connessione con l'uso o l'affidamento su tali contenuti, beni o servizi disponibili su o tramite tali siti o servizi.
+
+Risoluzione
+Possiamo interrompere o sospendere immediatamente l'accesso dell'Utente, senza preavviso o responsabilità, per qualsiasi motivo, incluso, a titolo esemplificativo, il caso di violazione dei presenti Termini e Condizioni.
+
+In caso di risoluzione, il diritto dell'Utente di utilizzare il Servizio cesserà immediatamente.
+
+Limitazione di Responsabilità
+Fatti salvi eventuali danni in cui l'Utente possa incorrere, l'intera responsabilità della Società e dei suoi fornitori ai sensi di qualsiasi disposizione dei presenti Termini e l'esclusivo rimedio per l'Utente per tutto quanto sopra descritto saranno limitati all'importo effettivamente pagato dall'Utente tramite il Servizio o a 100 USD se non è stato acquistato nulla tramite il Servizio.
+
+Nella misura massima consentita dalla legge applicabile, in nessun caso la Società o i suoi fornitori saranno responsabili per danni speciali, incidentali, indiretti o consequenziali di qualsiasi tipo (inclusi, ma non limitati a, danni per perdita di profitti, perdita di dati o altre informazioni, interruzione dell'attività, lesioni personali o perdita della privacy derivanti da o in qualsiasi modo correlati all'uso o all'impossibilità di utilizzare il Servizio).
+
+Esclusione di Garanzia "COSÌ COM'È" e "SECONDO DISPONIBILITÀ"
+Il Servizio viene fornito all'Utente "COSÌ COM'È" e "SECONDO DISPONIBILITÀ" e con tutti i difetti e le imperfezioni, senza garanzie di alcun tipo. Nella misura massima consentita dalla legge applicabile, la Società declina espressamente tutte le garanzie, espresse, implicite, legali o di altro tipo, rispetto al Servizio, incluse tutte le garanzie implicite di commerciabilità, idoneità a uno scopo particolare, titolo e non violazione.
+
+Legge Applicabile
+Le leggi del Paese, esclusi i conflitti di leggi, regoleranno i presenti Termini e l'utilizzo del Servizio da parte dell'Utente. L'uso dell'Applicazione può anche essere soggetto ad altre leggi locali, statali, nazionali o internazionali.
+
+Risoluzione delle Controversie
+In caso di dubbi o controversie in merito al Servizio, l'Utente accetta di tentare innanzitutto di risolvere la disputa in modo informale contattando la Società.
+
+Per gli Utenti dell'Unione Europea (UE)
+Se sei un consumatore dell'Unione Europea, beneficerai di tutte le disposizioni imperative di legge del paese in cui risiedi.
+
+Conformità Legale degli Stati Uniti
+L'Utente dichiara e garantisce che (i) non si trova in un paese soggetto a embargo da parte del governo degli Stati Uniti o che sia stato designato dal governo degli Stati Uniti come paese che supporta il terrorismo, e (ii) non è inserito in alcun elenco del governo degli Stati Uniti di parti proibite o limitate.
+
+Separabilità e Rinuncia
+
+Separabilità
+Se una qualsiasi disposizione dei presenti Termini viene ritenuta inapplicabile o non valida, tale disposizione sarà modificata e interpretata per raggiungere gli obiettivi di tale disposizione nella massima misura possibile ai sensi della legge applicabile, e le restanti disposizioni continueranno ad avere pieno vigore ed efficacia.
+
+Rinuncia
+Fatto salvo quanto qui previsto, il mancato esercizio di un diritto o la mancata richiesta di adempimento di un obbligo ai sensi dei presenti Termini non influirà sulla capacità di una parte di esercitare tale diritto o di richiedere tale adempimento in qualsiasi momento successivo.
+
+Interpretazione della Traduzione
+Questi Termini e Condizioni potrebbero essere stati tradotti se li abbiamo resi disponibili sul nostro Servizio. L'Utente accetta che il testo originale inglese prevarrà in caso di controversia.
+
+Modifiche a Questi Termini e Condizioni
+Ci riserviamo il diritto, a Nostra esclusiva discrezione, di modificare o sostituire i presenti Termini in qualsiasi momento. Se una revisione è sostanziale, faremo ogni ragionevole sforzo per fornire un preavviso di almeno 30 giorni prima dell'entrata in vigore dei nuovi termini. Ciò che costituisce una modifica sostanziale sarà determinato a Nostra esclusiva discrezione.
+
+Continuando ad accedere o a utilizzare il Nostro Servizio dopo l'entrata in vigore di tali modifiche, l'Utente accetta di essere vincolato ai termini modificati. Se non si accettano i nuovi termini, in tutto o in parte, si prega di interrompere l'utilizzo del Sito Web e del Servizio.
+
+Contattaci
+Se hai domande su questi Termini e Condizioni, puoi contattarci:
+- Tramite email: support@zeusxapps.com
