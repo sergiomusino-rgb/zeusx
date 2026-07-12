@@ -281,7 +281,16 @@
   "login_generate_password": "Generar Contraseña",
   "login_cancel": "Cancelar",
   "login_error": "Error",
-  "login_new_password": "Nueva contraseña generada"
+  "login_new_password": "Nueva contraseña generada",
+  "dashboard_overview": "Resumen de actividad para",
+  "dashboard_revenue_today": "Ingresos Hoy",
+  "dashboard_new_customers": "Nuevos Clientes",
+  "dashboard_open_orders": "Pedidos Abiertos",
+  "dashboard_critical_stock": "Stock Crítico",
+  "dashboard_vs_last_month": "vs mes pasado",
+  "dashboard_monthly_revenue": "Ingresos Mensuales",
+  "dashboard_orders_by_status": "Pedidos por Estado",
+  "dashboard_agenda": "Agenda"
 }
 
 

@@ -19,7 +19,8 @@ import {
   Download, Upload, Download as InstallIcon, MessageSquare, Mail, MessageCircle,
   Settings2, FileText, FileSpreadsheet, File as FileIcon,
 } from 'lucide-react';
-import { QRCodeCanvas } from 'qrcode.react';
+  import { QRCodeCanvas } from 'qrcode.react';
+  import { useLanguage } from '@/src/lib/LanguageContext';
 
 // ─── Interfaces ───────────────────────────────────────────────────────────────
 
