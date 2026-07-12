@@ -128,21 +128,27 @@ export default function ClientLoginPage() {
       
       console.log('[Login] combinedConfig:', combinedConfig);
 
-      // Salva sessione con appInfo completo (tutti i dati)
-      const sessionData = {
-        slug,
-        password,
-        appInfo: {
-          id: appData.id,
-          slug,
-          name: appData.name,
-          config: combinedConfig,
-        },
-      };
-      
-      console.log('[Login] Saving session with appInfo:', sessionData.appInfo);
-      localStorage.setItem(`app_session_${slug}`, JSON.stringify(sessionData));
-      window.location.href = `/a/${slug}/app`;
+       // Estrai la lingua dal config e salvala in localStorage
+       const appLang = combinedConfig?.lang || 'it';
+       if (appLang && ['it', 'en', 'fr', 'de', 'es'].includes(appLang)) {
+         localStorage.setItem('zeusx_locale', appLang);
+       }
+       
+       // Salva sessione con appInfo completo (tutti i dati)
+       const sessionData = {
+         slug,
+         password,
+         appInfo: {
+           id: appData.id,
+           slug,
+           name: appData.name,
+           config: combinedConfig,
+         },
+       };
+       
+       console.log('[Login] Saving session with appInfo:', sessionData.appInfo);
+       localStorage.setItem(`app_session_${slug}`, JSON.stringify(sessionData));
+       window.location.href = `/a/${slug}/app`;
     } catch {
       setError(t('login_error_connection'));
       setSubmitting(false);
