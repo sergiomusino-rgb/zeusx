@@ -1843,7 +1843,15 @@ export default function ViewerProFinal() {
       });
       if (!res.ok) throw new Error('Failed to load records');
       const data = await res.json();
-      setRecords(Array.isArray(data) ? data : data.records || data.data || []);
+      const rawRecords: any[] = Array.isArray(data) ? data : data.records || data.data || [];
+      // Il backend salva i campi dentro la colonna JSONB "data" (es. { id, data: { ragione_sociale, ... } }).
+      // Appiattiamo qui la struttura in modo che DynamicDataTable/DynamicRecordModal
+      // possano leggere i campi direttamente da record[fieldName] come si aspettano.
+      const normalized = rawRecords.map((r) => ({
+        id: r.id,
+        ...(r.data || r),
+      }));
+      setRecords(normalized);
     } catch (err) {
       console.error('Error loading records:', err);
       setRecords([]);
@@ -1851,6 +1859,7 @@ export default function ViewerProFinal() {
       setRecordsLoading(false);
     }
   }, []);
+
 
   useEffect(() => {
     if (activeTable && session) {
