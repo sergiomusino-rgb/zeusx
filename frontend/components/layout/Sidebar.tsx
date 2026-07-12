@@ -4,20 +4,23 @@ import React, { useMemo } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { getTablesBySector, SECTOR_LABELS, getAllTables, UITable } from '@/lib/table-config';
-import {
-  LayoutDashboard,
-  Sparkles,
-  MessageSquare,
-  Eye,
-  FolderKanban,
-  Settings,
-  Crown,
-  Shield,
-  ChevronRight,
-  Database,
-  ArrowLeft,
-  X,
-} from 'lucide-react';
+import { useLanguage } from '@/src/lib/LanguageContext';
+
+  import {
+   LayoutDashboard,
+   Sparkles,
+   MessageSquare,
+   Eye,
+   FolderKanban,
+   Settings,
+   Crown,
+   Shield,
+   ChevronRight,
+   Database,
+   ArrowLeft,
+   X,
+   FileText,
+ } from 'lucide-react';
 
 // ═══════════════════════════════════════════════════════════════════════════
 // Constants
@@ -74,62 +77,70 @@ export default function Sidebar({
   onClose,
 }: SidebarProps) {
   const pathname = usePathname();
+  const { t } = useLanguage();
 
   // ─── Main Navigation Items ──────────────────────────────────────────────
   const mainNavItems: NavItem[] = useMemo(
     () => [
       {
-        label: 'Dashboard',
+        label: t('nav_dashboard'),
         href: '/dashboard',
         icon: <LayoutDashboard size={18} />,
         isActive: isPathActive(pathname, '/dashboard') && !showTableNavigation,
         isPrimary: true,
       },
       {
-        label: 'Generatore AI',
+        label: t('nav_generator'),
         href: '/dashboard/generator',
         icon: <Sparkles size={18} />,
         isActive: isPathActive(pathname, '/dashboard/generator'),
       },
       {
-        label: 'App Create',
+        label: t('nav_projects'),
         href: '/dashboard/projects',
         icon: <FolderKanban size={18} />,
         isActive: isPathActive(pathname, '/dashboard/projects'),
       },
       {
-        label: 'Agenda',
+        label: t('nav_agenda'),
         href: '/dashboard/vision',
         icon: <Eye size={18} />,
         isActive: isPathActive(pathname, '/dashboard/vision'),
       },
       {
-        label: 'Chat AI',
+        label: t('nav_chat'),
         href: '/dashboard/chat',
         icon: <MessageSquare size={18} />,
         isActive: isPathActive(pathname, '/dashboard/chat'),
       },
       {
-        label: 'Piani e Abbonamento',
+        label: t('nav_pricing'),
         href: '/pricing',
         icon: <Crown size={18} />,
         isActive: isPathActive(pathname, '/pricing'),
       },
       {
-        label: 'Admin',
+        label: t('nav_admin'),
         href: '/admin',
         icon: <Shield size={18} />,
         isActive: isPathActive(pathname, '/admin'),
       },
       {
-        label: 'Impostazioni',
+        label: t('nav_settings'),
         href: '/dashboard/settings',
         icon: <Settings size={18} />,
         isActive: isPathActive(pathname, '/dashboard/settings'),
       },
+      {
+        label: t('nav_terms'),
+        href: '/dashboard/terms',
+        icon: <FileText size={18} />,
+        isActive: isPathActive(pathname, '/dashboard/terms'),
+      },
     ],
-    [pathname, showTableNavigation]
+    [pathname, showTableNavigation, t]
   );
+
 
   // ─── Table Navigation Items ─────────────────────────────────────────────
   const sectors = useMemo(() => getTablesBySector(), []);
@@ -147,10 +158,11 @@ export default function Sidebar({
           <button
             onClick={onClose}
             className="rounded-lg p-1.5 text-slate-400 transition-colors hover:bg-slate-800 hover:text-white"
-            aria-label="Chiudi menu"
+            aria-label={t('sidebar_close_menu')}
           >
             <X size={22} />
           </button>
+
         </div>
       )}
 
@@ -164,9 +176,10 @@ export default function Sidebar({
         </Link>
         {appId && (
           <span className="ml-auto rounded-md bg-indigo-500/20 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-indigo-400">
-            App
+            {t('sidebar_app_badge')}
           </span>
         )}
+
       </div>
 
       {/* ── Navigation ────────────────────────────────────────────────── */}
@@ -178,8 +191,9 @@ export default function Sidebar({
             className="mb-3 flex w-full items-center gap-2 rounded-xl px-3 py-2.5 text-sm font-medium text-slate-400 transition-colors hover:bg-slate-800/50 hover:text-white"
           >
             <ArrowLeft size={16} />
-            Torna alla Dashboard
+            {t('sidebar_back_to_dashboard')}
           </button>
+
         )}
 
         {/* Main Navigation */}
@@ -218,8 +232,9 @@ export default function Sidebar({
             <div className="flex items-center gap-2 px-3 pt-2">
               <Database size={14} className="text-slate-500" />
               <span className="text-[10px] font-semibold uppercase tracking-widest text-slate-500">
-                Tabelle Dati
+                {t('sidebar_table_data')}
               </span>
+
             </div>
 
             {/* Sectors */}
@@ -261,10 +276,11 @@ export default function Sidebar({
             {allTables.length === 0 && (
               <div className="px-3 py-4 text-center">
                 <p className="text-xs text-slate-500">
-                  Nessuna tabella disponibile.
+                  {t('sidebar_no_tables')}
                   <br />
-                  Crea un'app dal Generatore AI.
+                  {t('sidebar_create_app_hint')}
                 </p>
+
               </div>
             )}
           </div>
@@ -284,10 +300,11 @@ export default function Sidebar({
             alt="ZeusX"
             className="h-14 w-14 rounded-full object-cover"
           />
-          <p className="text-xs font-semibold text-slate-400">by MUSINO</p>
+          <p className="text-xs font-semibold text-slate-400">{t('sidebar_by')}</p>
           <span className="rounded-md bg-indigo-500/10 px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-indigo-400">
-            Piano PRO
+            {t('sidebar_plan_pro')}
           </span>
+
         </div>
       </div>
     </aside>
