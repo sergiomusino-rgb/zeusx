@@ -23,13 +23,20 @@ const DEFAULT_CONTENT: Record<LegalType, Record<Locale, string>> = {
 };
 
 /**
+ * Get legal content URL for a specific type and locale.
+ * Returns the public URL path for fetching the legal text file.
+ */
+export function getLegalContentUrl(type: LegalType, locale: Locale): string {
+  return `/legal/${type}.${locale}.txt`;
+}
+
+/**
  * Get legal content for a specific type and locale.
- * Looks for file at /public/legal/[type].[lang].txt
- * Falls back to placeholder if file not found.
+ * On server-side: reads from filesystem.
+ * On client-side: returns placeholder (use fetch to get actual content).
  */
 export function getLegalContent(type: LegalType, locale: Locale): string {
   // In server context, we can read files directly
-  // In client context, we use fetch to get the public file
   if (typeof window === 'undefined') {
     // Server-side: read from filesystem
     const fs = require('fs');
@@ -43,8 +50,7 @@ export function getLegalContent(type: LegalType, locale: Locale): string {
     }
   }
   
-  // Client-side: this will be handled by the page component
-  // For now return placeholder (the page will fetch on mount)
+  // Client-side: return placeholder (the page will fetch on mount)
   return DEFAULT_CONTENT[type][locale];
 }
 
