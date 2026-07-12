@@ -213,8 +213,23 @@
   "admin_table_created": "Erstellt",
   "admin_table_link": "Link",
   "admin_status_expired_badge": "Abgelaufen",
-  "admin_status_active_badge": "Aktiv"
+  "admin_status_active_badge": "Aktiv",
+  "generator_title": "✨ Erstellen Sie Ihre Verwaltungssoftware",
+  "generator_subtitle": "Wählen Sie den Sektor für Ihre Verwaltungssoftware",
+  "generator_back_dashboard": "← Zurück zum Dashboard",
+  "generator_back": "← Zurück",
+  "generator_app_name": "App-Name *",
+  "generator_custom_prompt": "Beschreiben Sie Ihre Verwaltungssoftware *",
+  "generator_custom_placeholder": "Beschreiben Sie die benötigten Funktionen...",
+  "generator_generate_button": "🚀 Generieren Sie Ihre Verwaltungssoftware",
+  "generator_generating_title": "Generierung läuft...",
+  "generator_generating_desc": "KI erstellt Ihre benutzerdefinierte Verwaltungssoftware",
+  "generator_generating_hint": "Dies kann einige Sekunden dauern",
+  "generator_error_login": "Sie müssen sich anmelden, um eine App zu erstellen",
+  "generator_error_name": "Geben Sie einen Namen für die App ein",
+  "generator_error_generic": "Fehler bei der Generierung"
 }
+
 
 
 
