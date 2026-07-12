@@ -14,7 +14,15 @@ export interface GenerateAppInput {
   appName?: string;
   sector?: string;
   userId?: string;
+  /**
+   * Lingua correntemente attiva nell'interfaccia (es. 'it', 'en', 'fr', 'de', 'es').
+   * Proviene dal LanguageContext client-side (frontend/src/lib/LanguageContext.tsx).
+   * Campo opzionale: se assente si assume 'it' per retrocompatibilità.
+   * Non interferisce con i campi già esistenti richiesti dal backend.
+   */
+  lang?: string;
 }
+
 
 export interface GenerateAppResult {
   success: boolean;
@@ -102,16 +110,27 @@ async function callLLM(systemPrompt: string): Promise<string> {
 
 // ─── System Prompt ────────────────────────────────────────────────────────────
 
-function buildSystemPrompt(userPrompt: string, appName?: string, sector?: string): string {
+// Mappa codice lingua -> nome lingua per il prompt LLM
+const LANG_NAMES: Record<string, string> = {
+  it: 'italiano',
+  en: 'inglese',
+  fr: 'francese',
+  de: 'tedesco',
+  es: 'spagnolo',
+};
+
+function buildSystemPrompt(userPrompt: string, appName?: string, sector?: string, lang?: string): string {
   const inferredSector = sector || 'gestione aziendale';
   const inferredAppName = appName || 'Gestionale';
+  const languageName = LANG_NAMES[(lang || 'it').toLowerCase()] || LANG_NAMES.it;
 
   return `Sei l'architetto software di ZeusX. Devi produrre SOLO un oggetto JSON valido, senza testo aggiuntivo, senza markdown, senza spiegazioni.
 
 Il JSON rappresenta un gestionale SaaS per il settore: "${inferredSector}".
 ${userPrompt ? `Richiesta dell'utente: ${userPrompt}` : ''}
 
-Lingua dei label: italiano.
+Lingua dei label: ${languageName}.
+
 
 Schema obbligatorio:
 {
@@ -268,9 +287,10 @@ export async function generateAppAction(input: GenerateAppInput): Promise<Genera
     
     console.log('[generateAppAction] Using tenantId:', tenantId);
 
-    // Call LLM to generate schema
-    const systemPrompt = buildSystemPrompt(input.prompt, input.appName, input.sector);
+    // Call LLM to generate schema (lang influenza la lingua dei label generati)
+    const systemPrompt = buildSystemPrompt(input.prompt, input.appName, input.sector, input.lang);
     const rawResponse = await callLLM(systemPrompt);
+
 
     // Clean and parse JSON
     const cleaned = rawResponse
@@ -326,7 +346,10 @@ export async function generateAppAction(input: GenerateAppInput): Promise<Genera
           appName: appName,
           sector: sector,
           description: description,
+          // Lingua attiva al momento della creazione (proveniente da LanguageContext client-side)
+          lang: input.lang || 'it',
         },
+
       })
       .select('id')
       .single();

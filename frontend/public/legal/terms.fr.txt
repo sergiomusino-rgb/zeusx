@@ -1,1 +1,32 @@
-Insérez le texte des conditions générales de ZeusX ici...
+Conditions Générales d'Utilisation
+Dernière mise à jour : 12 Juillet 2026
+
+Veuillez lire attentivement ces conditions générales avant d'utiliser Notre Service.
+
+Interprétation et Définitions
+
+Interprétation
+Les mots dont la lettre initiale est en majuscule ont des significations définies dans les conditions suivantes. Les définitions suivantes ont la même signification qu'elles apparaissent au singulier ou au pluriel.
+
+Définitions
+Aux fins des présentes Conditions Générales :
+- Pays fait référence à : Italie
+- Société (désignée par "la Société", "Nous", "Notre" ou "Nos" dans le présent Contrat) fait référence à zeusx.
+- Service se rapporte au Site Web.
+- Site Web fait référence à zeusx, accessible depuis https://zeusxapps.com
+- Utilisateur désigne la personne physique ou morale qui accède ou utilise le Service.
+
+Reconnaissance
+Ce sont les Conditions Générales qui régissent l'utilisation de ce Service et l'accord qui lie l'Utilisateur à la Société. Elles définissent les droits et obligations de tous les utilisateurs. Votre accès au Service est conditionné par votre acceptation et votre respect de ces Conditions.
+
+Comptes Utilisateurs et Contenu
+Lorsque vous créez un compte chez Nous (propulsé par Supabase), vous devez fournir des informations exactes. L'Utilisateur conserve tous les droits de propriété sur le contenu généré ou soumis via le Service.
+
+Abonnements et Facturation
+Tous les abonnements et transactions financières sont gérés exclusivement par Lemon Squeezy, LLC en tant que Merchant of Record. Lemon Squeezy est responsable de la facturation et des remboursements.
+
+Limitation de Responsabilité
+Dans la mesure maximale permise par la loi applicable, la responsabilité de la Société est limitée au montant effectivement payé par l'Utilisateur via le Service ou à 100 USD si rien n'a été acheté.
+
+Contactez-nous
+Si vous avez des questions, contactez-nous par e-mail : support@zeusxapps.com

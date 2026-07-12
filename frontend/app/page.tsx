@@ -2,11 +2,20 @@
 
 import Link from 'next/link';
 import BrandFooter from '@/components/BrandFooter'; // Importa il nuovo componente
+import LanguageSelector from '@/components/LanguageSelector';
+import { useLanguage } from '@/src/lib/LanguageContext';
 
 export default function Home() {
+  const { t } = useLanguage();
+
   return (
     <div className="bg-slate-950 text-white h-screen w-full font-sans flex flex-col justify-between overflow-hidden relative">
-      
+
+      {/* Selettore lingua (test infrastruttura i18n zero-impatto) */}
+      <div className="absolute top-6 right-6 z-30">
+        <LanguageSelector />
+      </div>
+
       {/* HEADER */}
       <header className="pt-10 pb-4 flex justify-center">
         <h1 className="text-6xl md:text-8xl font-black tracking-tighter text-white">
@@ -19,25 +28,26 @@ export default function Home() {
         <section className="px-6 max-w-5xl w-full text-center flex flex-col items-center gap-6">
           
           <h2 className="text-4xl md:text-7xl font-black tracking-tight max-w-4xl leading-tight">
-            Guida il tuo business
+            {t('welcome')}
           </h2>
           
           <p className="text-lg md:text-xl text-slate-400 max-w-2xl font-light leading-relaxed">
-            Generazione di gestionali AI completamente personalizzabili per il tuo business.
+            {t('landing_subtitle')}
           </p>
 
           <div className="mt-2 px-4 py-2 rounded-full border border-slate-800 bg-slate-900/50 backdrop-blur">
             <p className="text-sm text-slate-300">
-              ⭐ Leader con oltre <span className="text-indigo-400 font-bold">10.000 abbonamenti attivi</span>
+              ⭐ {t('landing_badge_prefix')} <span className="text-indigo-400 font-bold">{t('landing_badge_bold')}</span>
             </p>
           </div>
 
+
           <div className="flex flex-col sm:flex-row gap-4 mt-6 w-full sm:w-auto">
             <Link href="/login" className="bg-blue-600 hover:bg-blue-700 text-white font-semibold px-8 py-4 rounded-xl text-center shadow-lg transition">
-              Inizia
+              {t('start')}
             </Link>
             <Link href="/info" className="bg-slate-800 hover:bg-slate-700 text-white font-semibold px-8 py-4 rounded-xl text-center transition">
-              Prezzi e Termini
+              {t('pricing')}
             </Link>
           </div>
         </section>
@@ -49,3 +59,5 @@ export default function Home() {
     </div>
   );
 }
+
+

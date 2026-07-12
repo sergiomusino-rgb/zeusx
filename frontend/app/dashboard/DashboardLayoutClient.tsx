@@ -5,7 +5,11 @@ import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import Sidebar from '@/components/layout/Sidebar';
 import AuthGuard from '@/components/layout/AuthGuard';
+import LanguageSelector from '@/components/LanguageSelector';
+import { useLanguage } from '@/src/lib/LanguageContext';
 import { Menu, X } from 'lucide-react';
+
+
 
 export default function DashboardLayoutClient({
   children,
@@ -51,13 +55,16 @@ export default function DashboardLayoutClient({
     router.push('/dashboard');
   }, [router]);
 
+  const { t } = useLanguage();
+
   if (!mounted) {
     return (
       <div className="flex h-screen items-center justify-center bg-slate-950 text-white">
-        <div className="text-slate-400">Caricamento...</div>
+        <div className="text-slate-400">{t('header_loading')}</div>
       </div>
     );
   }
+
 
   return (
     <AuthGuard requireTenant redirectTo="/login">
@@ -114,7 +121,7 @@ export default function DashboardLayoutClient({
               <button
                 onClick={() => setMobileMenuOpen(true)}
                 className="rounded-lg p-2 text-slate-400 transition-colors hover:bg-slate-800 hover:text-white"
-                aria-label="Apri menu"
+                aria-label={t('header_open_menu')}
               >
                 <Menu size={22} />
               </button>
@@ -138,24 +145,27 @@ export default function DashboardLayoutClient({
                   href="/dashboard"
                   className="flex items-center gap-2 text-sm font-medium text-slate-400 transition-colors hover:text-white"
                 >
-                  ← Torna alla Dashboard
+                  ← {t('header_back_to_dashboard')}
                 </Link>
               ) : (
                   <span className="bg-gradient-to-r from-blue-400 to-indigo-500 bg-clip-text text-xl font-black tracking-wider text-transparent">
-                    ⚡ Dashboard
+                    ⚡ {t('header_dashboard_title')}
                   </span>
               )}
             </div>
 
             <div className="flex items-center gap-4">
+              <LanguageSelector />
               <Link
                 href="/"
                 className="text-xs text-slate-400 transition-colors hover:text-white"
               >
-                Esci
+                {t('header_logout')}
               </Link>
+
             </div>
           </header>
+
 
           {/* Scrollable Content */}
           <main
