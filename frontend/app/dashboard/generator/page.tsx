@@ -7,18 +7,18 @@ import { supabaseBrowser } from '@/lib/supabase-browser';
 import { useLanguage } from '@/src/lib/LanguageContext';
 
 
-// Settori disponibili per la generazione
-const SECTORS = [
-  { id: 'studio-medico', name: 'Studio Medico', icon: '🩺', description: 'Pazienti, appuntamenti, cartelle cliniche' },
-  { id: 'ristorante', name: 'Ristorante', icon: '🍽️', description: 'Tavoli, menu, ordini, cucina' },
-  { id: 'negozio', name: 'Negozio', icon: '🏪', description: 'Prodotti, vendite, magazzino' },
-  { id: 'officina', name: 'Officina', icon: '🔧', description: 'Veicoli, interventi, ricambi' },
-  { id: 'studio-legale', name: 'Studio Legale', icon: '⚖️', description: 'Clienti, pratiche, udienze' },
-  { id: 'agenzia-immobiliare', name: 'Agenzia Immobiliare', icon: '🏠', description: 'Immobili, clienti, contratti' },
-  { id: 'palestra', name: 'Palestra', icon: '💪', description: 'Iscritti, abbonamenti, schede' },
-  { id: 'hotel', name: 'Hotel', icon: '🏨', description: 'Camere, prenotazioni, ospiti' },
-  { id: 'associazione', name: 'Associazione', icon: '🤝', description: 'Soci, quote, eventi' },
-  { id: 'custom', name: 'Personalizzato', icon: '✨', description: 'Descrivi il tuo settore' },
+// Settori disponibili per la generazione (i nomi e descrizioni vengono tradotti)
+const SECTOR_IDS = [
+  { id: 'studio-medico', icon: '🩺' },
+  { id: 'ristorante', icon: '🍽️' },
+  { id: 'negozio', icon: '🏪' },
+  { id: 'officina', icon: '🔧' },
+  { id: 'studio-legale', icon: '⚖️' },
+  { id: 'agenzia-immobiliare', icon: '🏠' },
+  { id: 'palestra', icon: '💪' },
+  { id: 'hotel', icon: '🏨' },
+  { id: 'associazione', icon: '🤝' },
+  { id: 'custom', icon: '✨' },
 ];
 
 export default function GeneratorPage() {
@@ -32,6 +32,15 @@ export default function GeneratorPage() {
   const [isGenerating, setIsGenerating] = useState(false);
   const [error, setError] = useState('');
   const [step, setStep] = useState<'sector' | 'details' | 'generating'>('sector');
+
+  // Helper per ottenere nome e descrizione tradotti
+  const getSectorLabel = (sectorId: string) => {
+    return t(`sector_${sectorId.replace(/-/g, '_')}`);
+  };
+  
+  const getSectorDesc = (sectorId: string) => {
+    return t(`sector_${sectorId.replace(/-/g, '_')}_desc`);
+  };
 
   useEffect(() => {
     async function checkAuth() {
@@ -64,15 +73,17 @@ export default function GeneratorPage() {
     setStep('generating');
 
     try {
-      const sector = SECTORS.find(s => s.id === selectedSector);
+      const sector = SECTOR_IDS.find(s => s.id === selectedSector);
+      const sectorName = getSectorLabel(selectedSector);
+      const sectorDesc = getSectorDesc(selectedSector);
       const prompt = selectedSector === 'custom' 
         ? customPrompt 
-        : `Crea un gestionale per ${sector?.name || 'settore generico'}: ${sector?.description || ''}`;
+        : `Crea un gestionale per ${sectorName}: ${sectorDesc}`;
 
       const result: GenerateAppResult = await generateAppAction({
         prompt,
         appName: appName.trim(),
-        sector: sector?.name || 'Gestionale',
+        sector: sectorName,
         userId,
         // Lingua attiva nell'interfaccia (LanguageContext) — non altera i campi richiesti dal backend
         lang: currentLanguage,
@@ -104,15 +115,15 @@ export default function GeneratorPage() {
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {SECTORS.map((sector) => (
+            {SECTOR_IDS.map((sector) => (
               <button
                 key={sector.id}
                 onClick={() => handleSectorSelect(sector.id)}
                 className="p-6 rounded-2xl border border-gray-800 bg-gray-900 hover:border-indigo-500 hover:bg-gray-800 transition-all text-left group"
               >
                 <div className="text-4xl mb-4">{sector.icon}</div>
-                <h3 className="text-xl font-bold mb-2 group-hover:text-indigo-400">{sector.name}</h3>
-                <p className="text-gray-400 text-sm">{sector.description}</p>
+                <h3 className="text-xl font-bold mb-2 group-hover:text-indigo-400">{getSectorLabel(sector.id)}</h3>
+                <p className="text-gray-400 text-sm">{getSectorDesc(sector.id)}</p>
               </button>
             ))}
           </div>
@@ -132,7 +143,7 @@ export default function GeneratorPage() {
 
   // Step 2: Dettagli app
   if (step === 'details') {
-    const selected = SECTORS.find(s => s.id === selectedSector);
+    const selected = SECTOR_IDS.find(s => s.id === selectedSector);
 
     return (
       <div className="p-8">
@@ -146,8 +157,8 @@ export default function GeneratorPage() {
 
           <div className="mb-8">
             <div className="text-4xl mb-4">{selected?.icon}</div>
-            <h1 className="text-3xl font-bold mb-2">{selected?.name}</h1>
-            <p className="text-gray-400">{selected?.description}</p>
+            <h1 className="text-3xl font-bold mb-2">{getSectorLabel(selectedSector)}</h1>
+            <p className="text-gray-400">{getSectorDesc(selectedSector)}</p>
           </div>
 
           <div className="space-y-6">
@@ -159,7 +170,7 @@ export default function GeneratorPage() {
                 type="text"
                 value={appName}
                 onChange={(e) => setAppName(e.target.value)}
-                placeholder={`Il mio ${selected?.name}`}
+                placeholder={`Il mio ${getSectorLabel(selectedSector)}`}
                 className="w-full bg-gray-900 border border-gray-700 rounded-xl px-4 py-3 text-white placeholder-gray-500 focus:outline-none focus:border-indigo-500"
               />
             </div>

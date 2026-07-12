@@ -238,8 +238,29 @@
   "success_password_label": "Password temporanea (copiata automaticamente)",
   "success_open_app": "Apri il Gestionale",
   "success_back_dashboard": "Torna alla Dashboard",
-  "success_password_hint": "La prima volta che accedi ti consigliamo di cambiare la password temporanea."
+  "success_password_hint": "La prima volta che accedi ti consigliamo di cambiare la password temporanea.",
+  "sector_medical": "Studio Medico",
+  "sector_medical_desc": "Pazienti, appuntamenti, cartelle cliniche",
+  "sector_restaurant": "Ristorante",
+  "sector_restaurant_desc": "Tavoli, menu, ordini, cucina",
+  "sector_shop": "Negozio",
+  "sector_shop_desc": "Prodotti, vendite, magazzino",
+  "sector_garage": "Officina",
+  "sector_garage_desc": "Veicoli, interventi, ricambi",
+  "sector_legal": "Studio Legale",
+  "sector_legal_desc": "Clienti, pratiche, udienze",
+  "sector_realestate": "Agenzia Immobiliare",
+  "sector_realestate_desc": "Immobili, clienti, contratti",
+  "sector_gym": "Palestra",
+  "sector_gym_desc": "Iscritti, abbonamenti, schede",
+  "sector_hotel": "Hotel",
+  "sector_hotel_desc": "Camere, prenotazioni, ospiti",
+  "sector_association": "Associazione",
+  "sector_association_desc": "Soci, quote, eventi",
+  "sector_custom": "Personalizzato",
+  "sector_custom_desc": "Descrivi il tuo settore"
 }
+
 
 
 

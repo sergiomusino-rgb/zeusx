@@ -238,8 +238,29 @@
   "success_password_label": "Temporary password (auto-copied)",
   "success_open_app": "Open Management Software",
   "success_back_dashboard": "Back to Dashboard",
-  "success_password_hint": "We recommend changing the temporary password on first login."
+  "success_password_hint": "We recommend changing the temporary password on first login.",
+  "sector_medical": "Medical Studio",
+  "sector_medical_desc": "Patients, appointments, medical records",
+  "sector_restaurant": "Restaurant",
+  "sector_restaurant_desc": "Tables, menu, orders, kitchen",
+  "sector_shop": "Shop",
+  "sector_shop_desc": "Products, sales, inventory",
+  "sector_garage": "Garage",
+  "sector_garage_desc": "Vehicles, interventions, parts",
+  "sector_legal": "Legal Studio",
+  "sector_legal_desc": "Clients, cases, hearings",
+  "sector_realestate": "Real Estate Agency",
+  "sector_realestate_desc": "Properties, clients, contracts",
+  "sector_gym": "Gym",
+  "sector_gym_desc": "Members, subscriptions, workouts",
+  "sector_hotel": "Hotel",
+  "sector_hotel_desc": "Rooms, bookings, guests",
+  "sector_association": "Association",
+  "sector_association_desc": "Members, fees, events",
+  "sector_custom": "Custom",
+  "sector_custom_desc": "Describe your sector"
 }
+
 
 
 

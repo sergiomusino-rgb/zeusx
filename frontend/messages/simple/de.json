@@ -238,8 +238,29 @@
   "success_password_label": "Temporaries Passwort (automatisch kopiert)",
   "success_open_app": "Verwaltungssoftware öffnen",
   "success_back_dashboard": "Zurück zum Dashboard",
-  "success_password_hint": "Wir empfehlen, das temporäre Passwort bei der ersten Anmeldung zu ändern."
+  "success_password_hint": "Wir empfehlen, das temporäre Passwort bei der ersten Anmeldung zu ändern.",
+  "sector_medical": "Arztpraxis",
+  "sector_medical_desc": "Patienten, Termine, medizinische Akten",
+  "sector_restaurant": "Restaurant",
+  "sector_restaurant_desc": "Tische, Speisekarte, Bestellungen, Küche",
+  "sector_shop": "Geschäft",
+  "sector_shop_desc": "Produkte, Verkäufe, Lager",
+  "sector_garage": "Werkstatt",
+  "sector_garage_desc": "Fahrzeuge, Eingriffe, Ersatzteile",
+  "sector_legal": "Anwaltskanzlei",
+  "sector_legal_desc": "Klienten, Fälle, Gerichtstermine",
+  "sector_realestate": "Immobilienbüro",
+  "sector_realestate_desc": "Immobilien, Klienten, Verträge",
+  "sector_gym": "Fitnessstudio",
+  "sector_gym_desc": "Mitglieder, Abonnements, Workouts",
+  "sector_hotel": "Hotel",
+  "sector_hotel_desc": "Zimmer, Buchungen, Gäste",
+  "sector_association": "Verein",
+  "sector_association_desc": "Mitglieder, Gebühren, Veranstaltungen",
+  "sector_custom": "Benutzerdefiniert",
+  "sector_custom_desc": "Beschreiben Sie Ihren Sektor"
 }
+
 
 
 
