@@ -2,9 +2,11 @@
 
 import { useLanguage } from '@/src/lib/LanguageContext';
 import { FileText } from 'lucide-react';
+import { getLegalContent } from '@/lib/legal-content';
 
 export default function TermsPage() {
-  const { t } = useLanguage();
+  const { t, locale } = useLanguage();
+  const content = getLegalContent('terms', locale);
 
   return (
     <div className="p-8">
@@ -20,11 +22,11 @@ export default function TermsPage() {
           </p>
         </div>
 
-        {/* Content placeholder */}
+        {/* Content */}
         <div className="bg-gray-900 border border-gray-800 rounded-2xl p-8">
           <div className="prose prose-invert max-w-none">
-            <p className="text-gray-300 leading-relaxed">
-              {t('terms_content')}
+            <p className="text-gray-300 leading-relaxed whitespace-pre-line">
+              {content}
             </p>
           </div>
         </div>
