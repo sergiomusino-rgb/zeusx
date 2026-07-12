@@ -2127,7 +2127,7 @@ export default function ViewerProFinal() {
   }, [session, activeTable, loadRecords]);
 
   const handleChangePassword = useCallback(async (oldPw: string, newPw: string) => {
-    const res = await fetch(`/a/${slug}/change-password`, {
+    const res = await fetch(`/api/a/${slug}/change-password`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ oldPassword: oldPw, newPassword: newPw }),
