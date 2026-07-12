@@ -227,8 +227,20 @@
   "generator_generating_hint": "This may take a few seconds",
   "generator_error_login": "You must log in to create an app",
   "generator_error_name": "Enter a name for the app",
-  "generator_error_generic": "Error during generation"
+  "generator_error_generic": "Error during generation",
+  "success_error": "Error",
+  "success_missing_params": "Missing parameters",
+  "success_back_generator": "Back to generator",
+  "success_congrats": "🎉 Congratulations!",
+  "success_app_created": "Your management software has been created successfully!",
+  "success_app_id": "App ID:",
+  "success_active": "✓ Active",
+  "success_password_label": "Temporary password (auto-copied)",
+  "success_open_app": "Open Management Software",
+  "success_back_dashboard": "Back to Dashboard",
+  "success_password_hint": "We recommend changing the temporary password on first login."
 }
+
 
 
 

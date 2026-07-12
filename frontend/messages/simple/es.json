@@ -227,8 +227,20 @@
   "generator_generating_hint": "Esto puede tardar unos segundos",
   "generator_error_login": "Debe iniciar sesión para crear una app",
   "generator_error_name": "Ingrese un nombre para la app",
-  "generator_error_generic": "Error durante la generación"
+  "generator_error_generic": "Error durante la generación",
+  "success_error": "Error",
+  "success_missing_params": "Faltan parámetros",
+  "success_back_generator": "Volver al generador",
+  "success_congrats": "🎉 ¡Felicidades!",
+  "success_app_created": "¡Su software de gestión se ha creado con éxito!",
+  "success_app_id": "ID App:",
+  "success_active": "✓ Activo",
+  "success_password_label": "Contraseña temporal (copiada automáticamente)",
+  "success_open_app": "Abrir Software de Gestión",
+  "success_back_dashboard": "Volver al Panel",
+  "success_password_hint": "Le recomendamos cambiar la contraseña temporal en el primer acceso."
 }
+
 
 
 
