@@ -238,8 +238,29 @@
   "success_password_label": "Mot de passe temporaire (copié automatiquement)",
   "success_open_app": "Ouvrir le Logiciel de Gestion",
   "success_back_dashboard": "Retour au Dashboard",
-  "success_password_hint": "Nous vous recommandons de changer le mot de passe temporaire lors de la première connexion."
+  "success_password_hint": "Nous vous recommandons de changer le mot de passe temporaire lors de la première connexion.",
+  "sector_medical": "Cabinet Médical",
+  "sector_medical_desc": "Patients, rendez-vous, dossiers médicaux",
+  "sector_restaurant": "Restaurant",
+  "sector_restaurant_desc": "Tables, menu, commandes, cuisine",
+  "sector_shop": "Magasin",
+  "sector_shop_desc": "Produits, ventes, inventaire",
+  "sector_garage": "Garage",
+  "sector_garage_desc": "Véhicules, interventions, pièces",
+  "sector_legal": "Cabinet Juridique",
+  "sector_legal_desc": "Clients, dossiers, audiences",
+  "sector_realestate": "Agence Immobilière",
+  "sector_realestate_desc": "Propriétés, clients, contrats",
+  "sector_gym": "Gym",
+  "sector_gym_desc": "Membres, abonnements, entraînements",
+  "sector_hotel": "Hôtel",
+  "sector_hotel_desc": "Chambres, réservations, clients",
+  "sector_association": "Association",
+  "sector_association_desc": "Membres, cotisations, événements",
+  "sector_custom": "Personnalisé",
+  "sector_custom_desc": "Décrivez votre secteur"
 }
+
 
 
 

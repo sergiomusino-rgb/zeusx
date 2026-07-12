@@ -238,8 +238,29 @@
   "success_password_label": "Contraseña temporal (copiada automáticamente)",
   "success_open_app": "Abrir Software de Gestión",
   "success_back_dashboard": "Volver al Panel",
-  "success_password_hint": "Le recomendamos cambiar la contraseña temporal en el primer acceso."
+  "success_password_hint": "Le recomendamos cambiar la contraseña temporal en el primer acceso.",
+  "sector_medical": "Clínica Médica",
+  "sector_medical_desc": "Pacientes, citas, historiales clínicos",
+  "sector_restaurant": "Restaurante",
+  "sector_restaurant_desc": "Mesas, menú, pedidos, cocina",
+  "sector_shop": "Tienda",
+  "sector_shop_desc": "Productos, ventas, inventario",
+  "sector_garage": "Taller",
+  "sector_garage_desc": "Vehículos, intervenciones, repuestos",
+  "sector_legal": "Estudio Jurídico",
+  "sector_legal_desc": "Clientes, casos, audiencias",
+  "sector_realestate": "Agencia Inmobiliaria",
+  "sector_realestate_desc": "Inmuebles, clientes, contratos",
+  "sector_gym": "Gimnasio",
+  "sector_gym_desc": "Socios, suscripciones, rutinas",
+  "sector_hotel": "Hotel",
+  "sector_hotel_desc": "Habitaciones, reservas, huéspedes",
+  "sector_association": "Asociación",
+  "sector_association_desc": "Socios, cuotas, eventos",
+  "sector_custom": "Personalizado",
+  "sector_custom_desc": "Describe tu sector"
 }
+
 
 
 
