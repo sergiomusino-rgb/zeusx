@@ -293,8 +293,42 @@ function Dashboard({ colors, radius, shadow, companyName }: DashboardProps) {
           className={`${radius} ${shadow}`}
           style={{ background: colors.cardBg, border: `1px solid ${colors.border}`, padding: '24px' }}
         >
-          <h3 style={{ color: colors.text, fontSize: '16px', fontWeight: 600, margin: '0 0 16px 0' }}>
+        <h3 style={{ color: colors.text, fontSize: '16px', fontWeight: 600, margin: '0 0 16px 0' }}>
             {t('dashboard_monthly_revenue')}
+          </h3>
+          <ResponsiveContainer width="100%" height={280}>
+            <LineChart data={MONTHLY_REVENUE}>
+              <CartesianGrid strokeDasharray="3 3" stroke={colors.border} />
+              <XAxis dataKey="month" stroke={colors.textSecondary} fontSize={12} />
+              <YAxis stroke={colors.textSecondary} fontSize={12} tickFormatter={(v) => `${(v / 1000).toFixed(0)}k`} />
+              <Tooltip
+                contentStyle={{
+                  background: colors.cardBg,
+                  border: `1px solid ${colors.border}`,
+                  borderRadius: '8px',
+                  color: colors.text,
+                }}
+                formatter={(value: number) => [`EUR ${value.toLocaleString()}`, t('dashboard_monthly_revenue')]}
+              />
+              <Line
+                type="monotone"
+                dataKey="revenue"
+                stroke={colors.primary}
+                strokeWidth={3}
+                dot={{ fill: colors.primary, r: 4 }}
+                activeDot={{ r: 6 }}
+              />
+            </LineChart>
+          </ResponsiveContainer>
+        </div>
+
+        {/* Pie Chart - Orders by Status */}
+        <div
+          className={`${radius} ${shadow}`}
+          style={{ background: colors.cardBg, border: `1px solid ${colors.border}`, padding: '24px' }}
+        >
+          <h3 style={{ color: colors.text, fontSize: '16px', fontWeight: 600, margin: '0 0 16px 0' }}>
+            {t('dashboard_orders_by_status')}
           </h3>
           <ResponsiveContainer width="100%" height={280}>
             <LineChart data={MONTHLY_REVENUE}>
