@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { supabaseBrowser } from '@/src/lib/supabase-browser';
 import { Trash2, Plus, Loader2, AlertCircle, ExternalLink, Settings, Clock } from 'lucide-react';
+import { useLanguage } from '@/src/lib/LanguageContext';
 
 interface App {
   id: string;
@@ -28,6 +29,7 @@ export default function ProjectsPage() {
     appName: '',
   });
   const [deleting, setDeleting] = useState(false);
+  const { t } = useLanguage();
 
   useEffect(() => {
     loadApps();
@@ -43,7 +45,7 @@ export default function ProjectsPage() {
       
       if (userError || !user) {
         console.log('[Projects] User not logged in');
-        setError('Effettua il login per vedere le app create');
+        setError(t('projects_login_required'));
         setLoading(false);
         return;
       }
@@ -58,7 +60,7 @@ export default function ProjectsPage() {
 
       if (membershipError) {
         console.error('[Projects] membership error:', membershipError);
-        setError(`Errore caricamento membership: ${membershipError.message}`);
+        setError(t('projects_error_membership') + membershipError.message);
         setLoading(false);
         return;
       }
@@ -68,7 +70,7 @@ export default function ProjectsPage() {
       const tenantId = memberships?.[0]?.tenant_id;
       if (!tenantId) {
         console.log('[Projects] No tenant found for user');
-        setError('Nessun tenant associato all\'utente');
+        setError(t('projects_no_tenant'));
         setLoading(false);
         return;
       }
@@ -84,14 +86,14 @@ export default function ProjectsPage() {
 
       if (appsError) {
         console.error('[Projects] load apps error:', appsError);
-        setError('Errore caricamento app: ' + appsError.message);
+        setError(t('projects_error_loading') + appsError.message);
       } else {
         console.log('[Projects] Apps loaded:', appsData?.length);
         setApps(appsData || []);
       }
     } catch (err) {
       console.error('[Projects] Unexpected error:', err);
-      setError('Errore imprevisto: ' + (err instanceof Error ? err.message : 'Errore sconosciuto'));
+      setError(t('projects_error_unexpected') + (err instanceof Error ? err.message : 'Errore sconosciuto'));
     }
 
     setLoading(false);
@@ -104,7 +106,7 @@ export default function ProjectsPage() {
       const token = session?.access_token;
 
       if (!token) {
-        setError('Sessione scaduta');
+        setError(t('projects_error_session'));
         return;
       }
 
@@ -115,32 +117,32 @@ export default function ProjectsPage() {
 
       if (!res.ok) {
         const data = await res.json().catch(() => ({}));
-        throw new Error(data.error || 'Errore durante l\'eliminazione');
+        throw new Error(data.error || t('projects_error_delete'));
       }
 
       setApps(apps.filter(a => a.id !== deleteModal.appId));
       setDeleteModal({ open: false, appId: '', appName: '' });
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Errore durante l\'eliminazione');
+      setError(err instanceof Error ? err.message : t('projects_error_delete'));
     } finally {
       setDeleting(false);
     }
   };
 
   const formatDate = (dateStr: string | null) => {
-    if (!dateStr) return 'Illimitato';
+    if (!dateStr) return t('projects_unlimited');
     const date = new Date(dateStr);
     return date.toLocaleDateString('it-IT', { day: '2-digit', month: '2-digit', year: 'numeric' });
   };
 
   const getStatusBadge = (app: App) => {
     if (app.expires_at && new Date(app.expires_at) < new Date()) {
-      return <span style={{ background: '#ef444420', color: '#ef4444', padding: '4px 10px', borderRadius: '9999px', fontSize: '12px', fontWeight: 600 }}>Scaduto</span>;
+      return <span style={{ background: '#ef444420', color: '#ef4444', padding: '4px 10px', borderRadius: '9999px', fontSize: '12px', fontWeight: 600 }}>{t('projects_status_expired')}</span>;
     }
     if (app.client_active === false) {
-      return <span style={{ background: '#ef444420', color: '#ef4444', padding: '4px 10px', borderRadius: '9999px', fontSize: '12px', fontWeight: 600 }}>Disattivato</span>;
+      return <span style={{ background: '#ef444420', color: '#ef4444', padding: '4px 10px', borderRadius: '9999px', fontSize: '12px', fontWeight: 600 }}>{t('projects_status_inactive')}</span>;
     }
-    return <span style={{ background: '#22c55e20', color: '#22c55e', padding: '4px 10px', borderRadius: '9999px', fontSize: '12px', fontWeight: 600 }}>Attivo</span>;
+    return <span style={{ background: '#22c55e20', color: '#22c55e', padding: '4px 10px', borderRadius: '9999px', fontSize: '12px', fontWeight: 600 }}>{t('projects_status_active')}</span>;
   };
 
   if (loading) {
@@ -148,7 +150,7 @@ export default function ProjectsPage() {
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '60vh' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '12px', color: '#94a3b8' }}>
           <Loader2 size={24} style={{ animation: 'spin 1s linear infinite' }} />
-          <span>Caricamento app...</span>
+          <span>{t('header_loading')}...</span>
         </div>
         <style jsx global>{`
           @keyframes spin {
@@ -165,7 +167,7 @@ export default function ProjectsPage() {
       {/* Header */}
       <div style={{ maxWidth: '1200px', margin: '0 auto', marginBottom: '32px' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
-          <h1 style={{ color: '#ffffff', fontSize: '32px', fontWeight: 700, margin: 0 }}>Le app create</h1>
+          <h1 style={{ color: '#ffffff', fontSize: '32px', fontWeight: 700, margin: 0 }}>{t('projects_title')}</h1>
           <Link
             href="/dashboard/generator"
             style={{
@@ -177,11 +179,11 @@ export default function ProjectsPage() {
             }}
           >
             <Plus size={18} />
-            Nuova app
+            {t('projects_new_app')}
           </Link>
         </div>
         <p style={{ color: '#94a3b8', fontSize: '15px', margin: 0 }}>
-          Gestisci le tue app create con ZeusX
+          {t('projects_subtitle')}
         </p>
       </div>
 
@@ -198,8 +200,8 @@ export default function ProjectsPage() {
         {apps.length === 0 ? (
           <div style={{ textAlign: 'center', padding: '60px 20px', background: '#1e293b', borderRadius: '16px', border: '1px solid #334155' }}>
             <div style={{ fontSize: '48px', marginBottom: '16px' }}>📱</div>
-            <h2 style={{ color: '#ffffff', fontSize: '20px', fontWeight: 600, marginBottom: '8px' }}>Nessun progetto ancora</h2>
-            <p style={{ color: '#94a3b8', fontSize: '15px', marginBottom: '24px' }}>Crea la tua prima app con l'AI generator</p>
+            <h2 style={{ color: '#ffffff', fontSize: '20px', fontWeight: 600, marginBottom: '8px' }}>{t('projects_no_projects')}</h2>
+            <p style={{ color: '#94a3b8', fontSize: '15px', marginBottom: '24px' }}>{t('projects_no_projects_desc')}</p>
             <Link
               href="/dashboard/generator"
               style={{
@@ -211,7 +213,7 @@ export default function ProjectsPage() {
               }}
             >
               <Plus size={18} />
-              Crea la tua prima app
+              {t('projects_create_first')}
             </Link>
           </div>
         ) : (
@@ -230,7 +232,7 @@ export default function ProjectsPage() {
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '16px' }}>
                   <div>
                     <h3 style={{ color: '#ffffff', fontSize: '18px', fontWeight: 600, margin: '0 0 4px 0' }}>{app.name}</h3>
-                    <p style={{ color: '#94a3b8', fontSize: '13px', margin: 0 }}>App creata</p>
+                    <p style={{ color: '#94a3b8', fontSize: '13px', margin: 0 }}>{t('projects_app_created')}</p>
                   </div>
                   {getStatusBadge(app)}
                 </div>
@@ -239,12 +241,12 @@ export default function ProjectsPage() {
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginBottom: '20px' }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#94a3b8', fontSize: '13px' }}>
                     <Clock size={14} />
-                    <span>Creato: {formatDate(app.created_at)}</span>
+                    <span>{t('projects_created')} {formatDate(app.created_at)}</span>
                   </div>
                   {app.trial_ends_at && (
                     <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#94a3b8', fontSize: '13px' }}>
                       <Clock size={14} />
-                      <span>Scadenza trial: {formatDate(app.trial_ends_at)}</span>
+                      <span>{t('projects_trial_ends')} {formatDate(app.trial_ends_at)}</span>
                     </div>
                   )}
                 </div>
@@ -261,7 +263,7 @@ export default function ProjectsPage() {
                     }}
                   >
                     <ExternalLink size={16} />
-                    Apri
+                    {t('projects_open')}
                   </Link>
                   <Link
                     href={`/dashboard/projects/${app.id}`}
@@ -296,9 +298,9 @@ export default function ProjectsPage() {
       {deleteModal.open && (
         <div style={{ position: 'fixed', inset: 0, zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(8px)' }}>
           <div style={{ background: '#1e293b', border: '1px solid #334155', borderRadius: '16px', padding: '32px', maxWidth: '400px', width: '100%' }}>
-            <h2 style={{ color: '#ffffff', fontSize: '20px', fontWeight: 700, margin: '0 0 16px 0' }}>Elimina app</h2>
+            <h2 style={{ color: '#ffffff', fontSize: '20px', fontWeight: 700, margin: '0 0 16px 0' }}>{t('projects_delete')}</h2>
             <p style={{ color: '#94a3b8', fontSize: '15px', margin: '0 0 24px 0' }}>
-              Sei sicuro di voler eliminare <strong style={{ color: '#ffffff' }}>{deleteModal.appName}</strong>? L'app verrà eliminata definitivamente.
+              {t('projects_delete_confirm')} <strong style={{ color: '#ffffff' }}>{deleteModal.appName}</strong>? {t('projects_delete_permanent')}
             </p>
             <div style={{ display: 'flex', gap: '12px', justifyContent: 'flex-end' }}>
               <button
@@ -309,7 +311,7 @@ export default function ProjectsPage() {
                   cursor: 'pointer',
                 }}
               >
-                Annulla
+                {t('calendar_cancel')}
               </button>
               <button
                 onClick={handleDeleteApp}
@@ -320,7 +322,7 @@ export default function ProjectsPage() {
                   cursor: deleting ? 'not-allowed' : 'pointer',
                 }}
               >
-                {deleting ? 'Eliminazione...' : 'Elimina'}
+                {deleting ? t('projects_delete_loading') : t('projects_delete_button')}
               </button>
             </div>
           </div>

@@ -4,11 +4,13 @@ import Link from 'next/link';
 import { Suspense, useEffect, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { supabaseBrowser } from '@/lib/supabase-browser';
+import { useLanguage } from '@/src/lib/LanguageContext';
 
 const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || 'https://zeusx-backend.onrender.com';
 
 function SyncPlanBanner() {
   const searchParams = useSearchParams();
+  const { t } = useLanguage();
   const [syncMessage, setSyncMessage] = useState('');
 
   useEffect(() => {
@@ -32,11 +34,11 @@ function SyncPlanBanner() {
 
         const data = await res.json().catch(() => ({}));
         if (res.ok && data.paid) {
-          setSyncMessage(`Piano ${data.plan.toUpperCase()} attivato con successo! 🎉`);
+          setSyncMessage(t('dashboard_plan_activated').replace('{plan}', data.plan.toUpperCase()));
         } else if (!data.paid) {
-          setSyncMessage('Pagamento non completato. Riprova.');
+          setSyncMessage(t('dashboard_plan_not_completed'));
         } else {
-          setSyncMessage('Errore durante l\'attivazione del piano.');
+          setSyncMessage(t('dashboard_plan_error'));
         }
       } catch (err) {
         console.error('[Dashboard] sync-plan error:', err);
@@ -44,7 +46,7 @@ function SyncPlanBanner() {
     }
 
     syncPlan();
-  }, [searchParams]);
+  }, [searchParams, t]);
 
   if (!syncMessage) return null;
 
@@ -59,6 +61,7 @@ export default function DashboardPage() {
   const ADMIN_USER_ID = 'd3eda57f-692a-4904-ac5f-93bdaaec8ce5';
   const [chatInput, setChatInput] = useState('');
   const [isAdmin, setIsAdmin] = useState<boolean | null>(null);
+  const { t } = useLanguage();
 
   useEffect(() => {
     async function checkAdmin() {
@@ -74,24 +77,24 @@ export default function DashboardPage() {
 
   const coreFeatures = [
     { 
-      title: "Crea il tuo gestionale", 
-      desc: "Seleziona un settore e lascia che ZeusX generi la tua app personalizzata",
+      title: t('dashboard_create_app_title'), 
+      desc: t('dashboard_create_app_desc'),
       link: "/dashboard/generator", 
       color: "bg-gradient-to-br from-indigo-600 to-purple-600",
       icon: "✨",
       highlighted: true
     },
     { 
-      title: "App Create", 
-      desc: "Gestisci e monitora le tue app esistenti",
+      title: t('dashboard_projects_title'), 
+      desc: t('dashboard_projects_desc'),
       link: "/dashboard/projects", 
       color: "bg-blue-600",
       icon: "📁",
       highlighted: false
     },
     { 
-      title: "Agenda", 
-      desc: "Gestisci appuntamenti e scadenze",
+      title: t('dashboard_agenda_title'), 
+      desc: t('dashboard_agenda_desc'),
       link: "/dashboard/vision", 
       color: "bg-emerald-600",
       icon: "",
@@ -102,8 +105,8 @@ export default function DashboardPage() {
   // Card admin visibile solo per il tuo account
   if (isAdmin === true) {
     coreFeatures.push({
-      title: "Admin Panel",
-      desc: "Statistiche, ricavi e gestione piattaforma",
+      title: t('dashboard_admin_title'),
+      desc: t('dashboard_admin_desc'),
       link: "/admin",
       color: "bg-gradient-to-br from-red-600 to-orange-600",
       icon: "👑",
@@ -112,9 +115,9 @@ export default function DashboardPage() {
   }
 
   const utilityFeatures = [
-    { title: "Chat AI", desc: "Assistente virtuale", link: "/dashboard/chat", color: "bg-cyan-600", icon: "" },
-    { title: "Statistiche", desc: "Monitoraggio dei tuoi processi", link: "/dashboard/stats", color: "bg-purple-600", icon: "📊" },
-    { title: "Impostazioni", desc: "Gestione API e profilo", link: "/dashboard/settings", color: "bg-gray-600", icon: "️" },
+    { title: t('dashboard_chat_title'), desc: t('dashboard_chat_desc'), link: "/dashboard/chat", color: "bg-cyan-600", icon: "" },
+    { title: t('dashboard_stats_title'), desc: t('dashboard_stats_desc'), link: "/dashboard/stats", color: "bg-purple-600", icon: "📊" },
+    { title: t('dashboard_settings_title'), desc: t('dashboard_settings_desc'), link: "/dashboard/settings", color: "bg-gray-600", icon: "️" },
   ];
 
   const handleChatSubmit = (e: React.FormEvent) => {
@@ -126,7 +129,7 @@ export default function DashboardPage() {
 
   return (
     <div className="p-8">
-      <p className="text-gray-400 mb-8">Bentornato, Sergio. Cosa vuoi fare oggi?</p>
+      <p className="text-gray-400 mb-8">{t('dashboard_welcome')}</p>
 
       <Suspense fallback={null}>
         <SyncPlanBanner />
@@ -147,7 +150,7 @@ export default function DashboardPage() {
                 </div>
                 <h2 className="text-xl font-bold mb-2">{item.title}</h2>
                 <p className="text-gray-400 mb-6 flex-1">{item.desc}</p>
-                <span className="text-blue-400 font-semibold group-hover:underline">Accedi →</span>
+                <span className="text-blue-400 font-semibold group-hover:underline">{t('dashboard_card_access')}</span>
               </div>
             </Link>
           ))}
@@ -161,14 +164,14 @@ export default function DashboardPage() {
                 type="text"
                 value={chatInput}
                 onChange={(e) => setChatInput(e.target.value)}
-                placeholder="Chiedi qualcosa a ZeusX AI..."
+                placeholder={t('dashboard_chat_placeholder')}
                 className="w-full bg-gray-900 border border-gray-700 rounded-2xl px-6 py-5 text-white placeholder-gray-500 focus:outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 text-lg"
               />
               <button
                 type="submit"
                 className="absolute right-3 top-1/2 -translate-y-1/2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl px-6 py-3 font-semibold transition-all"
               >
-                Invia
+                {t('dashboard_chat_button')}
               </button>
             </div>
           </form>

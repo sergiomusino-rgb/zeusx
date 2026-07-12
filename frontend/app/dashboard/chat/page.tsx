@@ -2,12 +2,14 @@
 
 import { Suspense, useEffect, useState, useRef } from 'react';
 import { useSearchParams } from 'next/navigation';
+import { useLanguage } from '@/src/lib/LanguageContext';
 
 function ChatContent() {
   const searchParams = useSearchParams();
   const [messages, setMessages] = useState<{role: string, text: string}[]>([]);
   const [input, setInput] = useState('');
   const initialized = useRef(false);
+  const { t } = useLanguage();
 
   const handleSendMessage = async (messageText?: string) => {
     const text = messageText || input;
@@ -30,11 +32,11 @@ function ChatContent() {
       if (data && data.reply) {
         setMessages(prev => [...prev, { role: 'ai', text: data.reply }]);
       } else {
-        setMessages(prev => [...prev, { role: 'ai', text: "Errore: Risposta dal server non valida." }]);
+        setMessages(prev => [...prev, { role: 'ai', text: t('chat_error_invalid') }]);
       }
     } catch (err) {
       console.error("Errore fetch:", err);
-      setMessages(prev => [...prev, { role: 'ai', text: "Errore di connessione." }]);
+      setMessages(prev => [...prev, { role: 'ai', text: t('chat_error_connection') }]);
     }
   };
 
@@ -50,10 +52,10 @@ function ChatContent() {
 
   return (
     <div className="p-8 max-w-2xl mx-auto">
-      <h1 className="text-3xl font-bold mb-6">Chat AI</h1>
+      <h1 className="text-3xl font-bold mb-6">{t('chat_title')}</h1>
       <div className="bg-slate-900 p-4 h-96 overflow-y-auto mb-4 border border-slate-700 rounded-lg">
         {messages.length === 0 && (
-          <p className="text-slate-500 text-center mt-20">Scrivi un messaggio per iniziare...</p>
+          <p className="text-slate-500 text-center mt-20">{t('chat_empty')}</p>
         )}
         {messages.map((m, i) => (
           <div key={i} className={`mb-3 ${m.role === 'user' ? 'text-right' : 'text-left'}`}>
@@ -73,17 +75,18 @@ function ChatContent() {
           value={input}
           onChange={(e) => setInput(e.target.value)}
           onKeyDown={(e) => e.key === 'Enter' && handleSendMessage()}
-          placeholder="Scrivi un messaggio..."
+          placeholder={t('chat_placeholder')}
         />
-        <button onClick={handleSendMessage} className="bg-indigo-600 hover:bg-indigo-700 text-white px-6 py-3 rounded-lg font-semibold transition">Invia</button>
+        <button onClick={() => handleSendMessage()} className="bg-indigo-600 hover:bg-indigo-700 text-white px-6 py-3 rounded-lg font-semibold transition">{t('chat_button')}</button>
       </div>
     </div>
   );
 }
 
 export default function ChatPage() {
+  const { t } = useLanguage();
   return (
-    <Suspense fallback={<div className="p-8 text-center text-slate-400">Caricamento chat...</div>}>
+    <Suspense fallback={<div className="p-8 text-center text-slate-400">{t('chat_loading')}</div>}>
       <ChatContent />
     </Suspense>
   );
