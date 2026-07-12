@@ -1,1 +1,74 @@
-Insérez le texte de la politique de confidentialité de ZeusX ici...
+Politique de Confidentialité
+
+Dernière mise à jour : 12 Juillet 2026
+
+La présente Politique de Confidentialité décrit nos politiques et procédures concernant la collecte, l'utilisation et la divulgation de vos informations lorsque vous utilisez le Service, et vous informe de vos droits en matière de protection de la vie privée ainsi que de la manière dont la loi vous protège.
+
+Nous utilisons vos Données Personnelles pour fournir et améliorer le Service. En utilisant le Service, vous acceptez la collecte et l'utilisation des informations conformément à la présente Politique de Confidentialité.
+
+Interprétation et Définitions
+
+Interprétation
+Les mots dont la première lettre est en majuscule ont des significations définies dans les conditions suivantes. Les définitions qui suivent auront la même signification qu'elles apparaissent au singulier ou au pluriel.
+
+Définitions
+Aux fins de la présente Politique de Confidentialité :
+- Compte désigne un compte unique créé pour vous afin d'accéder à notre Service ou à une partie de celui-ci.
+- Société (dénommée "la Société", "Nous", "Notre" ou "Nos" dans la présente Politique) désigne zeusx.
+- Cookies sont de petits fichiers placés sur votre ordinateur, appareil mobile ou tout autre appareil par un site web, contenant les détails de votre historique de navigation sur ce site web parmi ses nombreuses utilisations.
+- Pays désigne : Italie
+- Titulaire du Traitement (au sens du RGPD) désigne la Société en tant qu'entité légale déterminant seule ou conjointement les finalités et les moyens du traitement des Données Personnelles.
+- Données Personnelles désignent toute information relative à une personne identifiée ou identifiable. Au sens du RGPD, les Données Personnelles désignent toute information vous concernant, telle qu'un nom, un numéro d'identification, des données de localisation, un identifiant en ligne ou un ou plusieurs facteurs spécifiques de votre identité physique, physiologique, génétique, mentale, économique, culturelle ou sociale.
+- Service désigne le Site Web.
+- Prestataire de Services désigne toute personne physique ou morale qui traite les données pour le compte de la Société. Il s'agit de sociétés tierces ou d'individus employés par la Société pour faciliter le Service, fournir le Service pour le compte de la Société, exécuter des services liés au Service ou assister la Société dans l'analyse de l'utilisation du Service. Au sens du RGPD, les Prestataires de Services sont considérés comme des Sous-Titulaires (Data Processors).
+- Données d'Utilisation désignent les données collectées automatiquement, qu'elles soient générées par l'utilisation du Service ou provenant de l'infrastructure du Service lui-même (par exemple, la durée d'une visite de page).
+- Site Web désigne zeusx, accessible depuis https://zeusxapps.com
+- Vous désigne la personne accédant ou utilisant le Service, ou la société ou autre entité juridique pour le compte de laquelle une telle personne accède ou utilise le Service, selon le cas.
+
+Collecte et Utilisation des Données Personnelles
+
+Types de Données Collectées
+
+Données Personnelles
+Lors de l'utilisation de notre Service, nous pouvons vous demander de nous fournir certaines informations d'identification personnelle pouvant être utilisées pour vous contacter ou vous identifier. Les informations d'identification personnelle peuvent inclure, sans s'y limiter :
+- Adresse e-mail
+- Prénom et nom de famille
+- Données de facturation et adresse (gérées en toute sécurité par notre Merchant of Record, Lemon Squeezy)
+
+Données d'Utilisation
+Les Données d'Utilisation sont collectées automatiquement lors de l'utilisation du Service.
+Les Données d'Utilisation peuvent inclure des informations telles que l'adresse du protocole Internet de votre appareil (par exemple, l'adresse IP), le type de navigateur, la version du navigateur, les pages de notre Service que vous visitez, l'heure et la date de votre visite, le temps passé sur ces pages, les identifiants uniques de l'appareil et d'autres données de diagnostic.
+
+Technologies de Suivi et Cookies
+Nous utilisons des Cookies et des technologies de suivi similaires pour surveiller l'activité sur notre Service et stocker certaines informations. Les technologies de suivi que nous utilisons peuvent inclure des Cookies persistants administrés par nous-mêmes pour fournir des fonctionnalités essentielles, gérer les sessions des utilisateurs, prévenir la fraude et mémoriser vos préférences linguistiques ou de connexion.
+
+Utilisation des Données Personnelles
+La Société peut utiliser les Données Personnelles aux fins suivantes :
+- Pour fournir et maintenir notre Service, y compris la surveillance de l'utilisation de notre Service.
+- Pour gérer votre Compte : gérer votre inscription en tant qu'utilisateur du Service. L'authentification est gérée en toute sécurité via l'infrastructure Supabase.
+- Pour l'exécution d'un contrat : le développement, la conformité et l'exécution du contrat d'achat des produits, articles ou services que vous avez achetés ou tout autre contrat avec Nous via le Service.
+- Pour vous contacter : pour vous contacter par e-mail ou d'autres formes équivalentes de communication électronique concernant des mises à jour ou des communications informatives relatives aux fonctionnalités, produits ou services contractés, y compris les mises à jour de sécurité, lorsque cela est nécessaire ou raisonnable pour leur mise en œuvre.
+- Pour traiter vos demandes : pour traiter et gérer vos demandes à Nous.
+
+Prestataires de Services Tiers et Partage des Données
+Nous ne vendons ni ne cédons vos Données Personnelles à des tiers. Nous partageons les informations uniquement avec les fournisseurs d'infrastructure nécessaires pour la prestation du service :
+- Supabase : Utilisé pour le stockage sécurisé de la base de données des comptes utilisateurs et pour les services d'authentification protégée.
+- Lemon Squeezy : En tant que notre Merchant of Record, gère indépendamment et en toute sécurité toutes les transactions de paiement, les données de facturation et les conformités fiscales. La Société ne stocke pas les données des cartes de crédit ou de paiement sur ses serveurs.
+
+Conservation des Données Personnelles
+La Société ne conservera vos Données Personnelles que pendant la durée nécessaire aux finalités énoncées dans la présente Politique de Confidentialité. Nous conserverons et utiliserons vos Données Personnelles dans la mesure nécessaire pour nous conformer à nos obligations légales, résoudre des litiges et faire respecter nos accords juridiques et nos politiques.
+
+Transfert des Données Personnelles
+Vos informations, y compris les Données Personnelles, sont traitées dans nos bureaux opérationnels et dans tout autre lieu où se trouvent les parties impliquées dans le traitement (comme les serveurs cloud de Supabase). Cela signifie que ces informations peuvent être transférées et stockées sur des ordinateurs situés en dehors de votre État, province, pays ou autre juridiction gouvernementale où les lois sur la protection des données peuvent différer de celles de votre juridiction. Votre consentement à la présente Politique de Confidentialité suivi de l'envoi de ces informations constitue votre accord quant à ce transfert.
+
+Sécurité des Données Personnelles
+La sécurité de vos Données Personnelles est importante pour Nous, mais rappelez que aucun moyen de transmission sur Internet ou méthode de stockage électronique n'est sûr à 100 %. Bien que nous nous efforcions d'utiliser des moyens commercialement raisonnables et des infrastructures de premier plan (comme Supabase) pour protéger vos Données Personnelles, nous ne pouvons pas garantir leur sécurité absolue.
+
+Modifications de la présente Politique de Confidentialité
+Nous pouvons mettre à jour notre Politique de Confidentialité de temps à autre. Nous vous informerons de toute modification en publiant la nouvelle Politique de Confidentialité sur cette page et en mettant à jour la date de "Dernière mise à jour".
+
+Nous vous recommandons de consulter périodiquement la présente Politique de Confidentialité pour vérifier les éventuelles modifications. Les modifications à la présente Politique de Confidentialité entrent en vigueur dès leur publication sur cette page.
+
+Contactez-nous
+En cas de questions concernant la présente Politique de Confidentialité ou pour exercer vos droits, vous pouvez nous contacter :
+- Par e-mail : support@zeusxapps.com

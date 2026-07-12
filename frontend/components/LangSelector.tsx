@@ -1,20 +1,20 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useLocale } from 'next-intl';
+import { useLanguage } from '@/src/lib/LanguageContext';
 
 // Lingue supportate
 const LANGUAGES = [
   { code: 'it', label: 'IT', flag: '🇮🇹' },
   { code: 'en', label: 'EN', flag: '🇬🇧' },
-  { code: 'es', label: 'ES', flag: '🇪🇸' },
+  { code: 'fr', label: 'FR', flag: '🇫🇷' },
   { code: 'de', label: 'DE', flag: '🇩🇪' },
+  { code: 'es', label: 'ES', flag: '🇪🇸' },
 ] as const;
 
 export default function LangSelector() {
-  const locale = useLocale();
+  const { locale, setLocale } = useLanguage();
   const [mounted, setMounted] = useState(false);
-  const [currentLocale, setCurrentLocale] = useState(locale);
   const [isOpen, setIsOpen] = useState(false);
 
   // Protezione anti-hydration: attendi il mount client-side
@@ -22,22 +22,10 @@ export default function LangSelector() {
     setMounted(true);
   }, []);
 
-  // Sincronizza con la locale corrente
-  useEffect(() => {
-    setCurrentLocale(locale);
-  }, [locale]);
-
   const handleLanguageChange = (newLocale: string) => {
-    setCurrentLocale(newLocale);
-    // Imposta il cookie NEXT_LOCALE
-    document.cookie = `NEXT_LOCALE=${newLocale}; path=/; max-age=31536000; SameSite=lax`;
+    setLocale(newLocale as 'it' | 'en' | 'fr' | 'de' | 'es');
     // Chiudi il dropdown
     setIsOpen(false);
-    // Forza il reload completo della pagina
-    // Rimuoviamo eventuali cache aggiungendo un timestamp
-    const currentUrl = new URL(window.location.href);
-    currentUrl.searchParams.set('_t', Date.now().toString());
-    window.location.href = currentUrl.toString();
   };
 
   // Placeholder per prevenire hydration mismatch
@@ -53,8 +41,8 @@ export default function LangSelector() {
         className="flex items-center justify-center w-10 h-10 rounded-xl bg-slate-800/50 border border-white/20 hover:scale-105 transition-all duration-200 shadow-lg"
         aria-label="Seleziona lingua"
       >
-        <span className="text-xl">
-          {LANGUAGES.find(l => l.code === currentLocale)?.flag || '🇮🇹'}
+        <span className="text-xl emoji-flag">
+          {LANGUAGES.find(l => l.code === locale)?.flag || '🇮🇹'}
         </span>
       </button>
 
@@ -74,12 +62,12 @@ export default function LangSelector() {
                   key={lang.code}
                   onClick={() => handleLanguageChange(lang.code)}
                   className={`flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-all duration-200 hover:scale-105 ${
-                    currentLocale === lang.code
+                    locale === lang.code
                       ? 'bg-indigo-500/20 text-white border border-indigo-500/30'
                       : 'text-slate-300 hover:bg-slate-800/50 opacity-70 hover:opacity-100'
                   }`}
                 >
-                  <span className="text-lg">{lang.flag}</span>
+                  <span className="text-lg emoji-flag">{lang.flag}</span>
                   <span>{lang.label}</span>
                 </button>
               ))}
