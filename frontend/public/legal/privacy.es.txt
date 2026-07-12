@@ -1,1 +1,18 @@
-Inserta aquí el texto de la política de privacidad de ZeusX...
+Política de Privacidad
+Última actualización: 12 de Julio de 2026
+
+Esta Política de Privacidad describe Nuestras políticas sobre la recopilación, uso y divulgación de su información al utilizar el Servicio.
+
+Datos Recopilados
+Durante el uso de Nuestro Servicio, es posible que le solicitemos cierta información de identificación personal: dirección de correo electrónico, nombre, apellidos y datos de uso.
+
+Uso compartido de datos
+No vendemos sus datos personales. Compartimos información exclusivamente con los proveedores de infraestructura necesarios:
+- Supabase: Utilizado para la autenticación segura y el almacenamiento de bases de datos.
+- Lemon Squeezy: Como nuestro Merchant of Record para el procesamiento seguro de pagos.
+
+Derechos RGPD
+De acuerdo con el RGPD, los usuarios de la Unión Europea tienen derecho a acceder, rectificar, eliminar y solicitar la portabilidad de sus datos personales.
+
+Contáctenos
+Si tiene alguna pregunta sobre esta Política de Privacidad: support@zeusxapps.com

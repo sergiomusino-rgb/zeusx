@@ -1,1 +1,18 @@
-Fügen Sie hier den Datenschutzrichtlinien-Text von ZeusX ein...
+Datenschutzerklärung
+Letzte Aktualisierung: 12. Juli 2026
+
+Diese Datenschutzerklärung beschreibt unsere Richtlinien und Verfahren für die Erhebung, Verwendung und Offenlegung Ihrer Daten bei der Nutzung des Dienstes.
+
+Erhobene Daten
+Wir erfassen personenbezogene Daten wie E-Mail-Adresse, Vor- und Nachname sowie Nutzungsdaten, um den Dienst bereitzustellen und zu verbessern.
+
+Datenweitergabe
+Wir verkaufen Ihre Daten nicht. Wir teilen Daten nur mit den notwendigen Infrastrukturanbietern:
+- Supabase: Für die sichere Authentifizierung und Datenbankverwaltung.
+- Lemon Squeezy: Als Merchant of Record für die sichere Zahlungsabwicklung.
+
+DSGVO-Rechte
+Nutzer in der Europäischen Union haben nach der DSGVO das Recht auf Auskunft, Berichtigung, Löschung und Datenübertragbarkeit ihrer personenbezogenen Daten.
+
+Kontakt
+Bei Fragen zum Datenschutz kontaktieren Sie uns bitte unter: support@zeusxapps.com

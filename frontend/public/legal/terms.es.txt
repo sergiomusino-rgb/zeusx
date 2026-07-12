@@ -1,1 +1,23 @@
-Inserta aquí el texto de términos y condiciones de ZeusX...
+Términos y Condiciones
+Última actualización: 12 de Julio de 2026
+
+Por favor, lea estos términos y condiciones detenidamente antes de utilizar Nuestro Servicio.
+
+Definiciones
+- País se refiere a: Italia
+- Compañía (denominada "la Compañía", "Nosotros", "Nos" o "Nuestro" en este Contrato) se refiere a zeusx.
+- Servicio se refiere al Sitio Web.
+- Sitio Web se refiere a zeusx, accesible desde https://zeusxapps.com
+- Usuario significa la persona física o jurídica que accede o utiliza el Servicio.
+
+Cuentas de Usuario y Contenido
+Al crear una cuenta con Nosotros (gestionada por Supabase), debe proporcionar información precisa. El Usuario conserva todos los derechos de propiedad sobre el contenido generado o enviado a través del Servicio.
+
+Suscripciones y Facturación
+Todos los planes de suscripción y transacciones financieras son gestionados exclusivamente por Lemon Squeezy, LLC como nuestro Merchant of Record. Lemon Squeezy es responsable de la facturación y los reembolsos.
+
+Limitación de Responsabilidad
+En la máxima medida permitida por la ley aplicable, la responsabilidad de la Compañía se limitará al monto real pagado por el Usuario a través del Servicio o a 100 USD si no ha comprado nada.
+
+Contáctenos
+Si tiene alguna pregunta, puede contactarnos por correo electrónico: support@zeusxapps.com
