@@ -264,7 +264,24 @@
   "terms_content": "Fügen Sie hier den AGB-Text von ZeusX ein...",
   "nav_privacy": "Datenschutzrichtlinien",
   "privacy_title": "Datenschutzrichtlinien",
-  "privacy_content": "Fügen Sie hier den Datenschutzrichtlinien-Text von ZeusX ein..."
+  "privacy_content": "Fügen Sie hier den Datenschutzrichtlinien-Text von ZeusX ein...",
+  "login_loading": "Laden...",
+  "login_enter_password": "Geben Sie Ihr Passwort ein",
+  "login_configure_access": "Konfigurieren Sie Ihren Zugriff",
+  "login_error_not_found": "App nicht gefunden",
+  "login_error_blocked": "App blockiert",
+  "login_error_wrong_password": "Falsches Passwort",
+  "login_error_connection": "Verbindungsfehler",
+  "login_password_placeholder": "Geben Sie Ihr Passwort ein",
+  "login_verifying": "Überprüfung...",
+  "login_access": "Anmelden",
+  "login_recover_password": "Passwort wiederherstellen",
+  "login_recover_password_desc": "Geben Sie Ihre E-Mail ein, um ein neues Passwort zu generieren",
+  "login_generating": "Generierung...",
+  "login_generate_password": "Passwort generieren",
+  "login_cancel": "Abbrechen",
+  "login_error": "Fehler",
+  "login_new_password": "Neues Passwort generiert"
 }
 
 
