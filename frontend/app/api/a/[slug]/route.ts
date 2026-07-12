@@ -14,7 +14,7 @@ export async function POST(
       return NextResponse.json({ error: 'Password richiesta' }, { status: 400 });
     }
 
-    const response = await fetch(`${BACKEND_URL}/api/a/${slug}`, {
+const response = await fetch(`${BACKEND_URL}/a/${slug}`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ password }),
