@@ -370,7 +370,7 @@ router.put('/client/apps/:appId/tables/:tableName', clientAuthMiddleware, async 
       return res.status(500).json({ error: updateError.message });
     }
 
-    res.json({ success: true, table: updatedTable });
+    res.json({ success: true, table: tables[tableIndex] });
   } catch (err) {
     console.error('PUT table-def exception:', err);
     res.status(500).json({ error: err.message });
