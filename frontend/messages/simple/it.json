@@ -213,8 +213,23 @@
   "admin_table_created": "Creato",
   "admin_table_link": "Link",
   "admin_status_expired_badge": "Scaduta",
-  "admin_status_active_badge": "Attiva"
+  "admin_status_active_badge": "Attiva",
+  "generator_title": "✨ Crea il tuo Gestionale",
+  "generator_subtitle": "Seleziona il settore per il tuo gestionale",
+  "generator_back_dashboard": "← Torna al Dashboard",
+  "generator_back": "← Indietro",
+  "generator_app_name": "Nome dell'App *",
+  "generator_custom_prompt": "Descrivi il tuo gestionale *",
+  "generator_custom_placeholder": "Descrivi le funzionalità che ti servono...",
+  "generator_generate_button": "🚀 Genera il tuo Gestionale",
+  "generator_generating_title": "Generazione in corso...",
+  "generator_generating_desc": "L'AI sta creando il tuo gestionale personalizzato",
+  "generator_generating_hint": "Questo potrebbe richiedere qualche secondo",
+  "generator_error_login": "Devi effettuare il login per creare un'app",
+  "generator_error_name": "Inserisci un nome per l'app",
+  "generator_error_generic": "Errore nella generazione"
 }
+
 
 
 

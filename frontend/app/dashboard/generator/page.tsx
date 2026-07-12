@@ -4,6 +4,8 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { generateAppAction, type GenerateAppResult } from '@/app/actions/generator';
 import { supabaseBrowser } from '@/lib/supabase-browser';
+import { useLanguage } from '@/src/lib/LanguageContext';
+
 
 // Settori disponibili per la generazione
 const SECTORS = [
@@ -21,7 +23,9 @@ const SECTORS = [
 
 export default function GeneratorPage() {
   const router = useRouter();
+  const { locale: currentLanguage, t } = useLanguage();
   const [userId, setUserId] = useState<string | null>(null);
+
   const [selectedSector, setSelectedSector] = useState<string>('');
   const [appName, setAppName] = useState('');
   const [customPrompt, setCustomPrompt] = useState('');
@@ -46,12 +50,12 @@ export default function GeneratorPage() {
 
   const handleGenerate = async () => {
     if (!userId) {
-      setError('Devi effettuare il login per creare un\'app');
+      setError(t('generator_error_login'));
       return;
     }
 
     if (!appName.trim()) {
-      setError('Inserisci un nome per l\'app');
+      setError(t('generator_error_name'));
       return;
     }
 
@@ -70,16 +74,19 @@ export default function GeneratorPage() {
         appName: appName.trim(),
         sector: sector?.name || 'Gestionale',
         userId,
+        // Lingua attiva nell'interfaccia (LanguageContext) — non altera i campi richiesti dal backend
+        lang: currentLanguage,
       });
+
 
       if (result.success && result.appId) {
         router.push(`/dashboard/generator/success?appId=${result.appId}&slug=${result.slug}&password=${result.password}&appName=${encodeURIComponent(appName)}`);
       } else {
-        setError(result.error || 'Errore nella generazione');
+        setError(result.error || t('generator_error_generic'));
         setStep('details');
       }
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Errore sconosciuto');
+      setError(err instanceof Error ? err.message : t('generator_error_generic'));
       setStep('details');
     } finally {
       setIsGenerating(false);
@@ -92,8 +99,8 @@ export default function GeneratorPage() {
       <div className="p-8">
         <div className="max-w-6xl mx-auto">
           <div className="mb-12">
-            <h1 className="text-4xl font-bold mb-4">✨ Crea il tuo Gestionale</h1>
-            <p className="text-gray-400 text-lg">Seleziona il settore per il tuo gestionale</p>
+            <h1 className="text-4xl font-bold mb-4">{t('generator_title')}</h1>
+            <p className="text-gray-400 text-lg">{t('generator_subtitle')}</p>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -115,7 +122,7 @@ export default function GeneratorPage() {
               onClick={() => router.push('/dashboard')}
               className="text-gray-500 hover:text-white transition-colors"
             >
-              ← Torna al Dashboard
+              {t('generator_back_dashboard')}
             </button>
           </div>
         </div>
@@ -134,7 +141,7 @@ export default function GeneratorPage() {
             onClick={() => setStep('sector')}
             className="text-gray-500 hover:text-white mb-8 flex items-center gap-2"
           >
-            ← Indietro
+            {t('generator_back')}
           </button>
 
           <div className="mb-8">
@@ -146,7 +153,7 @@ export default function GeneratorPage() {
           <div className="space-y-6">
             <div>
               <label className="block text-sm font-medium text-gray-300 mb-2">
-                Nome dell'App *
+                {t('generator_app_name')}
               </label>
               <input
                 type="text"
@@ -160,12 +167,12 @@ export default function GeneratorPage() {
             {selectedSector === 'custom' && (
               <div>
                 <label className="block text-sm font-medium text-gray-300 mb-2">
-                  Descrivi il tuo gestionale *
+                  {t('generator_custom_prompt')}
                 </label>
                 <textarea
                   value={customPrompt}
                   onChange={(e) => setCustomPrompt(e.target.value)}
-                  placeholder="Descrivi le funzionalità che ti servono..."
+                  placeholder={t('generator_custom_placeholder')}
                   rows={4}
                   className="w-full bg-gray-900 border border-gray-700 rounded-xl px-4 py-3 text-white placeholder-gray-500 focus:outline-none focus:border-indigo-500 resize-none"
                 />
@@ -183,7 +190,7 @@ export default function GeneratorPage() {
               disabled={!appName.trim() || (selectedSector === 'custom' && !customPrompt.trim())}
               className="w-full bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 disabled:from-gray-600 disabled:to-gray-600 disabled:cursor-not-allowed text-white font-bold py-4 px-6 rounded-xl transition-all"
             >
-              🚀 Genera il tuo Gestionale
+              {t('generator_generate_button')}
             </button>
           </div>
         </div>
@@ -196,9 +203,9 @@ export default function GeneratorPage() {
     <div className="flex items-center justify-center p-8" style={{ minHeight: '60vh' }}>
       <div className="text-center">
         <div className="w-20 h-20 mx-auto mb-8 border-4 border-indigo-500 border-t-transparent rounded-full animate-spin"></div>
-        <h2 className="text-2xl font-bold mb-4">Generazione in corso...</h2>
-        <p className="text-gray-400">L'AI sta creando il tuo gestionale personalizzato</p>
-        <p className="text-gray-500 text-sm mt-4">Questo potrebbe richiedere qualche secondo</p>
+        <h2 className="text-2xl font-bold mb-4">{t('generator_generating_title')}</h2>
+        <p className="text-gray-400">{t('generator_generating_desc')}</p>
+        <p className="text-gray-500 text-sm mt-4">{t('generator_generating_hint')}</p>
       </div>
     </div>
   );

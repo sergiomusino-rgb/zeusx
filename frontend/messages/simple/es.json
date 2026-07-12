@@ -213,8 +213,23 @@
   "admin_table_created": "Creado",
   "admin_table_link": "Enlace",
   "admin_status_expired_badge": "Caducada",
-  "admin_status_active_badge": "Activa"
+  "admin_status_active_badge": "Activa",
+  "generator_title": "✨ Cree su Software de Gestión",
+  "generator_subtitle": "Seleccione el sector para su software",
+  "generator_back_dashboard": "← Volver al Panel",
+  "generator_back": "← Atrás",
+  "generator_app_name": "Nombre de la App *",
+  "generator_custom_prompt": "Describa su software de gestión *",
+  "generator_custom_placeholder": "Describa las funcionalidades que necesita...",
+  "generator_generate_button": "🚀 Genere su Software de Gestión",
+  "generator_generating_title": "Generando...",
+  "generator_generating_desc": "La IA está creando su software de gestión personalizado",
+  "generator_generating_hint": "Esto puede tardar unos segundos",
+  "generator_error_login": "Debe iniciar sesión para crear una app",
+  "generator_error_name": "Ingrese un nombre para la app",
+  "generator_error_generic": "Error durante la generación"
 }
+
 
 
 
