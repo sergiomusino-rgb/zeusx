@@ -1,1 +1,85 @@
-Inserisci qui il testo della privacy policy di ZeusX...
+Informativa sulla Privacy (Privacy Policy)
+Ultimo aggiornamento: 12 Luglio 2026
+
+La presente Informativa sulla Privacy descrive le Nostre politiche e procedure sulla raccolta, l'uso e la divulgazione delle informazioni dell'Utente quando utilizza il Servizio, e informa l'Utente sui suoi diritti alla privacy e su come la legge lo protegge.
+
+Utilizziamo i Dati personali dell'Utente per fornire e migliorare il Servizio. Utilizzando il Servizio, l'Utente acconsente alla raccolta e all'uso delle informazioni in conformità con la presente Informativa sulla Privacy.
+
+Interpretazione e Definizioni
+
+Interpretazione
+Le parole con la lettera iniziale maiuscola hanno significati definiti alle seguenti condizioni. Le seguenti definizioni avranno lo stesso significato indipendentemente dal fatto che appaiano al singolare o al plurale.
+
+Definizioni
+Ai fini della presente Informativa sulla Privacy:
+- Account indica un account unico creato per l'Utente per accedere al nostro Servizio o a parti di esso.
+- Società (indicata come "la Società", "Noi", "Ci" o "Nostro" nel presente Contratto) si riferisce a zeusx.
+- Cookie sono piccoli file inseriti nel computer, dispositivo mobile o qualsiasi altro dispositivo dell'Utente da un sito web, contenenti i dettagli della sua cronologia di navigazione su quel sito web tra i suoi molteplici utilizzi.
+- Paese si riferisce a: Italy
+- Titolare del Trattamento (ai fini del GDPR) si riferisce alla Società come l'entità legale che da sola o insieme ad altri determina le finalità e i mezzi del trattamento dei Dati Personali.
+- Dati Personali indicano qualsiasi informazione relativa a un individuo identificato o identificabile. Ai fini del GDPR, Dato Personale indica qualsiasi informazione relativa a Te come un nome, un numero di identificazione, dati sulla posizione, un identificativo online o a uno o più fattori specifici dell'identità fisica, fisiologica, genetica, mentale, economica, culturale o sociale.
+- Servizio si riferisce al Sito Web.
+- Fornitore di Servizi indica qualsiasi persona fisica o giuridica che elabora i dati per conto della Società. Si riferisce a società terze o individui impiegati dalla Società per facilitare il Servizio, per fornire il Servizio per conto della Società, per eseguire servizi correlati al Servizio o per assistere la Società nell'analisi dell'utilizzo del Servizio. Ai fini del GDPR, i Fornitori di Servizi sono considerati Responsabili del Trattamento (Data Processors).
+- Dati di Utilizzo si riferiscono ai dati raccolti automaticamente, generati dall'uso del Servizio o dall'infrastruttura del Servizio stesso (ad esempio, la durata della visita di una pagina).
+- Sito Web si riferisce a zeusx, accessibile da https://zeusxapps.com
+- Utente (indicato anche come "Tu" o "Vostro") indica l'individuo che accede o utilizza il Servizio, o la società o altra entità legale per conto della quale tale individuo accede o utilizza il Servizio, a seconda dei casi.
+
+Raccolta e Utilizzo dei Dati Personali
+
+Tipologie di Dati Raccolti
+
+Dati Personali
+Durante l'utilizzo del Nostro Servizio, potremmo chiederti di fornirci alcune informazioni di identificazione personale che possono essere utilizzate per contattarti o identificarti. Le informazioni di identificazione personale possono includere, a titolo esemplificativo:
+- Indirizzo email
+- Nome e cognome
+- Dati di fatturazione e indirizzo (gestiti in modo sicuro tramite il nostro Merchant of Record, Lemon Squeezy)
+- Dati di Utilizzo
+
+Dati di Utilizzo
+I Dati di Utilizzo vengono raccolti automaticamente durante l'uso del Servizio.
+I Dati di Utilizzo possono includere informazioni quali l'indirizzo del protocollo Internet del Dispositivo (es. indirizzo IP), il tipo di browser, la versione del browser, le pagine del nostro Servizio che visiti, l'ora e la data della visita, il tempo trascorso su tali pagine, identificatori unici del dispositivo e altri dati diagnostici.
+
+Tecnologie di Tracciamento e Cookie
+Utilizziamo Cookie e tecnologie di tracciamento simili per monitorare l'attività sul Nostro Servizio e memorizzare determinate informazioni. Le tecnologie di tracciamento utilizzate sono beacon, tag e script per raccogliere e tracciare informazioni e per migliorare e analizzare il Nostro Servizio. L'Utente può impostare il proprio browser in modo da rifiutare tutti i cookie o da indicare quando un cookie viene inviato. Tuttavia, se non si accettano i cookie, potrebbe non essere possibile utilizzare alcune parti del nostro Servizio.
+
+Uso dei Dati Personali
+La Società può utilizzare i Dati Personali per le seguenti finalità:
+- Per fornire e mantenere il nostro Servizio, incluso il monitoraggio dell'utilizzo del nostro Servizio.
+- Per gestire il Tuo Account: per gestire la Tua registrazione come utente del Servizio. L'autenticazione è gestita in modo sicuro tramite l'infrastruttura di Supabase.
+- Per l'esecuzione di un contratto: lo sviluppo, la conformità e l'esecuzione del contratto di acquisto per i prodotti, articoli o servizi che hai acquistato o di qualsiasi altro contratto con Noi tramite il Servizio.
+- Per contattarti: per contattarti tramite email o altre forme equivalenti di comunicazione elettronica in merito ad aggiornamenti o comunicazioni informative relative alle funzionalità, ai prodotti o ai servizi contrattati, inclusi gli aggiornamenti di sicurezza, quando necessario o ragionevole per la loro implementazione.
+- Per gestire le Tue richieste: per elaborare e gestire le Tue richieste rivolte a Noi.
+
+Fornitori di Servizi Terzi e Condivisione dei Dati
+Non vendiamo né cediamo i tuoi Dati Personali a terzi. Condividiamo le informazioni esclusivamente con fornitori infrastrutturali necessari all'erogazione del servizio:
+- Supabase: Utilizzato per l'archiviazione sicura del database degli account utenti e per i servizi di autenticazione protetta.
+- Lemon Squeezy: In qualità di nostro Merchant of Record, gestisce in modo indipendente e sicuro tutte le transazioni di pagamento, i dati di fatturazione e le conformità fiscali. La Società non memorizza i dati delle carte di credito o di pagamento sui propri server.
+
+Conservazione dei Dati Personali
+La Società conserverà i Dati Personali dell'Utente solo per il tempo necessario agli scopi stabiliti nella presente Informativa sulla Privacy. Conserveremo e utilizzeremo i Dati Personali nella misura necessaria per adempiere ai nostri obblighi legali, risolvere controversie e far rispettare i nostri accordi legali e le nostre politiche.
+
+Trasferimento dei Dati Personali
+Le tue informazioni, compresi i Dati Personali, sono elaborate presso le sedi operative della Società e in qualsiasi altro luogo in cui si trovino le parti coinvolte nel trattamento (come i server cloud di Supabase). Ciò significa che tali informazioni possono essere trasferite e mantenute su computer situati al di fuori del Tuo stato, provincia, paese o altra giurisdizione governativa in cui le leggi sulla protezione dei dati possono differire da quelle della Tua giurisdizione. Il Tuo consenso alla presente Informativa sulla Privacy seguito dall'invio di tali informazioni rappresenta il Tuo accordo a tale trasferimento.
+
+Diritti dell'Utente ai sensi del GDPR
+La Società si impegna a rispettare la riservatezza dei Dati Personali dell'Utente e a garantire l'esercizio dei Suoi diritti. Se ti trovi all'interno dell'Unione Europea, hai il diritto, ai sensi del GDPR, di:
+- Richiedere l'accesso ai tuoi Dati Personali.
+- Richiedere la rettifica dei Dati Personali in nostro possesso.
+- Richiedere la cancellazione (diritto all'oblio) dei tuoi Dati Personali.
+- Opporsi al trattamento dei tuoi Dati Personali.
+- Richiedere la portabilità dei dati.
+- Revocare il consenso in qualsiasi momento.
+
+Puoi esercitare i tuoi diritti contattandoci direttamente all'indirizzo email di supporto indicato in calce.
+
+Sicurezza dei Dati Personali
+La sicurezza dei Dati Personali è importante per Noi, ma ricorda che nessun metodo di trasmissione su Internet o metodo di archiviazione elettronica è sicuro al 100%. Sebbene ci sforziamo di utilizzare mezzi commercialmente accettabili e infrastrutture leader del settore (come Supabase) per proteggere i tuoi Dati Personali, non possiamo garantirne la sicurezza assoluta.
+
+Modifiche alla presente Informativa sulla Privacy
+Potremmo aggiornare la nostra Informativa sulla Privacy di tanto in tanto. Ti informeremo di eventuali modifiche pubblicando la nuova Informativa sulla Privacy su questa pagina e aggiornando la data di "Ultimo aggiornamento".
+
+Si consiglia di rivedere periodicamente la presente Informativa sulla Privacy per verificare eventuali modifiche. Le modifiche alla presente Informativa sulla Privacy entrano in vigore nel momento in cui vengono pubblicate su questa pagina.
+
+Contattaci
+In caso di domande sulla presente Informativa sulla Privacy o per esercitare i propri diritti, è possibile contattarci:
+- Tramite email: support@zeusxapps.com
