@@ -164,6 +164,11 @@ function LoginForm() {
   return (
     <div className="flex min-h-screen items-center justify-center bg-slate-950 px-4">
       <div className="w-full max-w-md space-y-8">
+  {/* Language Selector - Top Right */}
+        <div className="fixed top-4 right-4 z-50">
+          <LanguageSelector />
+        </div>
+
         {/* Logo */}
         <div className="text-center">
           <Link
@@ -308,11 +313,6 @@ function LoginForm() {
         <p className="text-center text-xs text-slate-600">
           © {new Date().getFullYear()} ZeusX by MUSINO. Tutti i diritti riservati.
         </p>
-
-        {/* Language Selector */}
-        <div className="mt-4 flex justify-center">
-          <LanguageSelector />
-        </div>
       </div>
     </div>
   );
