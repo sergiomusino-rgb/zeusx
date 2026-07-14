@@ -156,12 +156,13 @@ app.post('/api/webhooks/stripe', express.raw({ type: 'application/json' }), asyn
           break;
         }
 
-        const plan = await resolvePlanFromSession(stripe, session);
-        console.log(`[Stripe Webhook] piano risolto: ${plan}`);
-
+        const planId = session.metadata?.plan_id || 'starter';
+        const quantity = parseInt(session.metadata?.quantity || '1', 10);
+        
+        // Get current tenant to check for app_limit update
         const { data: tenant, error: tenantError } = await supabase
           .from('tenants')
-          .select('id, name, owner_id')
+          .select('id, name, owner_id, app_limit')
           .eq('id', tenantId)
           .single();
 
@@ -170,14 +171,36 @@ app.post('/api/webhooks/stripe', express.raw({ type: 'application/json' }), asyn
           break;
         }
 
-        const { error: updateTenantError } = await supabase
-          .from('tenants')
-          .update({ plan, updated_at: new Date().toISOString() })
-          .eq('id', tenantId);
+        // Handle extra slot purchase - increment app_limit
+        if (planId === 'extra_slot') {
+          const newAppLimit = (tenant.app_limit || 0) + quantity;
+          const { error: updateTenantError } = await supabase
+            .from('tenants')
+            .update({ 
+              app_limit: newAppLimit,
+              updated_at: new Date().toISOString() 
+            })
+            .eq('id', tenantId);
+          
+          if (updateTenantError) {
+            console.error(`[Stripe Webhook] errore aggiornamento app_limit per tenant ${tenantId}`, updateTenantError);
+            throw updateTenantError;
+          }
+          console.log(`[Stripe Webhook] app_limit aggiornato: ${tenant.app_limit} -> ${newAppLimit}`);
+        } else {
+          // Regular plan upgrade
+          const plan = await resolvePlanFromSession(stripe, session);
+          console.log(`[Stripe Webhook] piano risolto: ${plan}`);
+          
+          const { error: updateTenantError } = await supabase
+            .from('tenants')
+            .update({ plan, updated_at: new Date().toISOString() })
+            .eq('id', tenantId);
 
-        if (updateTenantError) {
-          console.error(`[Stripe Webhook] errore aggiornamento tenant ${tenantId}`, updateTenantError);
-          throw updateTenantError;
+          if (updateTenantError) {
+            console.error(`[Stripe Webhook] errore aggiornamento tenant ${tenantId}`, updateTenantError);
+            throw updateTenantError;
+          }
         }
 
         const subscriptionId = session.subscription;
@@ -198,11 +221,10 @@ app.post('/api/webhooks/stripe', express.raw({ type: 'application/json' }), asyn
 
         console.log(`[Stripe Webhook] Subscription attivata per tenant ${tenantId}`);
 
-        // Crea automaticamente la fee subscription per le app
-        const planId = session.metadata?.plan_id || 'starter';
+        // Crea automaticamente la fee subscription per le app (skip for extra_slot)
         const feePriceId = getFeePriceId(planId);
         
-        if (feePriceId) {
+        if (planId !== 'extra_slot' && feePriceId) {
           try {
             const feeSubscription = await stripe.subscriptions.create({
               customer: session.customer,
@@ -296,6 +318,67 @@ app.post('/api/webhooks/stripe', express.raw({ type: 'application/json' }), asyn
         });
 
         console.log(`Subscription aggiornata per tenant ${tenantId}`);
+        break;
+      }
+
+      case 'payment_intent.succeeded': {
+        const paymentIntent = event.data.object;
+        const tenantId = paymentIntent.metadata?.tenant_id;
+        const planId = paymentIntent.metadata?.plan_id;
+        const quantity = parseInt(paymentIntent.metadata?.quantity || '1', 10);
+        const feePriceId = paymentIntent.metadata?.fee_price_id;
+
+        if (!tenantId) {
+          break;
+        }
+
+        console.log(`[Stripe Webhook] payment_intent.succeeded for tenant ${tenantId}, plan ${planId}`);
+
+        // Get current tenant
+        const { data: tenant, error: tenantError } = await supabase
+          .from('tenants')
+          .select('id, app_limit')
+          .eq('id', tenantId)
+          .single();
+
+        if (tenantError || !tenant) {
+          console.error(`[Stripe Webhook] tenant ${tenantId} non trovato`, tenantError);
+          break;
+        }
+
+        // Handle extra slot purchase - increment app_limit
+        if (planId === 'extra_slot') {
+          const newAppLimit = (tenant.app_limit || 0) + quantity;
+          const { error: updateError } = await supabase
+            .from('tenants')
+            .update({ 
+              app_limit: newAppLimit,
+              updated_at: new Date().toISOString() 
+            })
+            .eq('id', tenantId);
+
+          if (updateError) {
+            console.error(`[Stripe Webhook] errore aggiornamento app_limit per extra_slot`, updateError);
+          } else {
+            console.log(`[Stripe Webhook] app_limit aggiornato per extra_slot: ${tenant.app_limit} -> ${newAppLimit}`);
+          }
+        } else {
+          // Regular plan upgrade - create subscription
+          if (feePriceId) {
+            try {
+              const feeSubscription = await stripe.subscriptions.create({
+                customer: paymentIntent.customer,
+                items: [{ price: feePriceId, quantity: 0 }],
+                metadata: { tenant_id: tenantId, type: 'app_fee' },
+                proration_behavior: 'always_invoice',
+              });
+
+              console.log(`[Stripe Webhook] Fee subscription creata: ${feeSubscription.id} per tenant ${tenantId}`);
+            } catch (err) {
+              console.error(`[Stripe Webhook] Errore creazione fee subscription:`, err);
+            }
+          }
+        }
         break;
       }
 
@@ -513,6 +596,9 @@ app.use('/api', require('./routes/custom-tables'));
 
 // --- INVOICES ROUTES (fatturazione) ---
 app.use('/api', require('./routes/invoices'));
+
+// --- APP REGISTRY ROUTES (Management Console) ---
+app.use('/api', require('./routes/app-registry'));
 
 // --- ERROR HANDLER ---
 app.use((err, _req, res, _next) => {

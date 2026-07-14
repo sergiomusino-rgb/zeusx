@@ -14,12 +14,16 @@ const nextConfig: NextConfig = {
     NEXT_PUBLIC_SUPABASE_ANON_KEY: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
   },
   async rewrites() {
-    return [
-      {
-        source: "/api/:path*",
-        destination: `${process.env.NEXT_PUBLIC_BACKEND_URL || "https://zeusx-backend.onrender.com"}/api/:path*`,
-      },
-    ];
+    // Only use backend rewrite in production
+    if (process.env.NODE_ENV === 'production') {
+      return [
+        {
+          source: "/api/:path*",
+          destination: `${process.env.NEXT_PUBLIC_BACKEND_URL || "https://zeusx-backend.onrender.com"}/api/:path*`,
+        },
+      ];
+    }
+    return [];
   },
 };
 
