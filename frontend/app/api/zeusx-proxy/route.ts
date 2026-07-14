@@ -38,7 +38,7 @@ async function writeRegistry(registry: AppRegistry): Promise<void> {
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { action, activityName, activityType } = body;
+    const { action, activityName, activityType, apiKey } = body;
 
     if (action !== 'createApp') {
       return NextResponse.json({ 
@@ -54,11 +54,14 @@ export async function POST(request: NextRequest) {
       }, { status: 400 });
     }
 
-    if (!TOTALIUM_API_KEY) {
+    // Usa l'API Key fornita dal client o quella di default
+    const effectiveApiKey = apiKey || TOTALIUM_API_KEY;
+    
+    if (!effectiveApiKey) {
       return NextResponse.json({ 
         success: false, 
-        error: 'Configurazione API non disponibile' 
-      }, { status: 500 });
+        error: 'API Key richiesta. Inseriscila nel form o configurala nelle variabili d\'ambiente.' 
+      }, { status: 401 });
     }
 
     // Chiama Totalium
@@ -66,7 +69,7 @@ export async function POST(request: NextRequest) {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': `Bearer ${TOTALIUM_API_KEY}`,
+        'Authorization': `Bearer ${effectiveApiKey}`,
         'X-Source': 'zeusx',
       },
       body: JSON.stringify({
