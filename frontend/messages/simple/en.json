@@ -307,7 +307,27 @@
   "dashboard_vs_last_month": "vs last month",
   "dashboard_monthly_revenue": "Monthly Revenue",
   "dashboard_orders_by_status": "Orders by Status",
-  "dashboard_agenda": "Agenda"
+  "dashboard_agenda": "Agenda",
+  "zeusx_generator_title": "🌐 Integrated AI Generator",
+  "zeusx_generator_subtitle": "Create your app using the integrated chat",
+  "zeusx_generator_chat_title": "Chat with ZEUSX AI",
+  "zeusx_generator_chat_empty": "Ask ZEUSX AI to create your app...",
+  "zeusx_generator_chat_placeholder": "Write your business name...",
+  "zeusx_generator_chat_examples": "Examples:",
+  "zeusx_generator_chat_response": "ZEUSX AI: I can help you create your app! Write 'Create an app for [business name]' and I'll take care of the rest.",
+  "zeusx_generator_app_created": "✨ Your app is ready! Here's the link to access it:",
+  "zeusx_generator_error_create": "An error occurred while creating the app. Please try again.",
+  "zeusx_generator_error_connection": "Connection error. Please try again later.",
+  "zeusx_generator_back_dashboard": "← Back to Dashboard",
+  "success_congrats": "CONGRATULATIONS!",
+  "success_start_using": "Start using your ZEUSX app!",
+  "success_demo_app": "Demo App",
+  "success_demo_type": "Type:",
+  "success_demo_active": "Active",
+  "success_url_app": "App URL",
+  "success_qr_access": "QR Code Access",
+  "success_qr_placeholder": "The QR code will appear once you have generated your first app.",
+  "success_scan_qr": "Scan with your smartphone camera"
 }
 
 

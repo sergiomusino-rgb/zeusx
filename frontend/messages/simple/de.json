@@ -307,7 +307,27 @@
   "dashboard_vs_last_month": "vs letzter Monat",
   "dashboard_monthly_revenue": "Monatlicher Umsatz",
   "dashboard_orders_by_status": "Bestellungen nach Status",
-  "dashboard_agenda": "Agenda"
+  "dashboard_agenda": "Agenda",
+  "zeusx_generator_title": "🌐 Integrierter KI-Generator",
+  "zeusx_generator_subtitle": "Erstellen Sie Ihre App mit dem integrierten Chat",
+  "zeusx_generator_chat_title": "Chat mit ZEUSX KI",
+  "zeusx_generator_chat_empty": "Bitten Sie ZEUSX KI, Ihre App zu erstellen...",
+  "zeusx_generator_chat_placeholder": "Geben Sie den Namen Ihres Unternehmens ein...",
+  "zeusx_generator_chat_examples": "Beispiele:",
+  "zeusx_generator_chat_response": "ZEUSX KI: Ich kann Ihnen helfen, Ihre App zu erstellen! Schreiben Sie 'Erstellen Sie eine App für [Unternehmensname]' und ich kümmere mich um den Rest.",
+  "zeusx_generator_app_created": "✨ Ihre App ist bereit! Hier ist der Link zum Zugriff:",
+  "zeusx_generator_error_create": "Beim Erstellen der App ist ein Fehler aufgetreten. Bitte versuchen Sie es erneut.",
+  "zeusx_generator_error_connection": "Verbindungsfehler. Bitte versuchen Sie es später.",
+  "zeusx_generator_back_dashboard": "← Zurück zum Dashboard",
+  "success_congrats": "HERZLICHEN GLÜCKWUNSCH!",
+  "success_start_using": "Starten Sie Ihre ZEUSX App!",
+  "success_demo_app": "Demo-App",
+  "success_demo_type": "Typ:",
+  "success_demo_active": "Aktiv",
+  "success_url_app": "App-URL",
+  "success_qr_access": "QR-Code-Zugriff",
+  "success_qr_placeholder": "Der QR-Code wird angezeigt, sobald Sie Ihre erste App generiert haben.",
+  "success_scan_qr": "Scannen Sie mit der Kamera Ihres Smartphones"
 }
 
 

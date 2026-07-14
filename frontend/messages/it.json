@@ -521,5 +521,18 @@
     "orders": "Ordini",
     "categories": "Categorie",
     "products": "Prodotti"
+  },
+  "ZeusxGenerator": {
+    "title": "🌐 Generatore AI integrato",
+    "subtitle": "Crea la tua app usando la chat integrata",
+    "chat_interface_title": "Chat con ZEUSX AI",
+    "chat_empty": "Chiedi a ZEUSX AI di creare la tua app...",
+    "chat_placeholder": "Scrivi il nome della tua attività...",
+    "chat_examples": "Esempi:",
+    "chat_generic_response": "ZEUSX AI: Posso aiutarti a creare la tua app! Scrivi 'Crea un'app per [nome attività]' e io mi occupo del resto.",
+    "app_created": "✨ La tua app è pronta! Ecco il link per accedervi:",
+    "error_create": "Si è verificato un errore durante la creazione dell'app. Riprova.",
+    "error_connection": "Errore di connessione. Riprova più tardi.",
+    "back_dashboard": "← Torna alla Dashboard"
   }
 }
