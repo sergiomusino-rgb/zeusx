@@ -513,5 +513,37 @@
       "connectionError": "Verbindungsfehler zum Server.",
       "slotNotAvailable": "Extra Slots sind momentan nicht verfügbar. Bitte versuchen Sie es später erneut."
     }
+  },
+  "Totalium": {
+    "title": "🌐 Verbindung zu Totalium",
+    "subtitle": "Erstellen Sie Ihre App auf Totalium mit den erforderlichen Daten",
+    "activity_name": "Aktivitätsname *",
+    "activity_name_placeholder": "Mein Business",
+    "activity_type": "Aktivitätstyp *",
+    "select_type": "Wählen Sie einen Aktivitätstyp",
+    "api_key": "Totalium API-Schlüssel *",
+    "api_key_placeholder": "Geben Sie Ihren API-Schlüssel ein",
+    "api_key_hint": "Ihr API-Schlüssel ist in Ihrem Totalium-Panel verfügbar",
+    "generate_button": "🚀 App auf Totalium erstellen",
+    "generating": "Wird erstellt...",
+    "error_login": "Sie müssen sich anmelden, um eine App zu erstellen",
+    "error_name": "Geben Sie den Namen der Aktivität ein",
+    "error_type": "Wählen Sie den Aktivitätstyp",
+    "error_apikey": "Geben Sie Ihren API-Schlüssel ein",
+    "error_generic": "Fehler beim Erstellen der App auf Totalium",
+    "back_dashboard": "← Zurück zum Dashboard",
+    "missing_params": "Fehlende Parameter",
+    "back_generator": "Zurück zum Generator",
+    "success_congrats": "Herzlichen Glückwunsch!",
+    "success_app_created": "Ihre App wurde erfolgreich auf Totalium erstellt!",
+    "success_active": "Aktiv",
+    "success_type": "Typ",
+    "success_app_url": "URL der Child-App",
+    "success_open_app": "App öffnen",
+    "success_back_dashboard": "Zurück zum Dashboard",
+    "success_qr_title": "QR-Code-Zugriff",
+    "success_qr_desc": "Scannen Sie diesen QR-Code, um von einem Gerät aus auf die App zuzugreifen",
+    "success_qr_hint": "Scannen Sie mit der Smartphone-Kamera",
+    "success_hint": "Sie können jetzt auf Ihre App über den Link oder QR-Code zugreifen"
   }
 }

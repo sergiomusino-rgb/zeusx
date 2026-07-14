@@ -1,222 +1,215 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { generateAppAction, type GenerateAppResult } from '@/app/actions/generator';
-import { supabaseBrowser } from '@/lib/supabase-browser';
 import { useLanguage } from '@/src/lib/LanguageContext';
+import { MessageSquare, Send } from 'lucide-react';
 
-
-// Settori disponibili per la generazione (i nomi e descrizioni vengono tradotti)
-const SECTOR_IDS = [
-  { id: 'studio-medico', icon: '🩺' },
-  { id: 'ristorante', icon: '🍽️' },
-  { id: 'negozio', icon: '🏪' },
-  { id: 'officina', icon: '🔧' },
-  { id: 'studio-legale', icon: '⚖️' },
-  { id: 'agenzia-immobiliare', icon: '🏠' },
-  { id: 'palestra', icon: '💪' },
-  { id: 'hotel', icon: '🏨' },
-  { id: 'associazione', icon: '🤝' },
-  { id: 'custom', icon: '✨' },
+// Pattern per riconoscere richieste di creazione app
+const CREATE_APP_PATTERNS = [
+  /crea\s+(?:un'?\s+)?app\s+(?:per\s+)?(.+)/i,
+  /genera\s+(?:un'?\s+)?app\s+(?:per\s+)?(.+)/i,
+  /fai\s+(?:un'?\s+)?app\s+(?:per\s+)?(.+)/i,
+  /create\s+(?:an?\s+)?app\s+(?:for\s+)?(.+)/i,
+  /generate\s+(?:an?\s+)?app\s+(?:for\s+)?(.+)/i,
+  /make\s+(?:an?\s+)?app\s+(?:for\s+)?(.+)/i,
 ];
 
 export default function GeneratorPage() {
   const router = useRouter();
-  const { locale: currentLanguage, t } = useLanguage();
-  const [userId, setUserId] = useState<string | null>(null);
+  const { t } = useLanguage();
+  const [messages, setMessages] = useState<{role: string, text: string, isAppLink?: boolean, appUrl?: string}[]>([]);
+  const [input, setInput] = useState('');
+  const [isProcessing, setIsProcessing] = useState(false);
 
-  const [selectedSector, setSelectedSector] = useState<string>('');
-  const [appName, setAppName] = useState('');
-  const [customPrompt, setCustomPrompt] = useState('');
-  const [isGenerating, setIsGenerating] = useState(false);
-  const [error, setError] = useState('');
-  const [step, setStep] = useState<'sector' | 'details' | 'generating'>('sector');
+  // Estrae nome attività e tipo dalla richiesta
+  const parseAppRequest = (text: string): { activityName: string; activityType: string } | null => {
+    const lowerText = text.toLowerCase();
+    
+    // Riconosci il tipo di attività
+    let activityType = 'custom';
+    if (lowerText.includes('ecommerce') || lowerText.includes('e-commerce') || lowerText.includes('shop') || lowerText.includes('negozio') || lowerText.includes('store')) {
+      activityType = 'ecommerce';
+    } else if (lowerText.includes('ristorante') || lowerText.includes('restaurant') || lowerText.includes('cibo') || lowerText.includes('food')) {
+      activityType = 'restaurant';
+    } else if (lowerText.includes('negozio') || lowerText.includes('retail') || lowerText.includes('shop')) {
+      activityType = 'retail';
+    } else if (lowerText.includes('servizio') || lowerText.includes('service')) {
+      activityType = 'service';
+    } else if (lowerText.includes('professionale') || lowerText.includes('professional') || lowerText.includes('studio') || lowerText.includes('office')) {
+      activityType = 'professional';
+    } else if (lowerText.includes('immobiliare') || lowerText.includes('real estate') || lowerText.includes('property')) {
+      activityType = 'realestate';
+    } else if (lowerText.includes('palestra') || lowerText.includes('fitness') || lowerText.includes('gym')) {
+      activityType = 'fitness';
+    } else if (lowerText.includes('hotel') || lowerText.includes('hospitality') || lowerText.includes('albergo')) {
+      activityType = 'hospitality';
+    } else if (lowerText.includes('associazione') || lowerText.includes('association') || lowerText.includes('organization')) {
+      activityType = 'association';
+    }
 
-  // Helper per ottenere nome e descrizione tradotti
-  const getSectorLabel = (sectorId: string) => {
-    return t(`sector_${sectorId.replace(/-/g, '_')}`);
-  };
-  
-  const getSectorDesc = (sectorId: string) => {
-    return t(`sector_${sectorId.replace(/-/g, '_')}_desc`);
-  };
-
-  useEffect(() => {
-    async function checkAuth() {
-      const { data: { session } } = await supabaseBrowser.auth.getSession();
-      if (session?.user) {
-        setUserId(session.user.id);
+    // Estrai il nome dell'attività
+    for (const pattern of CREATE_APP_PATTERNS) {
+      const match = text.match(pattern);
+      if (match && match[1]) {
+        return {
+          activityName: match[1].trim(),
+          activityType
+        };
       }
     }
-    checkAuth();
-  }, []);
 
-  const handleSectorSelect = (sectorId: string) => {
-    setSelectedSector(sectorId);
-    setStep('details');
-  };
-
-  const handleGenerate = async () => {
-    if (!userId) {
-      setError(t('generator_error_login'));
-      return;
-    }
-
-    if (!appName.trim()) {
-      setError(t('generator_error_name'));
-      return;
-    }
-
-    setIsGenerating(true);
-    setError('');
-    setStep('generating');
-
-    try {
-      const sector = SECTOR_IDS.find(s => s.id === selectedSector);
-      const sectorName = getSectorLabel(selectedSector);
-      const sectorDesc = getSectorDesc(selectedSector);
-      const prompt = selectedSector === 'custom' 
-        ? customPrompt 
-        : `Crea un gestionale per ${sectorName}: ${sectorDesc}`;
-
-      const result: GenerateAppResult = await generateAppAction({
-        prompt,
-        appName: appName.trim(),
-        sector: sectorName,
-        userId,
-        // Lingua attiva nell'interfaccia (LanguageContext) — non altera i campi richiesti dal backend
-        lang: currentLanguage,
-      });
-
-
-      if (result.success && result.appId) {
-        router.push(`/dashboard/generator/success?appId=${result.appId}&slug=${result.slug}&password=${result.password}&appName=${encodeURIComponent(appName)}`);
-      } else {
-        setError(result.error || t('generator_error_generic'));
-        setStep('details');
+    // Se non c'è pattern ma contiene parole come "app" e un nome
+    if (lowerText.includes('app') && !lowerText.includes('ai')) {
+      const words = text.split(/\s+/);
+      const nameWords = words.filter(w => !['crea', 'genera', 'fai', 'app', 'per', 'create', 'generate', 'make', 'for', 'an', 'a', 'the'].includes(w.toLowerCase()));
+      if (nameWords.length > 0) {
+        return {
+          activityName: nameWords.join(' '),
+          activityType
+        };
       }
-    } catch (err) {
-      setError(err instanceof Error ? err.message : t('generator_error_generic'));
-      setStep('details');
-    } finally {
-      setIsGenerating(false);
     }
+
+    return null;
   };
 
-  // Step 1: Selezione settore
-  if (step === 'sector') {
-    return (
-      <div className="p-8">
-        <div className="max-w-6xl mx-auto">
-          <div className="mb-12">
-            <h1 className="text-4xl font-bold mb-4">{t('generator_title')}</h1>
-            <p className="text-gray-400 text-lg">{t('generator_subtitle')}</p>
+  const handleSendMessage = async (messageText?: string) => {
+    const text = messageText || input;
+    if (text.trim() === '') return;
+
+    const userMessage = text;
+    setMessages(prev => [...prev, { role: 'user', text: userMessage }]);
+    setInput('');
+    setIsProcessing(true);
+
+    // Controlla se è una richiesta di creazione app
+    const appRequest = parseAppRequest(text);
+    
+    if (appRequest) {
+      // Chiama il proxy ZEUSX
+      try {
+        const response = await fetch('/api/zeusx-proxy', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            action: 'createApp',
+            activityName: appRequest.activityName,
+            activityType: appRequest.activityType
+          })
+        });
+
+        const data = await response.json();
+        
+        if (data.success && data.appUrl) {
+          setMessages(prev => [...prev, { 
+            role: 'ai', 
+            text: t('zeusx_generator_app_created'),
+            isAppLink: true,
+            appUrl: data.appUrl
+          }]);
+        } else {
+          setMessages(prev => [...prev, { 
+            role: 'ai', 
+            text: data.error || t('zeusx_generator_error_create')
+          }]);
+        }
+      } catch (err) {
+        console.error("Errore creazione app:", err);
+        setMessages(prev => [...prev, { 
+          role: 'ai', 
+          text: t('zeusx_generator_error_connection')
+        }]);
+      }
+    } else {
+      // Chat normale - risposta AI
+      setMessages(prev => [...prev, { 
+        role: 'ai', 
+        text: t('zeusx_generator_chat_response')
+      }]);
+    }
+    
+    setIsProcessing(false);
+  };
+
+  return (
+    <div className="p-8">
+      <div className="max-w-4xl mx-auto">
+        {/* Header */}
+        <div className="mb-8">
+          <h1 className="text-4xl font-bold mb-4">{t('zeusx_generator_title')}</h1>
+          <p className="text-gray-400 text-lg">{t('zeusx_generator_subtitle')}</p>
+        </div>
+
+        {/* Chat Interface */}
+        <div className="bg-gray-900 border border-gray-800 rounded-2xl p-6">
+          <div className="flex items-center gap-3 mb-4">
+            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center">
+              <MessageSquare className="w-5 h-5 text-white" />
+            </div>
+            <h2 className="text-xl font-bold">{t('zeusx_generator_chat_title')}</h2>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {SECTOR_IDS.map((sector) => (
-              <button
-                key={sector.id}
-                onClick={() => handleSectorSelect(sector.id)}
-                className="p-6 rounded-2xl border border-gray-800 bg-gray-900 hover:border-indigo-500 hover:bg-gray-800 transition-all text-left group"
-              >
-                <div className="text-4xl mb-4">{sector.icon}</div>
-                <h3 className="text-xl font-bold mb-2 group-hover:text-indigo-400">{getSectorLabel(sector.id)}</h3>
-                <p className="text-gray-400 text-sm">{getSectorDesc(sector.id)}</p>
-              </button>
+          {/* Chat Messages */}
+          <div className="h-96 overflow-y-auto mb-4 p-4 bg-gray-800/50 rounded-xl">
+            {messages.length === 0 && (
+              <div className="text-center text-gray-500 mt-16">
+                <p className="mb-2">{t('zeusx_generator_chat_empty')}</p>
+                <p className="text-sm">{t('zeusx_generator_chat_examples')}</p>
+                <ul className="text-xs mt-2 space-y-1">
+                  <li>• "Crea un'app per il mio ristorante"</li>
+                  <li>• "Genera un gestionale per la mia attività di ecommerce"</li>
+                  <li>• "Fai un'app per la palestra"</li>
+                </ul>
+              </div>
+            )}
+            {messages.map((m, i) => (
+              <div key={i} className={`mb-3 ${m.role === 'user' ? 'text-right' : 'text-left'}`}>
+                <span className={`inline-block px-4 py-2 rounded-xl max-w-[80%] ${
+                  m.role === 'user' 
+                    ? 'bg-indigo-600 text-white' 
+                    : 'bg-gray-700 text-gray-100'
+                }`}>
+                  {m.isAppLink ? (
+                    <div>
+                      <p className="mb-2">{m.text}</p>
+                      <a 
+                        href={m.appUrl} 
+                        target="_blank" 
+                        rel="noopener noreferrer"
+                        className="text-indigo-400 hover:text-indigo-300 underline text-sm break-all"
+                      >
+                        {m.appUrl}
+                      </a>
+                    </div>
+                  ) : (
+                    m.text
+                  )}
+                </span>
+              </div>
             ))}
           </div>
 
-          <div className="mt-12 text-center">
-            <button
-              onClick={() => router.push('/dashboard')}
-              className="text-gray-500 hover:text-white transition-colors"
+          {/* Input */}
+          <div className="flex gap-2">
+            <input 
+              className="flex-1 p-3 bg-gray-800 text-white rounded-lg border border-gray-700 focus:outline-none focus:border-indigo-500"
+              value={input}
+              onChange={(e) => setInput(e.target.value)}
+              onKeyDown={(e) => e.key === 'Enter' && handleSendMessage()}
+              placeholder={t('zeusx_generator_chat_placeholder')}
+              disabled={isProcessing}
+            />
+            <button 
+              onClick={() => handleSendMessage()} 
+              disabled={isProcessing || !input.trim()}
+              className="bg-indigo-600 hover:bg-indigo-700 disabled:bg-gray-600 text-white px-6 py-3 rounded-lg font-semibold transition flex items-center justify-center"
             >
-              {t('generator_back_dashboard')}
+              <Send className="w-4 h-4" />
             </button>
           </div>
         </div>
-      </div>
-    );
-  }
 
-  // Step 2: Dettagli app
-  if (step === 'details') {
-    const selected = SECTOR_IDS.find(s => s.id === selectedSector);
-
-    return (
-      <div className="p-8">
-        <div className="max-w-2xl mx-auto">
-          <button
-            onClick={() => setStep('sector')}
-            className="text-gray-500 hover:text-white mb-8 flex items-center gap-2"
-          >
-            {t('generator_back')}
-          </button>
-
-          <div className="mb-8">
-            <div className="text-4xl mb-4">{selected?.icon}</div>
-            <h1 className="text-3xl font-bold mb-2">{getSectorLabel(selectedSector)}</h1>
-            <p className="text-gray-400">{getSectorDesc(selectedSector)}</p>
-          </div>
-
-          <div className="space-y-6">
-            <div>
-              <label className="block text-sm font-medium text-gray-300 mb-2">
-                {t('generator_app_name')}
-              </label>
-              <input
-                type="text"
-                value={appName}
-                onChange={(e) => setAppName(e.target.value)}
-                placeholder={`Il mio ${getSectorLabel(selectedSector)}`}
-                className="w-full bg-gray-900 border border-gray-700 rounded-xl px-4 py-3 text-white placeholder-gray-500 focus:outline-none focus:border-indigo-500"
-              />
-            </div>
-
-            {selectedSector === 'custom' && (
-              <div>
-                <label className="block text-sm font-medium text-gray-300 mb-2">
-                  {t('generator_custom_prompt')}
-                </label>
-                <textarea
-                  value={customPrompt}
-                  onChange={(e) => setCustomPrompt(e.target.value)}
-                  placeholder={t('generator_custom_placeholder')}
-                  rows={4}
-                  className="w-full bg-gray-900 border border-gray-700 rounded-xl px-4 py-3 text-white placeholder-gray-500 focus:outline-none focus:border-indigo-500 resize-none"
-                />
-              </div>
-            )}
-
-            {error && (
-              <div className="p-4 rounded-xl bg-red-500/10 border border-red-500/30 text-red-400">
-                {error}
-              </div>
-            )}
-
-            <button
-              onClick={handleGenerate}
-              disabled={!appName.trim() || (selectedSector === 'custom' && !customPrompt.trim())}
-              className="w-full bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 disabled:from-gray-600 disabled:to-gray-600 disabled:cursor-not-allowed text-white font-bold py-4 px-6 rounded-xl transition-all"
-            >
-              {t('generator_generate_button')}
-            </button>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  // Step 3: Generazione in corso
-  return (
-    <div className="flex items-center justify-center p-8" style={{ minHeight: '60vh' }}>
-      <div className="text-center">
-        <div className="w-20 h-20 mx-auto mb-8 border-4 border-indigo-500 border-t-transparent rounded-full animate-spin"></div>
-        <h2 className="text-2xl font-bold mb-4">{t('generator_generating_title')}</h2>
-        <p className="text-gray-400">{t('generator_generating_desc')}</p>
-        <p className="text-gray-500 text-sm mt-4">{t('generator_generating_hint')}</p>
       </div>
     </div>
   );
