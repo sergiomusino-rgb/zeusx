@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
+import { useTheme } from '@/src/lib/ThemeContext';
 
 interface RigaFattura {
   id: string;
@@ -15,6 +16,9 @@ export default function NuovaFatturaPage() {
   const router = useRouter();
   const params = useParams();
   const slug = params.slug as string;
+  
+  // Usa il tema dal context globale
+  const { theme } = useTheme();
 
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -178,71 +182,81 @@ export default function NuovaFatturaPage() {
     }).format(amount);
   };
 
+  // Colori in base al tema
+  const isDark = theme === 'dark';
+  const bgColor = isDark ? 'bg-slate-950' : 'bg-slate-100';
+  const cardBg = isDark ? 'bg-slate-900' : 'bg-white';
+  const textPrimary = isDark ? 'text-white' : 'text-slate-900';
+  const textSecondary = isDark ? 'text-slate-400' : 'text-slate-600';
+  const textMuted = isDark ? 'text-slate-500' : 'text-slate-400';
+  const border = isDark ? 'border-slate-800' : 'border-slate-200';
+  const inputBg = isDark ? 'bg-slate-900' : 'bg-white';
+
   return (
-    <div className="min-h-screen bg-gray-100 py-8">
+    <div className={`min-h-screen ${bgColor} transition-colors duration-300 py-8`}>
       <div className="max-w-4xl mx-auto px-4">
         {/* Header */}
         <div className="mb-8">
-          <h1 className="text-3xl font-bold text-gray-900 mb-2">Nuova Fattura</h1>
-          <p className="text-sm text-gray-600">Compila i dati della fattura e aggiungi le righe</p>
+          <h1 className={`text-3xl font-bold ${textPrimary} mb-2`}>Nuova Fattura</h1>
+          <p className={`text-sm ${textSecondary}`}>Compila i dati della fattura e aggiungi le righe</p>
         </div>
 
         <form onSubmit={handleSubmit}>
           {error && (
-            <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg text-red-700 text-sm">
+            <div className={`mb-6 p-4 bg-red-500/10 border border-red-500/20 ${isDark ? 'text-red-400' : 'text-red-700'} rounded-lg text-sm`}>
               {error}
             </div>
           )}
 
           {/* Dati Cliente */}
-          <div className="bg-white rounded-lg shadow-md p-6 mb-6">
-            <h2 className="text-xl font-semibold text-gray-900 mb-4">Dati Cliente</h2>
+          <div className={`${cardBg} rounded-lg shadow-md p-6 mb-6 border ${border}`}>
+            <h2 className={`text-xl font-semibold ${textPrimary} mb-4`}>Dati Cliente</h2>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
+                <label className={`block text-sm font-medium ${textSecondary} mb-2`}>
                   Nome Cliente *
                 </label>
                 <input
                   type="text"
                   value={clienteNome}
                   onChange={(e) => setClienteNome(e.target.value)}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  className={`w-full px-4 py-2 border ${border} ${inputBg} rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${textPrimary}`}
                   placeholder="Mario Rossi"
                   required
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
+                <label className={`block text-sm font-medium ${textSecondary} mb-2`}>
                   Partita IVA / Codice Fiscale
                 </label>
                 <input
                   type="text"
                   value={clientePiva}
                   onChange={(e) => setClientePiva(e.target.value)}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  className={`w-full px-4 py-2 border ${border} ${inputBg} rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${textPrimary}`}
                   placeholder="IT12345678901"
                 />
               </div>
               <div className="md:col-span-2">
-                <label className="block text-sm font-medium text-gray-700 mb-2">
+                <label className={`block text-sm font-medium ${textSecondary} mb-2`}>
                   Indirizzo
                 </label>
                 <input
                   type="text"
                   value={clienteIndirizzo}
                   onChange={(e) => setClienteIndirizzo(e.target.value)}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  className={`w-full px-4 py-2 border ${border} ${inputBg} rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${textPrimary}`}
                   placeholder="Via Roma 123, 00100 Roma (RM)"
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
+                <label className={`block text-sm font-medium ${textSecondary} mb-2`}>
                   Metodo di Pagamento
                 </label>
                 <select
                   value={metodoPagamento}
                   onChange={(e) => setMetodoPagamento(e.target.value)}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  className={`w-full px-4 py-2 border ${border} ${inputBg} rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${textPrimary}`}
                 >
                   <option value="">Seleziona...</option>
                   <option value="bonifico">Bonifico Bancario</option>
@@ -256,9 +270,9 @@ export default function NuovaFatturaPage() {
           </div>
 
           {/* Righe Fattura */}
-          <div className="bg-white rounded-lg shadow-md p-6 mb-6">
+          <div className={`${cardBg} rounded-lg shadow-md p-6 mb-6 border ${border}`}>
             <div className="flex justify-between items-center mb-4">
-              <h2 className="text-xl font-semibold text-gray-900">Righe Fattura</h2>
+              <h2 className={`text-xl font-semibold ${textPrimary}`}>Righe Fattura</h2>
               <button
                 type="button"
                 onClick={aggiungiRiga}
@@ -274,46 +288,46 @@ export default function NuovaFatturaPage() {
 
             <div className="space-y-3">
               {righe.map((riga, index) => (
-                <div key={riga.id} className="grid grid-cols-12 gap-3 items-start p-4 bg-gray-50 rounded-lg">
+                <div key={riga.id} className={`grid grid-cols-12 gap-3 items-start p-4 ${isDark ? 'bg-slate-800' : 'bg-gray-50'} rounded-lg`}>
                   <div className="col-span-12 md:col-span-5">
-                    <label className="block text-xs font-medium text-gray-700 mb-1">Descrizione</label>
+                    <label className={`block text-xs font-medium ${textSecondary} mb-1`}>Descrizione</label>
                     <input
                       type="text"
                       value={riga.descrizione}
                       onChange={(e) => aggiornaRiga(riga.id, 'descrizione', e.target.value)}
-                      className="w-full px-3 py-2 border border-gray-300 rounded focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
+                      className={`w-full px-3 py-2 border ${border} ${inputBg} rounded focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm ${textPrimary}`}
                       placeholder="Descrizione prodotto/servizio"
                     />
                   </div>
                   <div className="col-span-6 md:col-span-2">
-                    <label className="block text-xs font-medium text-gray-700 mb-1">Quantità</label>
+                    <label className={`block text-xs font-medium ${textSecondary} mb-1`}>Quantità</label>
                     <input
                       type="number"
                       value={riga.quantita}
                       onChange={(e) => aggiornaRiga(riga.id, 'quantita', parseFloat(e.target.value) || 0)}
-                      className="w-full px-3 py-2 border border-gray-300 rounded focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
+                      className={`w-full px-3 py-2 border ${border} ${inputBg} rounded focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm ${textPrimary}`}
                       min="0"
                       step="0.01"
                     />
                   </div>
                   <div className="col-span-6 md:col-span-2">
-                    <label className="block text-xs font-medium text-gray-700 mb-1">Prezzo Unitario</label>
+                    <label className={`block text-xs font-medium ${textSecondary} mb-1`}>Prezzo Unitario</label>
                     <input
                       type="number"
                       value={riga.prezzo_unitario}
                       onChange={(e) => aggiornaRiga(riga.id, 'prezzo_unitario', parseFloat(e.target.value) || 0)}
-                      className="w-full px-3 py-2 border border-gray-300 rounded focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
+                      className={`w-full px-3 py-2 border ${border} ${inputBg} rounded focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm ${textPrimary}`}
                       min="0"
                       step="0.01"
                     />
                   </div>
                   <div className="col-span-6 md:col-span-2">
-                    <label className="block text-xs font-medium text-gray-700 mb-1">IVA %</label>
+                    <label className={`block text-xs font-medium ${textSecondary} mb-1`}>IVA %</label>
                     <input
                       type="number"
                       value={riga.aliquota_iva}
                       onChange={(e) => aggiornaRiga(riga.id, 'aliquota_iva', parseFloat(e.target.value) || 0)}
-                      className="w-full px-3 py-2 border border-gray-300 rounded focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
+                      className={`w-full px-3 py-2 border ${border} ${inputBg} rounded focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm ${textPrimary}`}
                       min="0"
                       max="100"
                     />
@@ -336,18 +350,18 @@ export default function NuovaFatturaPage() {
           </div>
 
           {/* Totali */}
-          <div className="bg-white rounded-lg shadow-md p-6 mb-6">
-            <h2 className="text-xl font-semibold text-gray-900 mb-4">Riepilogo Totali</h2>
+          <div className={`${cardBg} rounded-lg shadow-md p-6 mb-6 border ${border}`}>
+            <h2 className={`text-xl font-semibold ${textPrimary} mb-4`}>Riepilogo Totali</h2>
             <div className="space-y-2">
-              <div className="flex justify-between text-sm text-gray-700">
+              <div className={`flex justify-between text-sm ${textSecondary}`}>
                 <span>Imponibile:</span>
                 <span className="font-medium">{formatCurrency(imponibile)}</span>
               </div>
-              <div className="flex justify-between text-sm text-gray-700">
+              <div className={`flex justify-between text-sm ${textSecondary}`}>
                 <span>IVA:</span>
                 <span className="font-medium">{formatCurrency(totaleIva)}</span>
               </div>
-              <div className="flex justify-between text-lg font-bold text-gray-900 border-t-2 border-gray-900 pt-2">
+              <div className={`flex justify-between text-lg font-bold ${textPrimary} border-t-2 ${border} pt-2`}>
                 <span>TOTALE:</span>
                 <span>{formatCurrency(totaleGenerale)}</span>
               </div>
@@ -359,7 +373,7 @@ export default function NuovaFatturaPage() {
             <button
               type="button"
               onClick={() => router.back()}
-              className="px-6 py-3 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
+              className={`px-6 py-3 border ${border} ${textSecondary} rounded-lg hover:${isDark ? 'bg-slate-800' : 'bg-gray-50'} transition-colors`}
               style={{ fontSize: '14px', fontWeight: 600 }}
             >
               Annulla
