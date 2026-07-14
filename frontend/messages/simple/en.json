@@ -21,6 +21,8 @@
   "sidebar_app_badge": "App",
   "sidebar_by": "by MUSINO",
   "sidebar_plan_pro": "PRO Plan",
+  "sidebar_tables": "Tables",
+  "sidebar_no_tables_access": "No table access",
   "header_back_to_dashboard": "Back to Dashboard",
   "header_dashboard_title": "Dashboard",
   "header_logout": "Logout",
@@ -326,19 +328,6 @@
   "success_demo_active": "Active",
   "success_url_app": "App URL",
   "success_qr_access": "QR Code Access",
-  "success_qr_placeholder": "The QR code will appear once you have generated your first app.",
+  "success_qr_placeholder": "The QR code will appear once you have generated your first ZEUSX app.",
   "success_scan_qr": "Scan with your smartphone camera"
 }
-
-
-
-
-
-
-
-
-
-
-
-
-

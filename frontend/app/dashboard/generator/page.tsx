@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useLanguage } from '@/src/lib/LanguageContext';
-import { MessageSquare, Send } from 'lucide-react';
+import { MessageSquare, Send, Key, Loader2 } from 'lucide-react';
 
 // Pattern per riconoscere richieste di creazione app
 const CREATE_APP_PATTERNS = [
@@ -21,6 +21,9 @@ export default function GeneratorPage() {
   const [messages, setMessages] = useState<{role: string, text: string, isAppLink?: boolean, appUrl?: string}[]>([]);
   const [input, setInput] = useState('');
   const [isProcessing, setIsProcessing] = useState(false);
+  const [apiKey, setApiKey] = useState('');
+  const [showApiKeyForm, setShowApiKeyForm] = useState(false);
+  const [pendingAppRequest, setPendingAppRequest] = useState<{activityName: string, activityType: string} | null>(null);
 
   // Estrae nome attività e tipo dalla richiesta
   const parseAppRequest = (text: string): { activityName: string; activityType: string } | null => {
@@ -87,7 +90,19 @@ export default function GeneratorPage() {
     const appRequest = parseAppRequest(text);
     
     if (appRequest) {
-      // Chiama il proxy ZEUSX
+      // Se non c'è API Key, mostra il form
+      if (!apiKey.trim()) {
+        setPendingAppRequest(appRequest);
+        setShowApiKeyForm(true);
+        setMessages(prev => [...prev, { 
+          role: 'ai', 
+          text: 'Per creare l\'app su Totalium, inserisci la tua API Key qui sotto.'
+        }]);
+        setIsProcessing(false);
+        return;
+      }
+      
+      // Chiama il proxy ZEUSX con API Key
       try {
         const response = await fetch('/api/zeusx-proxy', {
           method: 'POST',
@@ -95,7 +110,8 @@ export default function GeneratorPage() {
           body: JSON.stringify({
             action: 'createApp',
             activityName: appRequest.activityName,
-            activityType: appRequest.activityType
+            activityType: appRequest.activityType,
+            apiKey: apiKey
           })
         });
 
@@ -129,6 +145,51 @@ export default function GeneratorPage() {
       }]);
     }
     
+    setIsProcessing(false);
+  };
+
+  const handleApiKeySubmit = async () => {
+    if (!pendingAppRequest || !apiKey.trim()) return;
+    
+    setIsProcessing(true);
+    setShowApiKeyForm(false);
+    
+    try {
+      const response = await fetch('/api/zeusx-proxy', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'createApp',
+          activityName: pendingAppRequest.activityName,
+          activityType: pendingAppRequest.activityType,
+          apiKey: apiKey
+        })
+      });
+
+      const data = await response.json();
+      
+      if (data.success && data.appUrl) {
+        setMessages(prev => [...prev, { 
+          role: 'ai', 
+          text: t('zeusx_generator_app_created'),
+          isAppLink: true,
+          appUrl: data.appUrl
+        }]);
+      } else {
+        setMessages(prev => [...prev, { 
+          role: 'ai', 
+          text: data.error || t('zeusx_generator_error_create')
+        }]);
+      }
+    } catch (err) {
+      console.error("Errore creazione app:", err);
+      setMessages(prev => [...prev, { 
+        role: 'ai', 
+        text: t('zeusx_generator_error_connection')
+      }]);
+    }
+    
+    setPendingAppRequest(null);
     setIsProcessing(false);
   };
 
@@ -189,6 +250,33 @@ export default function GeneratorPage() {
               </div>
             ))}
           </div>
+
+          {/* API Key Form (inline) */}
+          {showApiKeyForm && (
+            <div className="mb-4 p-4 bg-gray-800 rounded-xl">
+              <div className="flex items-center gap-2 mb-3">
+                <Key className="w-4 h-4 text-indigo-400" />
+                <p className="text-sm text-gray-300">Inserisci la tua API Key per creare l'app su Totalium:</p>
+              </div>
+              <div className="flex gap-2">
+                <input
+                  type="password"
+                  className="flex-1 p-3 bg-gray-700 text-white rounded-lg border border-gray-600 focus:outline-none focus:border-indigo-500"
+                  value={apiKey}
+                  onChange={(e) => setApiKey(e.target.value)}
+                  placeholder="API Key..."
+                  onKeyDown={(e) => e.key === 'Enter' && handleApiKeySubmit()}
+                />
+                <button
+                  onClick={handleApiKeySubmit}
+                  disabled={isProcessing || !apiKey.trim()}
+                  className="bg-indigo-600 hover:bg-indigo-700 disabled:bg-gray-600 text-white px-4 py-2 rounded-lg font-semibold transition flex items-center justify-center"
+                >
+                  {isProcessing ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Crea App'}
+                </button>
+              </div>
+            </div>
+          )}
 
           {/* Input */}
           <div className="flex gap-2">
