@@ -31,17 +31,40 @@ export default function FatturePage() {
   
   useEffect(() => {
     // Leggi le preferenze dal localStorage
-    const savedPrefs = localStorage.getItem(`app_session_${slug}_prefs`);
-    if (savedPrefs) {
-      try {
-        const parsed = JSON.parse(savedPrefs);
-        if (parsed.theme) {
-          setTheme(parsed.theme);
+    const loadTheme = () => {
+      const savedPrefs = localStorage.getItem(`app_session_${slug}_prefs`);
+      if (savedPrefs) {
+        try {
+          const parsed = JSON.parse(savedPrefs);
+          if (parsed.theme) {
+            setTheme(parsed.theme);
+          }
+        } catch {
+          // Usa il tema di default
         }
-      } catch {
-        // Usa il tema di default
       }
-    }
+    };
+    
+    loadTheme();
+    
+    // Ascolta i cambiamenti nel localStorage (stesso tab)
+    const handleStorageChange = (e: StorageEvent) => {
+      if (e.key === `app_session_${slug}_prefs`) {
+        loadTheme();
+      }
+    };
+    
+    // Ascolta il custom event per cambiamenti nello stesso tab
+    const handleCustomEvent = () => {
+      loadTheme();
+    };
+    
+    window.addEventListener('storage', handleStorageChange);
+    window.addEventListener('theme-change', handleCustomEvent);
+    return () => {
+      window.removeEventListener('storage', handleStorageChange);
+      window.removeEventListener('theme-change', handleCustomEvent);
+    };
   }, [slug]);
 
   const [fatture, setFatture] = useState<Fattura[]>([]);
