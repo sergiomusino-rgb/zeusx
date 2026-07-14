@@ -26,6 +26,25 @@ export default function FatturePage() {
   const router = useRouter();
   const slug = params.slug as string;
 
+  // Leggi il tema dalle impostazioni
+  const [theme, setTheme] = useState<'dark' | 'light'>('dark');
+  
+  useEffect(() => {
+    // Leggi le preferenze dal localStorage
+    const savedPrefs = localStorage.getItem(`app_session_${slug}`);
+    if (savedPrefs) {
+      try {
+        const parsed = JSON.parse(savedPrefs);
+        const prefs = parsed.prefs || parsed;
+        if (prefs.theme) {
+          setTheme(prefs.theme);
+        }
+      } catch {
+        // Usa il tema di default
+      }
+    }
+  }, [slug]);
+
   const [fatture, setFatture] = useState<Fattura[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -172,33 +191,42 @@ export default function FatturePage() {
     pagate: fattureFiltrate.filter(f => f.stato === 'pagata').length,
   };
 
+  // Colori in base al tema
+  const isDark = theme === 'dark';
+  const bgColor = isDark ? 'bg-slate-950' : 'bg-gray-100';
+  const cardBg = isDark ? 'bg-slate-900' : 'bg-white';
+  const textPrimary = isDark ? 'text-white' : 'text-gray-900';
+  const textSecondary = isDark ? 'text-slate-400' : 'text-gray-600';
+  const textMuted = isDark ? 'text-slate-500' : 'text-gray-500';
+  const borderColor = isDark ? 'border-slate-800' : 'border-gray-300';
+
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-100 flex items-center justify-center">
-        <div className="text-gray-600">Caricamento fatture...</div>
+      <div className={`min-h-screen ${bgColor} flex items-center justify-center`}>
+        <div className={textSecondary}>Caricamento fatture...</div>
       </div>
     );
   }
 
   if (error) {
     return (
-      <div className="min-h-screen bg-gray-100 flex items-center justify-center">
+      <div className={`min-h-screen ${bgColor} flex items-center justify-center`}>
         <div className="text-center">
           <h2 className="text-xl font-semibold text-red-600 mb-2">Errore</h2>
-          <p className="text-gray-600">{error}</p>
+          <p className={textSecondary}>{error}</p>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gray-100 py-8">
+    <div className={`${bgColor} min-h-screen py-8 transition-colors duration-300`}>
       <div className="max-w-7xl mx-auto px-4">
         {/* Header */}
         <div className="flex justify-between items-center mb-8">
           <div>
-            <h1 className="text-3xl font-bold text-gray-900 mb-2">Fatture</h1>
-            <p className="text-sm text-gray-600">Gestisci le tue fatture</p>
+            <h1 className={`text-3xl font-bold ${textPrimary} mb-2`}>Fatture</h1>
+            <p className={`text-sm ${textSecondary}`}>Gestisci le tue fatture</p>
           </div>
           <button
             onClick={() => router.push(`/a/${slug}/fatture/nuova`)}
@@ -214,49 +242,49 @@ export default function FatturePage() {
 
         {/* Statistiche */}
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
-          <div className="bg-white rounded-lg shadow-md p-4">
-            <div className="text-2xl font-bold text-gray-900">{stats.totale}</div>
-            <div className="text-sm text-gray-600">Totale Fatture</div>
+          <div className={`${cardBg} rounded-lg shadow-md p-4`}>
+            <div className={`text-2xl font-bold ${textPrimary}`}>{stats.totale}</div>
+            <div className={`text-sm ${textMuted}`}>Totale Fatture</div>
           </div>
-          <div className="bg-white rounded-lg shadow-md p-4">
-            <div className="text-2xl font-bold text-gray-600">{stats.bozze}</div>
-            <div className="text-sm text-gray-600">Bozze</div>
+          <div className={`${cardBg} rounded-lg shadow-md p-4`}>
+            <div className={`text-2xl font-bold ${textMuted}`}>{stats.bozze}</div>
+            <div className={`text-sm ${textMuted}`}>Bozze</div>
           </div>
-          <div className="bg-white rounded-lg shadow-md p-4">
+          <div className={`${cardBg} rounded-lg shadow-md p-4`}>
             <div className="text-2xl font-bold text-green-600">{stats.emesse}</div>
-            <div className="text-sm text-gray-600">Emesse</div>
+            <div className={`text-sm ${textMuted}`}>Emesse</div>
           </div>
-          <div className="bg-white rounded-lg shadow-md p-4">
+          <div className={`${cardBg} rounded-lg shadow-md p-4`}>
             <div className="text-2xl font-bold text-blue-600">{stats.pagate}</div>
-            <div className="text-sm text-gray-600">Pagate</div>
+            <div className={`text-sm ${textMuted}`}>Pagate</div>
           </div>
         </div>
 
         {/* Filtri */}
-        <div className="bg-white rounded-lg shadow-md p-4 mb-6">
+        <div className={`${cardBg} rounded-lg shadow-md p-4 mb-6`}>
           <div className="flex flex-col md:flex-row gap-4 items-start md:items-center">
             <div className="flex-1 w-full md:w-auto">
-              <label className="block text-xs font-medium text-gray-700 mb-1">Cerca</label>
+              <label className={`block text-xs font-medium ${isDark ? 'text-slate-300' : 'text-gray-700'} mb-1`}>Cerca</label>
               <div className="relative">
                 <input
                   type="text"
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
                   placeholder="Cliente, numero fattura, P.IVA..."
-                  className="w-full px-3 py-2 pl-10 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
+                  className={`w-full px-3 py-2 pl-10 border ${borderColor} rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm ${isDark ? 'bg-slate-900 text-white' : 'bg-white text-gray-900'}`}
                 />
-                <svg className="absolute left-3 top-2.5 w-4 h-4 text-gray-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <svg className={`absolute left-3 top-2.5 w-4 h-4 ${isDark ? 'text-slate-400' : 'text-gray-400'}`} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                   <circle cx="11" cy="11" r="8" />
                   <path d="M21 21l-4.35-4.35" />
                 </svg>
               </div>
             </div>
             <div>
-              <label className="block text-xs font-medium text-gray-700 mb-1">Stato</label>
+              <label className={`block text-xs font-medium ${isDark ? 'text-slate-300' : 'text-gray-700'} mb-1`}>Stato</label>
               <select
                 value={filterStato}
                 onChange={(e) => setFilterStato(e.target.value)}
-                className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
+                className={`px-3 py-2 border ${borderColor} rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm ${isDark ? 'bg-slate-900 text-white' : 'bg-white text-gray-900'}`}
               >
                 <option value="tutti">Tutti</option>
                 <option value="bozza">Bozza</option>
@@ -266,11 +294,11 @@ export default function FatturePage() {
               </select>
             </div>
             <div>
-              <label className="block text-xs font-medium text-gray-700 mb-1">Anno</label>
+              <label className={`block text-xs font-medium ${isDark ? 'text-slate-300' : 'text-gray-700'} mb-1`}>Anno</label>
               <select
                 value={filterAnno}
                 onChange={(e) => setFilterAnno(e.target.value)}
-                className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
+                className={`px-3 py-2 border ${borderColor} rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm ${isDark ? 'bg-slate-900 text-white' : 'bg-white text-gray-900'}`}
               >
                 <option value="tutti">Tutti</option>
                 <option value="2026">2026</option>
@@ -282,29 +310,29 @@ export default function FatturePage() {
         </div>
 
         {/* Tabella Fatture */}
-        <div className="bg-white rounded-lg shadow-md overflow-hidden">
+        <div className={`${cardBg} rounded-lg shadow-md overflow-hidden`}>
           <table className="w-full border-collapse">
             <thead>
-              <tr className="bg-gray-100">
-                <th className="border-b border-gray-300 px-4 py-3 text-left text-sm font-semibold text-gray-700">
+              <tr className={isDark ? 'bg-slate-800' : 'bg-gray-100'}>
+                <th className={`border-b ${borderColor} px-4 py-3 text-left text-sm font-semibold ${isDark ? 'text-slate-300' : 'text-gray-700'}`}>
                   Numero
                 </th>
-                <th className="border-b border-gray-300 px-4 py-3 text-left text-sm font-semibold text-gray-700">
+                <th className={`border-b ${borderColor} px-4 py-3 text-left text-sm font-semibold ${isDark ? 'text-slate-300' : 'text-gray-700'}`}>
                   Data
                 </th>
-                <th className="border-b border-gray-300 px-4 py-3 text-left text-sm font-semibold text-gray-700">
+                <th className={`border-b ${borderColor} px-4 py-3 text-left text-sm font-semibold ${isDark ? 'text-slate-300' : 'text-gray-700'}`}>
                   Cliente
                 </th>
-                <th className="border-b border-gray-300 px-4 py-3 text-left text-sm font-semibold text-gray-700">
+                <th className={`border-b ${borderColor} px-4 py-3 text-left text-sm font-semibold ${isDark ? 'text-slate-300' : 'text-gray-700'}`}>
                   P.IVA
                 </th>
-                <th className="border-b border-gray-300 px-4 py-3 text-center text-sm font-semibold text-gray-700">
+                <th className={`border-b ${borderColor} px-4 py-3 text-center text-sm font-semibold ${isDark ? 'text-slate-300' : 'text-gray-700'}`}>
                   Stato
                 </th>
-                <th className="border-b border-gray-300 px-4 py-3 text-right text-sm font-semibold text-gray-700">
+                <th className={`border-b ${borderColor} px-4 py-3 text-right text-sm font-semibold ${isDark ? 'text-slate-300' : 'text-gray-700'}`}>
                   Totale
                 </th>
-                <th className="border-b border-gray-300 px-4 py-3 text-center text-sm font-semibold text-gray-700">
+                <th className={`border-b ${borderColor} px-4 py-3 text-center text-sm font-semibold ${isDark ? 'text-slate-300' : 'text-gray-700'}`}>
                   Azioni
                 </th>
               </tr>
@@ -312,26 +340,26 @@ export default function FatturePage() {
             <tbody>
               {fattureFiltrate.length === 0 ? (
                 <tr>
-                  <td colSpan={7} className="px-4 py-8 text-center text-gray-500">
+                  <td colSpan={7} className={`px-4 py-8 text-center ${textMuted}`}>
                     Nessuna fattura trovata
                   </td>
                 </tr>
               ) : (
                 fattureFiltrate.map((fattura, index) => (
-                  <tr key={fattura.id} className={index % 2 === 0 ? 'bg-white' : 'bg-gray-50'}>
-                    <td className="border-b border-gray-200 px-4 py-3 text-sm text-gray-900">
+                  <tr key={fattura.id} className={index % 2 === 0 ? (isDark ? 'bg-slate-900' : 'bg-white') : (isDark ? 'bg-slate-800' : 'bg-gray-50')}>
+                    <td className={`border-b ${borderColor} px-4 py-3 text-sm ${textPrimary}`}>
                       {fattura.numero_fattura}/{fattura.anno}
                     </td>
-                    <td className="border-b border-gray-200 px-4 py-3 text-sm text-gray-900">
+                    <td className={`border-b ${borderColor} px-4 py-3 text-sm ${textPrimary}`}>
                       {formatDate(fattura.data_emissione)}
                     </td>
-                    <td className="border-b border-gray-200 px-4 py-3 text-sm text-gray-900">
+                    <td className={`border-b ${borderColor} px-4 py-3 text-sm ${textPrimary}`}>
                       {fattura.cliente_nome}
                     </td>
-                    <td className="border-b border-gray-200 px-4 py-3 text-sm text-gray-600">
+                    <td className={`border-b ${borderColor} px-4 py-3 text-sm ${textMuted}`}>
                       {fattura.cliente_piva || '-'}
                     </td>
-                    <td className="border-b border-gray-200 px-4 py-3 text-center">
+                    <td className={`border-b ${borderColor} px-4 py-3 text-center`}>
                       <span className={`inline-block px-3 py-1 rounded-full text-xs font-medium ${
                         fattura.stato === 'emessa' 
                           ? 'bg-green-100 text-green-800' 
@@ -344,10 +372,10 @@ export default function FatturePage() {
                         {fattura.stato.toUpperCase()}
                       </span>
                     </td>
-                    <td className="border-b border-gray-200 px-4 py-3 text-sm text-right text-gray-900">
+                    <td className={`border-b ${borderColor} px-4 py-3 text-sm text-right ${textPrimary}`}>
                       {fattura.totale ? formatCurrency(fattura.totale) : '-'}
                     </td>
-                    <td className="border-b border-gray-200 px-4 py-3 text-center">
+                    <td className={`border-b ${borderColor} px-4 py-3 text-center`}>
                       <select
                         value={fattura.stato}
                         onChange={(e) => updateStato(fattura.id, e.target.value)}
