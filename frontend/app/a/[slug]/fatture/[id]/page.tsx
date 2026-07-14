@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { useParams } from 'next/navigation';
+import { useTheme } from '@/src/lib/ThemeContext';
 
 const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:3001';
 
@@ -33,6 +34,9 @@ export default function FatturaViewPage() {
   const params = useParams();
   const slug = params.slug as string;
   const fatturaId = params.id as string;
+  
+  // Usa il tema dal context globale
+  const { theme } = useTheme();
 
   const [fattura, setFattura] = useState<Fattura | null>(null);
   const [righe, setRighe] = useState<RigaFattura[]>([]);
@@ -116,20 +120,28 @@ export default function FatturaViewPage() {
     window.print();
   };
 
+  // Colori in base al tema
+  const isDark = theme === 'dark';
+  const bgColor = isDark ? 'bg-slate-950' : 'bg-slate-100';
+  const cardBg = isDark ? 'bg-slate-900' : 'bg-white';
+  const textPrimary = isDark ? 'text-white' : 'text-slate-900';
+  const textSecondary = isDark ? 'text-slate-400' : 'text-slate-600';
+  const border = isDark ? 'border-slate-800' : 'border-slate-200';
+
   if (loading) {
     return (
-      <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#f5f5f5' }}>
-        <div style={{ color: '#64748b', fontSize: '16px' }}>Caricamento fattura...</div>
+      <div className={`min-h-screen ${bgColor} flex items-center justify-center`}>
+        <div className={textSecondary}>Caricamento fattura...</div>
       </div>
     );
   }
 
   if (error || !fattura) {
     return (
-      <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#f5f5f5' }}>
-        <div style={{ textAlign: 'center', color: '#ef4444' }}>
-          <h2 style={{ fontSize: '20px', fontWeight: 600, marginBottom: '8px' }}>Errore</h2>
-          <p style={{ fontSize: '14px', color: '#64748b' }}>{error || 'Fattura non trovata'}</p>
+      <div className={`min-h-screen ${bgColor} flex items-center justify-center`}>
+        <div className="text-center" style={{ color: '#ef4444' }}>
+          <h2 className="text-xl font-semibold mb-2">Errore</h2>
+          <p className={`text-sm ${textSecondary}`}>{error || 'Fattura non trovata'}</p>
         </div>
       </div>
     );
@@ -148,7 +160,7 @@ export default function FatturaViewPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-100">
+    <div className={`min-h-screen ${bgColor}`}>
       {/* Bottone Stampa - Nascosto in stampa */}
       <div className="no-print fixed top-4 right-4 z-50">
         <button
@@ -165,7 +177,7 @@ export default function FatturaViewPage() {
       </div>
 
       {/* Contenitore Fattura A4 */}
-      <div className="print:p-0 print:shadow-none mx-auto mt-8 mb-8 bg-white shadow-lg" style={{ maxWidth: '210mm', minHeight: '297mm', padding: '20mm' }}>
+      <div className="print:p-0 print:shadow-none mx-auto mt-8 mb-8 shadow-lg" style={{ maxWidth: '210mm', minHeight: '297mm', padding: '20mm', background: isDark ? '#1e293b' : '#ffffff' }}>
         {/* Intestazione Azienda Emettitrice */}
         <div className="flex justify-between items-start mb-8 pb-6 border-b-2 border-blue-600">
           <div className="flex items-start gap-4">
@@ -174,8 +186,8 @@ export default function FatturaViewPage() {
               ZX
             </div>
             <div>
-              <h2 className="text-xl font-bold text-gray-900 mb-1">ZeusX Srl</h2>
-              <div className="text-sm text-gray-600">
+              <h2 className={`text-xl font-bold ${textPrimary} mb-1`}>ZeusX Srl</h2>
+              <div className={`text-sm ${textSecondary}`}>
                 <p>P.IVA: 01234567890</p>
                 <p>Via Roma 1, 00100 Roma (RM)</p>
                 <p>Tel: +39 06 1234567</p>
@@ -185,7 +197,7 @@ export default function FatturaViewPage() {
           </div>
           <div className="text-right">
             <h1 className="text-3xl font-bold text-blue-600 mb-2">FATTURA</h1>
-            <div className="text-sm text-gray-600">
+            <div className={`text-sm ${textSecondary}`}>
               <p><strong>Numero:</strong> {fattura.numero_fattura}/{fattura.anno}</p>
               <p><strong>Stato:</strong> {fattura.stato.toUpperCase()}</p>
               {fattura.metodo_pagamento && (
@@ -196,9 +208,9 @@ export default function FatturaViewPage() {
         </div>
 
         {/* Dati Cliente */}
-        <div className="mb-8 p-4 bg-gray-50 rounded">
-          <h2 className="text-lg font-semibold text-gray-900 mb-3">Dati Cliente</h2>
-          <div className="text-sm text-gray-700">
+        <div className={`mb-8 p-4 ${isDark ? 'bg-slate-800' : 'bg-gray-50'} rounded`}>
+          <h2 className={`text-lg font-semibold ${textPrimary} mb-3`}>Dati Cliente</h2>
+          <div className={`text-sm ${textSecondary}`}>
             <p className="font-medium">{fattura.cliente_nome}</p>
             {fattura.cliente_piva && <p>P.IVA: {fattura.cliente_piva}</p>}
             {fattura.cliente_indirizzo && <p>{fattura.cliente_indirizzo}</p>}
@@ -209,20 +221,20 @@ export default function FatturaViewPage() {
         <div className="mb-8">
           <table className="w-full border-collapse">
             <thead>
-              <tr className="bg-gray-100">
-                <th className="border border-gray-300 px-4 py-2 text-left text-sm font-semibold text-gray-700" style={{ width: '40%' }}>
+              <tr className={isDark ? 'bg-slate-800' : 'bg-gray-100'}>
+                <th className={`border ${border} px-4 py-2 text-left text-sm font-semibold ${textSecondary}`} style={{ width: '40%' }}>
                   Descrizione
                 </th>
-                <th className="border border-gray-300 px-4 py-2 text-right text-sm font-semibold text-gray-700" style={{ width: '15%' }}>
+                <th className={`border ${border} px-4 py-2 text-right text-sm font-semibold ${textSecondary}`} style={{ width: '15%' }}>
                   Quantità
                 </th>
-                <th className="border border-gray-300 px-4 py-2 text-right text-sm font-semibold text-gray-700" style={{ width: '20%' }}>
+                <th className={`border ${border} px-4 py-2 text-right text-sm font-semibold ${textSecondary}`} style={{ width: '20%' }}>
                   Prezzo Unitario
                 </th>
-                <th className="border border-gray-300 px-4 py-2 text-right text-sm font-semibold text-gray-700" style={{ width: '15%' }}>
+                <th className={`border ${border} px-4 py-2 text-right text-sm font-semibold ${textSecondary}`} style={{ width: '15%' }}>
                   IVA %
                 </th>
-                <th className="border border-gray-300 px-4 py-2 text-right text-sm font-semibold text-gray-700" style={{ width: '20%' }}>
+                <th className={`border ${border} px-4 py-2 text-right text-sm font-semibold ${textSecondary}`} style={{ width: '20%' }}>
                   Totale
                 </th>
               </tr>
@@ -231,20 +243,20 @@ export default function FatturaViewPage() {
               {righe.map((riga, index) => {
                 const totaleRiga = riga.quantita * riga.prezzo_unitario;
                 return (
-                  <tr key={riga.id} className={index % 2 === 0 ? 'bg-white' : 'bg-gray-50'}>
-                    <td className="border border-gray-300 px-4 py-3 text-sm text-gray-900">
+                  <tr key={riga.id} className={index % 2 === 0 ? (isDark ? 'bg-slate-900' : 'bg-white') : (isDark ? 'bg-slate-800' : 'bg-gray-50')}>
+                    <td className={`border ${border} px-4 py-3 text-sm ${textPrimary}`}>
                       {riga.descrizione}
                     </td>
-                    <td className="border border-gray-300 px-4 py-3 text-sm text-right text-gray-900">
+                    <td className={`border ${border} px-4 py-3 text-sm text-right ${textPrimary}`}>
                       {riga.quantita}
                     </td>
-                    <td className="border border-gray-300 px-4 py-3 text-sm text-right text-gray-900">
+                    <td className={`border ${border} px-4 py-3 text-sm text-right ${textPrimary}`}>
                       {formatCurrency(riga.prezzo_unitario)}
                     </td>
-                    <td className="border border-gray-300 px-4 py-3 text-sm text-right text-gray-900">
+                    <td className={`border ${border} px-4 py-3 text-sm text-right ${textPrimary}`}>
                       {riga.aliquota_iva}%
                     </td>
-                    <td className="border border-gray-300 px-4 py-3 text-sm text-right font-medium text-gray-900">
+                    <td className={`border ${border} px-4 py-3 text-sm text-right font-medium ${textPrimary}`}>
                       {formatCurrency(totaleRiga)}
                     </td>
                   </tr>
@@ -257,15 +269,15 @@ export default function FatturaViewPage() {
         {/* Riepilogo Totali */}
         <div className="flex justify-end">
           <div className="w-80">
-            <div className="flex justify-between py-2 text-sm text-gray-700">
+            <div className={`flex justify-between py-2 text-sm ${textSecondary}`}>
               <span>Imponibile:</span>
               <span className="font-medium">{formatCurrency(imponibile)}</span>
             </div>
-            <div className="flex justify-between py-2 text-sm text-gray-700">
+            <div className={`flex justify-between py-2 text-sm ${textSecondary}`}>
               <span>IVA:</span>
               <span className="font-medium">{formatCurrency(totaleIva)}</span>
             </div>
-            <div className="flex justify-between py-3 text-lg font-bold text-gray-900 border-t-2 border-gray-900">
+            <div className={`flex justify-between py-3 text-lg font-bold ${textPrimary} border-t-2 ${border}`}>
               <span>TOTALE:</span>
               <span>{formatCurrency(totaleGenerale)}</span>
             </div>
@@ -274,12 +286,12 @@ export default function FatturaViewPage() {
 
         {/* Data Emissione - In basso */}
         <div className="mb-4 text-right">
-          <span className="text-sm text-gray-600">Data Emissione: </span>
-          <span className="text-sm font-medium text-gray-900">{formatDate(fattura.data_emissione)}</span>
+          <span className={`text-sm ${textSecondary}`}>Data Emissione: </span>
+          <span className={`text-sm font-medium ${textPrimary}`}>{formatDate(fattura.data_emissione)}</span>
         </div>
 
         {/* Footer */}
-        <div className="mt-12 pt-6 border-t border-gray-200 text-center text-xs text-gray-500">
+        <div className={`mt-12 pt-6 border-t ${border} text-center text-xs ${textSecondary}`}>
           <p>Documento generato da ZeusX - by MUSINO</p>
         </div>
       </div>

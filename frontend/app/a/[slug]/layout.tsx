@@ -3,6 +3,7 @@
 import { PropsWithChildren } from 'react';
 import { LanguageProvider } from '@/src/lib/LanguageContext';
 import { AuthProvider } from '@/src/lib/AuthContext';
+import { ThemeProvider } from '@/src/lib/ThemeContext';
 import { useParams } from 'next/navigation';
 
 export default function AppLayout({ children }: PropsWithChildren) {
@@ -11,9 +12,11 @@ export default function AppLayout({ children }: PropsWithChildren) {
   
   return (
     <LanguageProvider>
-      <AuthProvider slug={slug}>
-        {children}
-      </AuthProvider>
+      <ThemeProvider slug={slug}>
+        <AuthProvider slug={slug}>
+          {children}
+        </AuthProvider>
+      </ThemeProvider>
     </LanguageProvider>
   );
 }

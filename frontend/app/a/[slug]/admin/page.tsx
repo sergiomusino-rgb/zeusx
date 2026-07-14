@@ -1,6 +1,8 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { useParams } from 'next/navigation';
+import { useTheme } from '@/src/lib/ThemeContext';
 
 interface CompanySettings {
   companyName: string;
@@ -21,72 +23,98 @@ interface CompanySettings {
 }
 
 export default function AdminSettingsPage() {
-  // Leggi il tema dalle impostazioni
-  const [theme, setTheme] = useState<'dark' | 'light'>('dark');
+  const params = useParams();
+  const slug = params.slug as string;
   
-  useEffect(() => {
-    // Leggi lo slug dalla URL
-    const path = typeof window !== 'undefined' ? window.location.pathname : '';
-    const match = path.match(/\/a\/([^/]+)/);
-    const currentSlug = match?.[1] || '';
-    
-    // Leggi le preferenze dal localStorage
-    const loadTheme = () => {
-      const savedPrefs = localStorage.getItem(`app_session_${currentSlug}_prefs`);
-      if (savedPrefs) {
-        try {
-          const parsed = JSON.parse(savedPrefs);
-          if (parsed.theme) {
-            setTheme(parsed.theme);
-          }
-        } catch {
-          // Usa il tema di default
-        }
-      }
-    };
-    
-    loadTheme();
-    
-    // Ascolta i cambiamenti nel localStorage (stesso tab)
-    const handleStorageChange = (e: StorageEvent) => {
-      if (e.key === `app_session_${currentSlug}_prefs`) {
-        loadTheme();
-      }
-    };
-    
-    // Ascolta il custom event per cambiamenti nello stesso tab
-    const handleCustomEvent = () => {
-      loadTheme();
-    };
-    
-    window.addEventListener('storage', handleStorageChange);
-    window.addEventListener('theme-change', handleCustomEvent);
-    return () => {
-      window.removeEventListener('storage', handleStorageChange);
-      window.removeEventListener('theme-change', handleCustomEvent);
-    };
-  }, []);
+  // Usa il tema dal context globale
+  const { theme } = useTheme();
 
   const [settings, setSettings] = useState<CompanySettings>({
-    companyName: 'La Mia Azienda S.r.l.',
+    companyName: '',
     logoUrl: '',
-    slogan: 'Innovazione e qualità al tuo servizio',
+    slogan: '',
     accentColor: '#6366f1',
-    phone: '+39 02 1234567',
-    email: 'info@lamiaazienda.it',
-    website: 'https://www.lamiaazienda.it',
-    address: 'Via Roma 123',
-    zipCode: '20121',
-    city: 'Milano',
-    province: 'MI',
-    vatNumber: 'IT12345678901',
-    fiscalCode: 'ABCDEF12G34H567I',
-    headerText: 'Documento ufficiale - La Mia Azienda S.r.l.',
-    footerNotes: 'Documento generato automaticamente il {{date}}. Per informazioni contattare info@lamiaazienda.it',
+    phone: '',
+    email: '',
+    website: '',
+    address: '',
+    zipCode: '',
+    city: '',
+    province: '',
+    vatNumber: '',
+    fiscalCode: '',
+    headerText: '',
+    footerNotes: '',
   });
 
   const [saving, setSaving] = useState(false);
   const [saveMessage, setSaveMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  // Recupera la password dalla sessione
+  const getPassword = (): string | null => {
+    if (typeof window === 'undefined') return null;
+    const sessionKey = `app_session_${slug}`;
+    const raw = localStorage.getItem(sessionKey);
+    if (!raw) return null;
+    try {
+      const parsed = JSON.parse(raw);
+      return parsed.password || null;
+    } catch {
+      return null;
+    }
+  };
+
+  // Carica le impostazioni esistenti
+  useEffect(() => {
+    const loadSettings = async () => {
+      setLoading(true);
+      const password = getPassword();
+      
+      if (!password) {
+        setLoading(false);
+        return;
+      }
+
+      try {
+        const res = await fetch(`/api/a/${slug}`, {
+          headers: {
+            Authorization: `Bearer ${password}`,
+          },
+        });
+
+        if (res.ok) {
+          const data = await res.json();
+          const appInfo = data.appInfo || data;
+          const branding = appInfo?.branding || {};
+          
+          setSettings({
+            companyName: branding.company_name || appInfo?.appName || appInfo?.name || '',
+            logoUrl: branding.logo_url || appInfo?.logo || '',
+            slogan: branding.slogan || '',
+            accentColor: branding.primary_color || '#6366f1',
+            phone: branding.phone || '',
+            email: branding.email || '',
+            website: branding.website || '',
+            address: branding.address || '',
+            zipCode: branding.zip_code || '',
+            city: branding.city || '',
+            province: branding.province || '',
+            vatNumber: branding.vat_number || '',
+            fiscalCode: branding.fiscal_code || '',
+            headerText: branding.header_text || '',
+            footerNotes: branding.footer_notes || '',
+          });
+        }
+      } catch (error) {
+        console.error('Errore caricamento impostazioni:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadSettings();
+  }, [slug]);
 
   const handleChange = (field: keyof CompanySettings, value: string) => {
     setSettings(prev => ({ ...prev, [field]: value }));
@@ -97,25 +125,66 @@ export default function AdminSettingsPage() {
     setSaving(true);
     setSaveMessage(null);
 
+    const password = getPassword();
+    if (!password) {
+      setSaveMessage({ type: 'error', text: 'Password mancante. Effettua nuovamente il login.' });
+      setSaving(false);
+      return;
+    }
+
     try {
-      // Simula chiamata API
-      const response = await fetch('/api/settings', {
+      const res = await fetch(`/api/a/${slug}/settings`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          Authorization: `Bearer ${password}`,
         },
-        body: JSON.stringify(settings),
+        body: JSON.stringify({
+          branding: {
+            company_name: settings.companyName,
+            logo_url: settings.logoUrl,
+            slogan: settings.slogan,
+            primary_color: settings.accentColor,
+            phone: settings.phone,
+            email: settings.email,
+            website: settings.website,
+            address: settings.address,
+            zip_code: settings.zipCode,
+            city: settings.city,
+            province: settings.province,
+            vat_number: settings.vatNumber,
+            fiscal_code: settings.fiscalCode,
+            header_text: settings.headerText,
+            footer_notes: settings.footerNotes,
+          },
+        }),
       });
 
-      if (response.ok) {
-        setSaveMessage({ type: 'success', text: 'Impostazioni salvate con successo!' });
-      } else {
-        throw new Error('Errore nel salvataggio');
+      if (!res.ok) {
+        const error = await res.json().catch(() => ({}));
+        throw new Error(error.message || 'Errore nel salvataggio');
+      }
+
+      setSaveMessage({ type: 'success', text: 'Impostazioni salvate con successo!' });
+      
+      // Aggiorna la sessione con i nuovi dati
+      const sessionKey = `app_session_${slug}`;
+      const raw = localStorage.getItem(sessionKey);
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        parsed.appInfo = {
+          ...parsed.appInfo,
+          branding: {
+            company_name: settings.companyName,
+            logo_url: settings.logoUrl,
+            primary_color: settings.accentColor,
+          },
+        };
+        localStorage.setItem(sessionKey, JSON.stringify(parsed));
       }
     } catch (error) {
-      // Simula successo per demo (in produzione gestiresti l'errore)
-      console.log('Simulazione salvataggio:', settings);
-      setSaveMessage({ type: 'success', text: 'Impostazioni salvate con successo! (demo)' });
+      console.error('Errore salvataggio:', error);
+      setSaveMessage({ type: 'error', text: error instanceof Error ? error.message : 'Errore nel salvataggio' });
     } finally {
       setSaving(false);
     }
@@ -130,6 +199,14 @@ export default function AdminSettingsPage() {
   const textMuted = isDark ? 'text-slate-500' : 'text-slate-400';
   const border = isDark ? 'border-slate-800' : 'border-slate-200';
   const inputBg = isDark ? 'bg-slate-900' : 'bg-white';
+
+  if (loading) {
+    return (
+      <div className={`min-h-screen ${bgColor} flex items-center justify-center`}>
+        <div className={textSecondary}>Caricamento impostazioni...</div>
+      </div>
+    );
+  }
 
   return (
     <div className={`min-h-screen ${bgColor} transition-colors duration-300`}>

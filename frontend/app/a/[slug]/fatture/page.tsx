@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
+import { useTheme } from '@/src/lib/ThemeContext';
 
 const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:3001';
 
@@ -25,47 +26,9 @@ export default function FatturePage() {
   const params = useParams();
   const router = useRouter();
   const slug = params.slug as string;
-
-  // Leggi il tema dalle impostazioni
-  const [theme, setTheme] = useState<'dark' | 'light'>('dark');
   
-  useEffect(() => {
-    // Leggi le preferenze dal localStorage
-    const loadTheme = () => {
-      const savedPrefs = localStorage.getItem(`app_session_${slug}_prefs`);
-      if (savedPrefs) {
-        try {
-          const parsed = JSON.parse(savedPrefs);
-          if (parsed.theme) {
-            setTheme(parsed.theme);
-          }
-        } catch {
-          // Usa il tema di default
-        }
-      }
-    };
-    
-    loadTheme();
-    
-    // Ascolta i cambiamenti nel localStorage (stesso tab)
-    const handleStorageChange = (e: StorageEvent) => {
-      if (e.key === `app_session_${slug}_prefs`) {
-        loadTheme();
-      }
-    };
-    
-    // Ascolta il custom event per cambiamenti nello stesso tab
-    const handleCustomEvent = () => {
-      loadTheme();
-    };
-    
-    window.addEventListener('storage', handleStorageChange);
-    window.addEventListener('theme-change', handleCustomEvent);
-    return () => {
-      window.removeEventListener('storage', handleStorageChange);
-      window.removeEventListener('theme-change', handleCustomEvent);
-    };
-  }, [slug]);
+  // Usa il tema dal context globale
+  const { theme } = useTheme();
 
   const [fatture, setFatture] = useState<Fattura[]>([]);
   const [loading, setLoading] = useState(true);

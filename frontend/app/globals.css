@@ -12,11 +12,16 @@
   --font-mono: var(--font-geist-mono);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+/* Light theme (default) */
+html.light {
+  --background: #ffffff;
+  --foreground: #171717;
+}
+
+/* Dark theme */
+html.dark {
+  --background: #0a0e1a;
+  --foreground: #ededed;
 }
 
 body {
@@ -87,4 +92,15 @@ html {
 body {
   scrollbar-width: thin;
   scrollbar-color: rgba(71, 85, 105, 0.5) transparent;
+}
+
+/* Dark mode styles for Tailwind */
+.dark {
+  background-color: #0a0e1a;
+  color: #ededed;
+}
+
+.light {
+  background-color: #ffffff;
+  color: #171717;
 }

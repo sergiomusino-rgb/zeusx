@@ -415,6 +415,60 @@ router.get('/client/apps/:appId/export', clientAuthMiddleware, async (req, res) 
   }
 });
 
+// POST /a/:slug/settings - Save admin settings (branding)
+router.post('/a/:slug/settings', async (req, res) => {
+  try {
+    const { slug } = req.params;
+    const { branding } = req.body;
+
+    if (!branding) {
+      return res.status(400).json({ error: 'branding obbligatorio' });
+    }
+
+    const supabase = getSupabase();
+
+    // Find app by slug
+    const { data: app, error: appError } = await supabase
+      .from('apps')
+      .select('id, config')
+      .eq('slug', slug)
+      .single();
+
+    if (appError || !app) {
+      return res.status(404).json({ error: 'App non trovata' });
+    }
+
+    // Get current config and update branding
+    const config = app.config || {};
+    const updatedConfig = {
+      ...config,
+      branding: {
+        ...config.branding,
+        ...branding,
+      },
+    };
+
+    // Update app config
+    const { error: updateError } = await supabase
+      .from('apps')
+      .update({ 
+        config: updatedConfig,
+        updated_at: new Date().toISOString() 
+      })
+      .eq('id', app.id);
+
+    if (updateError) {
+      console.error('Save settings error:', updateError);
+      return res.status(500).json({ error: updateError.message });
+    }
+
+    res.json({ success: true, message: 'Impostazioni salvate con successo' });
+  } catch (err) {
+    console.error('Save settings exception:', err);
+    res.status(500).json({ error: err.message || 'Errore interno' });
+  }
+});
+
 // POST /a/:slug/change-password - Change client password
 router.post('/a/:slug/change-password', async (req, res) => {
   try {
