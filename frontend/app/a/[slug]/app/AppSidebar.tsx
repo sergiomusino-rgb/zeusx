@@ -15,6 +15,7 @@ import {
   ArrowLeft,
   X,
   ChevronRight,
+  Settings,
 } from 'lucide-react';
 
 // ============================================================================
@@ -243,6 +244,28 @@ export default function AppSidebar({
               )}
             </div>
           )}
+
+          {/* Admin Settings Link */}
+          <div className="mt-4 space-y-1">
+            <div className="flex items-center gap-2 px-3 pt-2">
+              <Settings size={14} className="text-slate-500" />
+              <span className="text-[10px] font-semibold uppercase tracking-widest text-slate-500">
+                Amministrazione
+              </span>
+            </div>
+            <Link
+              href={`/a/${slug}/admin`}
+              onClick={onClose ? () => setTimeout(() => onClose(), 150) : undefined}
+              className={`flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm transition-all ${
+                pathname === `/a/${slug}/admin`
+                  ? 'border-l-2 border-indigo-500 bg-indigo-500/10 text-indigo-400 font-medium'
+                  : 'border-l-2 border-transparent text-slate-400 hover:bg-slate-800/40 hover:text-slate-200'
+              }`}
+            >
+              <Settings size={18} />
+              <span>Configurazione Aziendale</span>
+            </Link>
+          </div>
         </nav>
       </aside>
     </>
