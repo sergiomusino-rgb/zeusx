@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
+import { useRouter } from 'next/navigation';
 import { SYSTEM_TABLES, getTableByName, createEmptyRecord } from './table-definitions';
 import DynamicDataTable from './DynamicDataTable';
 import DynamicRecordModal from './DynamicRecordModal';
@@ -1633,6 +1634,7 @@ function LoginScreen({ slug, appName, logoUrl, primaryColor, onLogin }: LoginScr
 // ─── Main App Component ───────────────────────────────────────────────────────
 
 export default function ViewerProFinal() {
+  const router = useRouter();
   const slug = useMemo(() => {
     if (typeof window !== 'undefined') {
       const path = window.location.pathname;
@@ -2510,6 +2512,18 @@ export default function ViewerProFinal() {
                 />
               </div>
             )}
+          </div>
+
+          {/* Fatture - Link esterno */}
+          <div style={{ marginTop: '8px', paddingTop: '8px', borderTop: `1px solid rgba(255,255,255,0.2)` }}>
+            <SidebarItem
+              icon={<DollarSign size={18} />}
+              label="Fatture"
+              active={false}
+              onClick={() => router.push(`/a/${slug}/fatture`)}
+              colors={colors}
+              primaryColor={primaryColor}
+            />
           </div>
         </nav>
 
