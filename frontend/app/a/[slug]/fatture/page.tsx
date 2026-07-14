@@ -18,6 +18,7 @@ interface Fattura {
   metodo_pagamento?: string;
   created_at: string;
   updated_at: string;
+  totale?: number;
 }
 
 export default function FatturePage() {
@@ -69,7 +70,29 @@ export default function FatturePage() {
         }
 
         const data = await res.json();
-        setFatture(data.fatture || []);
+        // Calcola il totale per ogni fattura caricando le righe
+        const fattureConTotali = await Promise.all(
+          (data.fatture || []).map(async (fattura: Fattura) => {
+            try {
+              const righeRes = await fetch(`${BACKEND_URL}/api/invoices/${fattura.id}`, {
+                headers: {
+                  Authorization: `Bearer ${password}`,
+                },
+              });
+              if (righeRes.ok) {
+                const righeData = await righeRes.json();
+                const totale = (righeData.righe || []).reduce((sum: number, riga: any) => {
+                  return sum + (riga.quantita * riga.prezzo_unitario * (1 + (riga.aliquota_iva || 0) / 100));
+                }, 0);
+                return { ...fattura, totale };
+              }
+            } catch (err) {
+              console.error(`Errore caricamento righe fattura ${fattura.id}:`, err);
+            }
+            return { ...fattura, totale: 0 };
+          })
+        );
+        setFatture(fattureConTotali);
       } catch (err) {
         console.error('Errore caricamento fatture:', err);
         setError(err instanceof Error ? err.message : 'Errore nel caricamento delle fatture');
@@ -80,6 +103,38 @@ export default function FatturePage() {
 
     loadFatture();
   }, [slug]);
+
+  // Aggiorna stato fattura
+  const updateStato = async (fatturaId: string, nuovoStato: string) => {
+    const password = getPassword();
+    if (!password) {
+      alert('Password mancante. Effettua nuovamente il login.');
+      return;
+    }
+
+    try {
+      const res = await fetch(`${BACKEND_URL}/api/invoices/${fatturaId}`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${password}`,
+        },
+        body: JSON.stringify({ stato: nuovoStato }),
+      });
+
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.error || `Errore ${res.status}`);
+      }
+
+      const data = await res.json();
+      // Aggiorna la fattura nella lista
+      setFatture(fatture.map(f => f.id === fatturaId ? { ...f, stato: data.fattura.stato } : f));
+    } catch (err) {
+      console.error('Errore aggiornamento stato:', err);
+      alert(err instanceof Error ? err.message : 'Errore aggiornamento stato');
+    }
+  };
 
   const formatDate = (dateStr: string) => {
     const date = new Date(dateStr);
@@ -290,12 +345,30 @@ export default function FatturePage() {
                       </span>
                     </td>
                     <td className="border-b border-gray-200 px-4 py-3 text-sm text-right text-gray-900">
-                      -
+                      {fattura.totale ? formatCurrency(fattura.totale) : '-'}
                     </td>
                     <td className="border-b border-gray-200 px-4 py-3 text-center">
+                      <select
+                        value={fattura.stato}
+                        onChange={(e) => updateStato(fattura.id, e.target.value)}
+                        className={`px-3 py-1 rounded text-sm font-medium ${
+                          fattura.stato === 'emessa' 
+                            ? 'bg-green-100 text-green-800 border border-green-300' 
+                            : fattura.stato === 'pagata'
+                            ? 'bg-blue-100 text-blue-800 border border-blue-300'
+                            : fattura.stato === 'annullata'
+                            ? 'bg-red-100 text-red-800 border border-red-300'
+                            : 'bg-gray-100 text-gray-800 border border-gray-300'
+                        }`}
+                      >
+                        <option value="bozza">Bozza</option>
+                        <option value="emessa">Emessa</option>
+                        <option value="pagata">Pagata</option>
+                        <option value="annullata">Annullata</option>
+                      </select>
                       <button
                         onClick={() => router.push(`/a/${slug}/fatture/${fattura.id}`)}
-                        className="px-3 py-1 bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors text-sm"
+                        className="ml-2 px-3 py-1 bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors text-sm"
                       >
                         Visualizza
                       </button>

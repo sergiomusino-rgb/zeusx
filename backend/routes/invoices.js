@@ -131,6 +131,37 @@ router.post('/invoices', async (req, res) => {
   }
 });
 
+// PATCH /invoices/:id - Aggiorna stato fattura
+router.patch('/invoices/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { stato } = req.body;
+
+    if (!stato || !['bozza', 'emessa', 'pagata', 'annullata'].includes(stato)) {
+      return res.status(400).json({ error: 'Stato non valido' });
+    }
+
+    const supabase = getSupabase();
+
+    const { data: fattura, error: fatturaError } = await supabase
+      .from('fatture')
+      .update({ stato, updated_at: new Date().toISOString() })
+      .eq('id', id)
+      .select()
+      .single();
+
+    if (fatturaError || !fattura) {
+      console.error('Errore aggiornamento stato fattura:', fatturaError);
+      return res.status(500).json({ error: 'Errore aggiornamento stato' });
+    }
+
+    return res.json({ success: true, fattura });
+  } catch (err) {
+    console.error('PATCH /invoices/:id error:', err);
+    res.status(500).json({ error: err.message || 'Errore interno' });
+  }
+});
+
 // GET /invoices/:id - Recupera fattura con righe
 router.get('/invoices/:id', async (req, res) => {
   try {
