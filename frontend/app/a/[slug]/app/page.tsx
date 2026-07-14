@@ -1351,77 +1351,6 @@ function SettingsModal({ prefs, onPrefsChange, onClose, onLogout, onChangePasswo
           />
         </div>
 
-        {/* Brand Section */}
-        <div style={sectionBox}>
-          <div style={sectionTitle}>Brand</div>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-            <div>
-              <label style={{ display: 'block', marginBottom: '6px', fontSize: '13px', fontWeight: 600, color: colors.textSecondary }}>
-                Nome Azienda
-              </label>
-              <input
-                type="text"
-                value={prefs.companyName}
-                onChange={(e) => updatePref('companyName', e.target.value)}
-                style={inputStyle}
-              />
-            </div>
-            <div>
-              <label style={{ display: 'block', marginBottom: '6px', fontSize: '13px', fontWeight: 600, color: colors.textSecondary }}>
-                Logo Azienda
-              </label>
-              {prefs.logoUrl && (
-                <div style={{ marginBottom: '8px' }}>
-                  <img
-                    src={prefs.logoUrl}
-                    alt="Logo preview"
-                    style={{ height: '48px', maxWidth: '160px', objectFit: 'contain', borderRadius: '8px', border: `1px solid ${colors.border}` }}
-                  />
-                </div>
-              )}
-              <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-                <label
-                  style={{
-                    padding: '8px 16px', borderRadius: '8px', border: `1px solid ${colors.border}`,
-                    background: colors.cardBg, color: colors.text, fontSize: '13px', fontWeight: 500,
-                    cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px',
-                  }}
-                >
-                  📁 Sfoglia...
-                  <input
-                    type="file"
-                    accept="image/*"
-                    onChange={(e) => {
-                      const file = e.target.files?.[0];
-                      if (file) {
-                        const reader = new FileReader();
-                        reader.onload = (ev) => {
-                          updatePref('logoUrl', ev.target?.result as string);
-                        };
-                        reader.readAsDataURL(file);
-                      }
-                    }}
-                    style={{ display: 'none' }}
-                  />
-                </label>
-                {prefs.logoUrl && (
-                  <button
-                    type="button"
-                    onClick={() => updatePref('logoUrl', '')}
-                    style={{
-                      padding: '8px 12px', borderRadius: '8px', border: 'none',
-                      background: colors.danger + '15', color: colors.danger,
-                      fontSize: '12px', fontWeight: 600, cursor: 'pointer',
-                    }}
-                  >
-                    Rimuovi
-                  </button>
-                )}
-              </div>
-            </div>
-          </div>
-        </div>
-
         {/* Password Section */}
         <div style={sectionBox}>
           <div style={sectionTitle}>Cambia Password</div>
@@ -1517,9 +1446,8 @@ function SettingsModal({ prefs, onPrefsChange, onClose, onLogout, onChangePasswo
           </div>
         </div>
 
-        {/* Logout */}
+        {/* Disdici Abbonamento */}
         <button
-          onClick={onLogout}
           style={{
             width: '100%', padding: '14px', borderRadius: '12px', border: 'none',
             background: colors.danger + '15', color: colors.danger,
@@ -1530,7 +1458,7 @@ function SettingsModal({ prefs, onPrefsChange, onClose, onLogout, onChangePasswo
           onMouseEnter={(e) => { e.currentTarget.style.background = colors.danger + '30'; }}
           onMouseLeave={(e) => { e.currentTarget.style.background = colors.danger + '15'; }}
         >
-          <LogOut size={18} /> Logout
+          <LogOut size={18} /> Disdici Abbonamento
         </button>
       </div>
     </div>
@@ -2529,6 +2457,14 @@ export default function ViewerProFinal() {
 
         {/* Bottom actions */}
         <div style={{ padding: '12px 10px', borderTop: `1px solid rgba(255,255,255,0.2)`, display: 'flex', flexDirection: 'column', gap: '4px' }}>
+          <SidebarItem
+            icon={<Settings size={18} />}
+            label="Configurazione Aziendale"
+            active={false}
+            onClick={() => router.push(`/a/${slug}/admin`)}
+            colors={colors}
+            primaryColor={primaryColor}
+          />
           <SidebarItem
             icon={<Settings size={18} />}
             label="Impostazioni"
