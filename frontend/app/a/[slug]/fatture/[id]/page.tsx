@@ -3,6 +3,8 @@
 import React, { useState, useEffect } from 'react';
 import { useParams } from 'next/navigation';
 
+const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:3001';
+
 interface Fattura {
   id: string;
   tenant_id: string;
@@ -64,8 +66,8 @@ export default function FatturaViewPage() {
       }
 
       try {
-        const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || 'https://zeusx-backend.onrender.com';
-        const res = await fetch(`${backendUrl}/api/invoices/${fatturaId}`, {
+        console.log('Chiamando API:', `${BACKEND_URL}/api/invoices/${fatturaId}`);
+        const res = await fetch(`${BACKEND_URL}/api/invoices/${fatturaId}`, {
           headers: {
             Authorization: `Bearer ${password}`,
           },
@@ -164,22 +166,31 @@ export default function FatturaViewPage() {
 
       {/* Contenitore Fattura A4 */}
       <div className="print:p-0 print:shadow-none mx-auto mt-8 mb-8 bg-white shadow-lg" style={{ maxWidth: '210mm', minHeight: '297mm', padding: '20mm' }}>
-        {/* Header Fattura */}
-        <div className="flex justify-between items-start mb-8">
-          <div>
-            <h1 className="text-3xl font-bold text-gray-900 mb-2">FATTURA</h1>
+        {/* Intestazione Azienda Emettitrice */}
+        <div className="flex justify-between items-start mb-8 pb-6 border-b-2 border-blue-600">
+          <div className="flex items-start gap-4">
+            {/* Logo Azienda */}
+            <div className="w-20 h-20 bg-blue-600 rounded-lg flex items-center justify-center text-white text-2xl font-bold">
+              ZX
+            </div>
+            <div>
+              <h2 className="text-xl font-bold text-gray-900 mb-1">ZeusX Srl</h2>
+              <div className="text-sm text-gray-600">
+                <p>P.IVA: 01234567890</p>
+                <p>Via Roma 1, 00100 Roma (RM)</p>
+                <p>Tel: +39 06 1234567</p>
+                <p>Email: info@zeusx.it</p>
+              </div>
+            </div>
+          </div>
+          <div className="text-right">
+            <h1 className="text-3xl font-bold text-blue-600 mb-2">FATTURA</h1>
             <div className="text-sm text-gray-600">
               <p><strong>Numero:</strong> {fattura.numero_fattura}/{fattura.anno}</p>
-              <p><strong>Data:</strong> {formatDate(fattura.data_emissione)}</p>
               <p><strong>Stato:</strong> {fattura.stato.toUpperCase()}</p>
               {fattura.metodo_pagamento && (
                 <p><strong>Pagamento:</strong> {fattura.metodo_pagamento}</p>
               )}
-            </div>
-          </div>
-          <div className="text-right">
-            <div className="text-sm text-gray-500">
-              <p>Emessa il: {formatDate(fattura.created_at)}</p>
             </div>
           </div>
         </div>
@@ -259,6 +270,12 @@ export default function FatturaViewPage() {
               <span>{formatCurrency(totaleGenerale)}</span>
             </div>
           </div>
+        </div>
+
+        {/* Data Emissione - In basso */}
+        <div className="mb-4 text-right">
+          <span className="text-sm text-gray-600">Data Emissione: </span>
+          <span className="text-sm font-medium text-gray-900">{formatDate(fattura.data_emissione)}</span>
         </div>
 
         {/* Footer */}

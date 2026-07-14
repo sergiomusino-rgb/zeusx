@@ -9,8 +9,54 @@ function getSupabase() {
   );
 }
 
-// POST /api/invoices - Crea una nuova fattura con le sue righe
-router.post('/api/invoices', async (req, res) => {
+// GET /a/:slug/invoices - Recupera tutte le fatture per un tenant
+router.get('/a/:slug/invoices', async (req, res) => {
+  try {
+    const { slug } = req.params;
+    const supabase = getSupabase();
+
+    // Find app by slug
+    const { data: app, error: appError } = await supabase
+      .from('apps')
+      .select('id, tenant_id, client_password, client_active, expires_at')
+      .eq('slug', slug)
+      .single();
+
+    if (appError || !app) {
+      return res.status(404).json({ error: 'App non trovata' });
+    }
+
+    if (app.client_active === false) {
+      return res.status(403).json({ error: 'App bloccata' });
+    }
+
+    if (app.expires_at && new Date(app.expires_at) < new Date()) {
+      return res.status(403).json({ error: 'App scaduta' });
+    }
+
+    // Load invoices from database
+    const { data: fatture, error: fattureError } = await supabase
+      .from('fatture')
+      .select('*')
+      .eq('tenant_id', app.tenant_id)
+      .order('created_at', { ascending: false });
+
+    if (fattureError) {
+      console.error('Errore caricamento fatture:', fattureError);
+      return res.status(500).json({ error: 'Errore nel caricamento delle fatture' });
+    }
+
+    return res.json({
+      fatture: fatture || [],
+    });
+  } catch (err) {
+    console.error('GET /a/:slug/invoices error:', err);
+    res.status(500).json({ error: err.message || 'Errore interno' });
+  }
+});
+
+// POST /invoices - Crea una nuova fattura con le sue righe
+router.post('/invoices', async (req, res) => {
   try {
     const {
       tenant_id,
@@ -85,8 +131,8 @@ router.post('/api/invoices', async (req, res) => {
   }
 });
 
-// GET /api/invoices/:id - Recupera fattura con righe
-router.get('/api/invoices/:id', async (req, res) => {
+// GET /invoices/:id - Recupera fattura con righe
+router.get('/invoices/:id', async (req, res) => {
   try {
     const { id } = req.params;
     const supabase = getSupabase();

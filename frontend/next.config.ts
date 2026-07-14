@@ -8,8 +8,6 @@ const nextConfig: NextConfig = {
       allowedOrigins: ['localhost:3000', 'zeusx.app', 'www.zeusx.app'],
     },
   },
-  // Turbopack config (Next.js 16 default) — empty to silence warning
-  turbopack: {},
   // Explicitly expose Supabase env vars to the browser
   env: {
     NEXT_PUBLIC_SUPABASE_URL: process.env.NEXT_PUBLIC_SUPABASE_URL,

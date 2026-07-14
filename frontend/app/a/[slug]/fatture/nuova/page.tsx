@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
+import { useParams, useRouter } from 'next/navigation';
 
 interface RigaFattura {
   id: string;
@@ -146,7 +146,7 @@ export default function NuovaFatturaPage() {
         }))
       };
 
-      const res = await fetch(`${backendUrl}/api/invoices`, {
+      const res = await fetch(`/a/${slug}/api/invoices`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
