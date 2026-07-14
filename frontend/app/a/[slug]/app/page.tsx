@@ -1699,6 +1699,10 @@ export default function ViewerProFinal() {
   useEffect(() => {
     try {
       localStorage.setItem(prefsKey, JSON.stringify(prefs));
+      // Dispatch custom event per notificare le altre pagine del cambiamento tema
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new CustomEvent('theme-change'));
+      }
     } catch { /* ignore */ }
   }, [prefs, prefsKey]);
 
