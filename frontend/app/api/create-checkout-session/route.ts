@@ -2,46 +2,94 @@ import { NextRequest, NextResponse } from 'next/server';
 import Stripe from 'stripe';
 import { createClient } from '@supabase/supabase-js';
 
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY || '', {
-  apiVersion: '2026-06-24.dahlia',
-});
+// Helper to get Stripe client (initialized inside handler to ensure env vars are available)
+function getStripe() {
+  const secretKey = process.env.STRIPE_SECRET_KEY;
+  if (!secretKey) {
+    throw new Error('STRIPE_SECRET_KEY non configurata');
+  }
+  return new Stripe(secretKey, {
+    apiVersion: '2026-06-24.dahlia',
+  });
+}
 
-// Client per auth (anon key)
-const authClient = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-  { auth: { persistSession: false, autoRefreshToken: false } }
-);
+// Helper to get Supabase clients
+function getSupabaseClients() {
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+  const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
-// Client per DB operations (service role key bypassa RLS)
-const dbClient = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-  { auth: { persistSession: false, autoRefreshToken: false } }
-);
+  if (!supabaseUrl || !supabaseAnonKey) {
+    throw new Error('Variabili Supabase non configurate');
+  }
+
+  const authClient = createClient(
+    supabaseUrl,
+    supabaseAnonKey,
+    { auth: { persistSession: false, autoRefreshToken: false } }
+  );
+
+  const dbClient = createClient(
+    supabaseUrl,
+    supabaseServiceKey || supabaseAnonKey,
+    { auth: { persistSession: false, autoRefreshToken: false } }
+  );
+
+  return { authClient, dbClient };
+}
+
+// Get recurring fee price ID for a plan
+function getFeePriceId(planId: string): string {
+  const feePrices: Record<string, string> = {
+    starter: process.env.STRIPE_FEE_PRICE_STARTER || 'price_1TmdIgRZR2YaFu2sT5gkrMdx',
+    pro: process.env.STRIPE_FEE_PRICE_PRO || 'price_1TmdK0RZR2YaFu2s8pXkLety',
+    business: process.env.STRIPE_FEE_PRICE_BUSINESS || 'price_1TmdKuRZR2YaFu2sHeH8fShE',
+  };
+  return feePrices[planId] || feePrices.starter;
+}
 
 export async function POST(req: NextRequest) {
+  // Initialize clients inside handler to ensure env vars are available
+  let stripe: any;
+  let authClient: any;
+  let dbClient: any;
+
   try {
-    const { priceId, planId, quantity = 1 } = await req.json();
+    stripe = getStripe();
+    const clients = getSupabaseClients();
+    authClient = clients.authClient;
+    dbClient = clients.dbClient;
+  } catch (initError) {
+    console.error('[Checkout API] Initialization error:', initError);
+    return NextResponse.json(
+      { error: initError instanceof Error ? initError.message : 'Errore inizializzazione' },
+      { status: 500 }
+    );
+  }
+
+  try {
+    const body = await req.json();
+    
+    const { priceId, planId, quantity = 1 } = body;
 
     if (!planId) {
-      return NextResponse.json({ error: 'Parametri mancanti' }, { status: 400 });
+      return NextResponse.json({ error: 'Parametri mancanti: planId richiesto' }, { status: 400 });
     }
 
     if (!process.env.STRIPE_SECRET_KEY) {
-      return NextResponse.json({ error: 'Stripe non configurato' }, { status: 500 });
+      return NextResponse.json({ error: 'Stripe non configurato - STRIPE_SECRET_KEY mancante' }, { status: 500 });
     }
 
     const authHeader = req.headers.get('authorization');
     if (!authHeader?.startsWith('Bearer ')) {
-      return NextResponse.json({ error: 'Non autorizzato' }, { status: 401 });
+      return NextResponse.json({ error: 'Non autorizzato - header Authorization mancante o invalido' }, { status: 401 });
     }
 
     const token = authHeader.slice(7);
     const { data: { user }, error: authError } = await authClient.auth.getUser(token);
 
     if (authError || !user) {
-      return NextResponse.json({ error: 'Utente non autenticato' }, { status: 401 });
+      return NextResponse.json({ error: 'Utente non autenticato: ' + (authError?.message || 'token invalido') }, { status: 401 });
     }
 
     // Trova il tenant dell'utente - prima per owner_id
@@ -95,10 +143,15 @@ export async function POST(req: NextRequest) {
 
       // Aggiungi membership
       await dbClient.from('tenant_members').insert({
-        tenant_id: tenant.id,
+        tenant_id: tenant!.id,
         user_id: user.id,
         role: 'owner',
       });
+    }
+
+    // At this point, tenant is guaranteed to exist
+    if (!tenant) {
+      return NextResponse.json({ error: 'Tenant non trovato o creato' }, { status: 500 });
     }
 
     // Gestione slot extra (15€ per slot)
@@ -110,17 +163,29 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Price ID mancante' }, { status: 400 });
     }
 
-    // Crea il cliente Stripe (non salviamo stripe_customer_id nel DB perché la colonna non esiste)
-    const customer = await stripe.customers.create({
-      email: user.email,
-      metadata: {
-        supabase_user_id: user.id,
-        tenant_id: tenant.id,
-      },
-    });
-    const customerId = customer.id;
+    // Crea o recupera customer Stripe
+    const customers = await stripe.customers.list({ email: user.email, limit: 1 });
+    let customerId = customers.data[0]?.id;
 
-    // Crea la sessione di checkout (pagamento singolo)
+    if (!customerId) {
+      const customer = await stripe.customers.create({
+        email: user.email,
+        metadata: {
+          supabase_user_id: user.id,
+          tenant_id: tenant.id,
+        },
+      });
+      customerId = customer.id;
+    }
+
+    // Crea la sessione di checkout
+    // Per extra_slot: modalità 'payment' (pagamento una tantum)
+    // Per piani: modalità 'payment' (setup price) - la subscription viene creata dal webhook
+    const isExtraSlot = planId === 'extra_slot';
+    
+    // Get the recurring fee price ID for the plan
+    const feePriceId = getFeePriceId(planId);
+    
     const session = await stripe.checkout.sessions.create({
       customer: customerId,
       mode: 'payment',
@@ -131,14 +196,15 @@ export async function POST(req: NextRequest) {
           quantity: effectiveQuantity,
         },
       ],
-      success_url: `${req.nextUrl.origin}/dashboard?upgrade=success`,
-      cancel_url: `${req.nextUrl.origin}/pricing?upgrade=cancelled`,
+      success_url: `${req.nextUrl.origin}/success?session_id={CHECKOUT_SESSION_ID}`,
+      cancel_url: `${req.nextUrl.origin}/pricing`,
       metadata: {
         tenant_id: tenant.id,
         plan_id: planId,
         price_id: effectivePriceId,
         quantity: effectiveQuantity.toString(),
         supabase_user_id: user.id,
+        fee_price_id: feePriceId,
       },
     });
 

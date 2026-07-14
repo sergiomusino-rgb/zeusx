@@ -72,7 +72,7 @@ router.post('/create-checkout-session', async (req, res) => {
   if (!user) return res.status(401).json({ error: 'Non autorizzato' });
 
   try {
-    const { priceId, planId } = req.query;
+    const { priceId, planId, quantity = 1 } = req.body;
     if (!priceId) return res.status(400).json({ error: 'priceId mancante' });
 
     const supabase = getSupabase();
@@ -99,12 +99,17 @@ router.post('/create-checkout-session', async (req, res) => {
 
     // Line items: setup + fee mensile (quantity=0 iniziale)
     const feePriceId = getFeePriceId(planId);
-    const lineItems = [
-      { price: priceId, quantity: 1 }, // Setup one-time
-    ];
+    const lineItems = [];
 
-    if (feePriceId) {
-      lineItems.push({ price: feePriceId, quantity: 0 }); // Fee mensile, quantity aggiornata dopo
+    // Handle extra slot purchase
+    if (planId === 'extra_slot') {
+      lineItems.push({ price: priceId, quantity: quantity });
+    } else {
+      // Regular plan: setup + monthly fee
+      lineItems.push({ price: priceId, quantity: 1 }); // Setup one-time
+      if (feePriceId) {
+        lineItems.push({ price: feePriceId, quantity: 0 }); // Fee mensile, quantity aggiornata dopo
+      }
     }
 
     const session = await stripe.checkout.sessions.create({
