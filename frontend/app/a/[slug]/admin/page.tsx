@@ -25,14 +25,18 @@ export default function AdminSettingsPage() {
   const [theme, setTheme] = useState<'dark' | 'light'>('dark');
   
   useEffect(() => {
+    // Leggi lo slug dalla URL
+    const path = typeof window !== 'undefined' ? window.location.pathname : '';
+    const match = path.match(/\/a\/([^/]+)/);
+    const currentSlug = match?.[1] || '';
+    
     // Leggi le preferenze dal localStorage
-    const savedPrefs = localStorage.getItem('app_session_');
+    const savedPrefs = localStorage.getItem(`app_session_${currentSlug}_prefs`);
     if (savedPrefs) {
       try {
         const parsed = JSON.parse(savedPrefs);
-        const prefs = parsed.prefs || parsed;
-        if (prefs.theme) {
-          setTheme(prefs.theme);
+        if (parsed.theme) {
+          setTheme(parsed.theme);
         }
       } catch {
         // Usa il tema di default
