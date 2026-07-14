@@ -31,13 +31,12 @@ export default function FatturePage() {
   
   useEffect(() => {
     // Leggi le preferenze dal localStorage
-    const savedPrefs = localStorage.getItem(`app_session_${slug}`);
+    const savedPrefs = localStorage.getItem(`app_session_${slug}_prefs`);
     if (savedPrefs) {
       try {
         const parsed = JSON.parse(savedPrefs);
-        const prefs = parsed.prefs || parsed;
-        if (prefs.theme) {
-          setTheme(prefs.theme);
+        if (parsed.theme) {
+          setTheme(parsed.theme);
         }
       } catch {
         // Usa il tema di default
