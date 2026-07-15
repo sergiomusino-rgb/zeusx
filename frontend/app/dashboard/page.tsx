@@ -97,7 +97,7 @@ export default function DashboardPage() {
       desc: t('dashboard_agenda_desc'),
       link: "/dashboard/vision", 
       color: "bg-emerald-600",
-      icon: "",
+      icon: "📅",
       highlighted: false
     },
   ];

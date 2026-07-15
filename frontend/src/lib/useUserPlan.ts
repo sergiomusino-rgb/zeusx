@@ -33,12 +33,19 @@ const fetchUserPlan = async () => {
       return;
     }
 
-    // Get user profile with role
-    const { data: profile, error: profileError } = await supabaseBrowser
-      .from('profiles')
-      .select('role, subscription_plan')
-      .eq('user_id', session.user.id)
-      .single();
+    // Get user profile with role (handle missing table/columns gracefully)
+    let profile = null;
+    try {
+      const { data } = await supabaseBrowser
+        .from('profiles')
+        .select('role, subscription_plan')
+        .eq('user_id', session.user.id)
+        .single();
+      profile = data;
+    } catch (err) {
+      // Table or columns may not exist, continue with defaults
+      console.warn('[useUserPlan] Profiles table not accessible, using defaults');
+    }
 
     // Check if user is admin (by ID or by role)
     const isUserAdmin = session.user.id === ADMIN_USER_ID || profile?.role === 'admin';
@@ -51,14 +58,41 @@ const fetchUserPlan = async () => {
     // Set user role
     setUserRole(profile?.role as UserRole || null);
 
-    // Get user plan
-    const { data: tenant } = await supabaseBrowser
+    // Get user plan (check both owner and membership)
+    let userPlan: UserPlan = 'free';
+    
+    // First check if user is owner of a tenant
+    const { data: ownedTenant } = await supabaseBrowser
       .from('tenants')
       .select('plan')
       .eq('owner_id', session.user.id)
       .single();
+    
+    if (ownedTenant?.plan) {
+      userPlan = ownedTenant.plan as UserPlan;
+    } else {
+      // If not owner, check if user is member of a tenant
+      const { data: membership } = await supabaseBrowser
+        .from('tenant_members')
+        .select('tenant_id')
+        .eq('user_id', session.user.id)
+        .limit(1)
+        .single();
+      
+      if (membership?.tenant_id) {
+        const { data: tenant } = await supabaseBrowser
+          .from('tenants')
+          .select('plan')
+          .eq('id', membership.tenant_id)
+          .single();
+        
+        if (tenant?.plan) {
+          userPlan = tenant.plan as UserPlan;
+        }
+      }
+    }
 
-    setPlan((tenant?.plan as UserPlan) || 'free');
+    setPlan(userPlan);
     setLoading(false);
   };
 

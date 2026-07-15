@@ -159,7 +159,7 @@ export default function ManagementLayout({
           >
             ⚡ ZEUSX
           </Link>
-          <div className="w-10" /> {/* Spacer for centering */}
+          <LanguageSelector />
         </header>
 
         {/* Desktop Header (hidden on mobile) */}
@@ -175,12 +175,6 @@ export default function ManagementLayout({
 
           <div className="flex items-center gap-4">
             <LanguageSelector />
-            <Link
-              href="/"
-              className="text-xs text-slate-400 transition-colors hover:text-white"
-            >
-              {t('header_logout')}
-            </Link>
           </div>
         </header>
 
