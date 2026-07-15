@@ -31,25 +31,37 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ error: 'Non autorizzato' }, { status: 403 });
     }
 
-    const [tenantsRes, appsRes, subsRes, paymentsRes] = await Promise.all([
+    const [tenantsRes, appsRes, appRegistryRes, subsRes, paymentsRes] = await Promise.all([
       supabase.from('tenants').select('*'),
       supabase.from('apps').select('*'),
+      supabase.from('app_registry').select('id, ownership_status, reseller_id, original_reseller_id, checkout_url'),
       supabase.from('subscriptions').select('*'),
       supabase.from('payments').select('*'),
     ]);
 
     if (tenantsRes.error) throw tenantsRes.error;
     if (appsRes.error) throw appsRes.error;
+    if (appRegistryRes.error) throw appRegistryRes.error;
     if (subsRes.error) throw subsRes.error;
 
     const tenants = tenantsRes.data || [];
     const apps = appsRes.data || [];
+    const appRegistry = appRegistryRes.data || [];
     const subs = subsRes.data || [];
     const payments = paymentsRes.data || [];
 
+    // Create a map of app_registry data for quick lookup
+    const appRegistryMap = new Map(appRegistry.map((a: any) => [a.id, a]));
+
+    // Merge ownership_status from app_registry into apps
+    const appsWithOwnership = apps.map((a: any) => ({
+      ...a,
+      ownership_status: appRegistryMap.get(a.id)?.ownership_status || 'reseller_owned',
+    }));
+
     const now = new Date();
-    const activeApps = apps.filter(a => a.client_active !== false && a.expires_at && new Date(a.expires_at) > now);
-    const expiredApps = apps.filter(a => a.client_active === false || (a.expires_at && new Date(a.expires_at) < now));
+    const activeApps = appsWithOwnership.filter(a => a.client_active !== false && a.expires_at && new Date(a.expires_at) > now);
+    const expiredApps = appsWithOwnership.filter(a => a.client_active === false || (a.expires_at && new Date(a.expires_at) < now));
 
     const dist: Record<string, number> = {};
     tenants.forEach(t => { const p = t.plan || 'free'; dist[p] = (dist[p] || 0) + 1; });
@@ -69,7 +81,7 @@ export async function GET(req: NextRequest) {
       .sort(([a], [b]) => a.localeCompare(b))
       .map(([month, data]) => ({ month, ...data }));
 
-    const recentApps = [...apps].sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()).slice(0, 10);
+    const recentApps = [...appsWithOwnership].sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()).slice(0, 10);
 
     return NextResponse.json({
       totals: {
