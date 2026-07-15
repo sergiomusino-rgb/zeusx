@@ -8,10 +8,8 @@ import type { AppUser, AppUserRole } from '@/types/rbac';
 // Supabase Client
 // ============================================================================
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
-const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '';
-
-const supabase = createClient(supabaseUrl, supabaseAnonKey);
+import { supabaseBrowser } from './supabase-browser';
+const supabase = supabaseBrowser;
 
 // ============================================================================
 // Types
@@ -217,32 +215,38 @@ export function usePermissions() {
     (tableName: string, action: 'read' | 'write' | 'delete'): boolean => {
       if (!role) return false;
       
-      const ROLE_PERMISSIONS: Record<AppUserRole, Record<string, { read: boolean; write: boolean; delete: boolean }>> = {
-        admin: {
-          clienti: { read: true, write: true, delete: true },
-          prodotti: { read: true, write: true, delete: true },
-          ordini: { read: true, write: true, delete: true },
-          magazzino: { read: true, write: true, delete: true },
-        },
-        agent: {
-          ordini: { read: true, write: true, delete: true },
-          prodotti: { read: true, write: false, delete: false },
-          clienti: { read: true, write: false, delete: false },
-          magazzino: { read: false, write: false, delete: false },
-        },
-        viewer: {
-          clienti: { read: true, write: false, delete: false },
-          prodotti: { read: true, write: false, delete: false },
-          ordini: { read: true, write: false, delete: false },
-          magazzino: { read: true, write: false, delete: false },
-        },
-        editor: {
-          clienti: { read: true, write: true, delete: true },
-          prodotti: { read: true, write: true, delete: true },
-          ordini: { read: true, write: true, delete: true },
-          magazzino: { read: true, write: true, delete: true },
-        },
-      };
+const ROLE_PERMISSIONS: Record<AppUserRole, Record<string, { read: boolean; write: boolean; delete: boolean }>> = {
+  admin: {
+    clienti: { read: true, write: true, delete: true },
+    prodotti: { read: true, write: true, delete: true },
+    ordini: { read: true, write: true, delete: true },
+    magazzino: { read: true, write: true, delete: true },
+  },
+  agent: {
+    ordini: { read: true, write: true, delete: true },
+    prodotti: { read: true, write: false, delete: false },
+    clienti: { read: true, write: false, delete: false },
+    magazzino: { read: false, write: false, delete: false },
+  },
+  viewer: {
+    clienti: { read: true, write: false, delete: false },
+    prodotti: { read: true, write: false, delete: false },
+    ordini: { read: true, write: false, delete: false },
+    magazzino: { read: true, write: false, delete: false },
+  },
+  editor: {
+    clienti: { read: true, write: true, delete: true },
+    prodotti: { read: true, write: true, delete: true },
+    ordini: { read: true, write: true, delete: true },
+    magazzino: { read: true, write: true, delete: true },
+  },
+  reseller: {
+    clienti: { read: true, write: true, delete: false },
+    prodotti: { read: true, write: true, delete: false },
+    ordini: { read: true, write: true, delete: false },
+    magazzino: { read: true, write: false, delete: false },
+  },
+};
       
       const tablePerms = ROLE_PERMISSIONS[role]?.[tableName];
       return tablePerms?.[action] ?? false;

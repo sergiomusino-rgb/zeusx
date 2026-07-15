@@ -106,67 +106,89 @@ export default function ManagementLayout({
   }
 
   return (
-    <div className="flex h-screen flex-col overflow-hidden bg-slate-950 text-white">
-      {/* Mobile Header (visible only on small screens) */}
-      <header className="flex h-16 items-center justify-between border-b border-slate-800 bg-slate-900 px-4 md:hidden">
-        <button
-          onClick={() => setMobileMenuOpen(true)}
-          className="rounded-lg p-2 text-slate-400 transition-colors hover:bg-slate-800 hover:text-white"
-          aria-label={t('header_open_menu')}
-        >
-          <Menu size={22} />
-        </button>
-        <Link
-          href="/dashboard"
-          className="bg-gradient-to-r from-blue-400 to-indigo-500 bg-clip-text text-lg font-black tracking-wider text-transparent"
-        >
-          ⚡ ZEUSX
-        </Link>
-        <div className="w-10" /> {/* Spacer for centering */}
-      </header>
+    <div className="flex h-screen overflow-hidden bg-slate-950 text-white">
+      {/* Desktop Sidebar (always visible on md+) */}
+      <div className="hidden md:block">
+        <Sidebar
+          showTableNavigation={false}
+          onBackToDashboard={() => router.push('/dashboard')}
+        />
+      </div>
 
-      {/* Desktop Header (hidden on mobile) */}
-      <header className="hidden h-16 items-center justify-between border-b border-slate-800 bg-slate-900/40 px-6 backdrop-blur md:flex">
-        <div className="flex items-center gap-4">
+      {/* Mobile Sidebar Overlay */}
+      <div className="md:hidden">
+        {/* Backdrop */}
+        <div
+          className={`fixed inset-0 z-40 transition-all duration-300 ease-in-out ${
+            mobileMenuOpen
+              ? 'bg-black/60 backdrop-blur-sm opacity-100 pointer-events-auto'
+              : 'bg-transparent opacity-0 pointer-events-none'
+          }`}
+          onClick={() => setMobileMenuOpen(false)}
+          aria-hidden="true"
+        />
+
+        {/* Slide-out Sidebar Panel */}
+        <div
+          className={`fixed inset-y-0 left-0 z-50 w-64 transform transition-transform duration-300 ease-in-out ${
+            mobileMenuOpen ? 'translate-x-0' : '-translate-x-full'
+          }`}
+        >
+          <Sidebar
+            showTableNavigation={false}
+            onBackToDashboard={() => router.push('/dashboard')}
+            onClose={() => setMobileMenuOpen(false)}
+          />
+        </div>
+      </div>
+
+      {/* Main Content Area */}
+      <div className="flex flex-1 flex-col overflow-hidden">
+        {/* Mobile Header (visible only on small screens) */}
+        <header className="flex h-16 items-center justify-between border-b border-slate-800 bg-slate-900 px-4 md:hidden">
+          <button
+            onClick={() => setMobileMenuOpen(true)}
+            className="rounded-lg p-2 text-slate-400 transition-colors hover:bg-slate-800 hover:text-white"
+            aria-label={t('header_open_menu')}
+          >
+            <Menu size={22} />
+          </button>
           <Link
             href="/dashboard"
-            className="flex items-center gap-2 text-sm font-medium text-slate-400 transition-colors hover:text-white"
+            className="bg-gradient-to-r from-blue-400 to-indigo-500 bg-clip-text text-lg font-black tracking-wider text-transparent"
           >
-            ← {t('header_back_to_dashboard')}
+            ⚡ ZEUSX
           </Link>
-        </div>
+          <div className="w-10" /> {/* Spacer for centering */}
+        </header>
 
-        <div className="flex items-center gap-4">
-          <LanguageSelector />
-          <Link
-            href="/"
-            className="text-xs text-slate-400 transition-colors hover:text-white"
-          >
-            {t('header_logout')}
-          </Link>
-        </div>
-      </header>
-
-      {/* Mobile Menu Overlay - Using Sidebar */}
-      {mobileMenuOpen && (
-        <div className="fixed inset-0 z-50 md:hidden">
-          {/* Backdrop */}
-          <div
-            className="fixed inset-0 bg-black/60 backdrop-blur-sm"
-            onClick={() => setMobileMenuOpen(false)}
-          />
-          
-          {/* Sidebar Panel */}
-          <div className="fixed inset-y-0 left-0 z-50 w-64 h-full">
-            <Sidebar onClose={() => setMobileMenuOpen(false)} />
+        {/* Desktop Header (hidden on mobile) */}
+        <header className="hidden h-16 items-center justify-between border-b border-slate-800 bg-slate-900/40 px-6 backdrop-blur md:flex">
+          <div className="flex items-center gap-4">
+            <Link
+              href="/dashboard"
+              className="flex items-center gap-2 text-sm font-medium text-slate-400 transition-colors hover:text-white"
+            >
+              ← {t('header_back_to_dashboard')}
+            </Link>
           </div>
-        </div>
-      )}
 
-      {/* Scrollable Content */}
-      <main className="flex-1 overflow-y-auto bg-slate-950 p-6 lg:p-8">
-        {children}
-      </main>
+          <div className="flex items-center gap-4">
+            <LanguageSelector />
+            <Link
+              href="/"
+              className="text-xs text-slate-400 transition-colors hover:text-white"
+            >
+              {t('header_logout')}
+            </Link>
+          </div>
+        </header>
+
+        {/* Scrollable Content */}
+        <main className="flex-1 overflow-y-auto bg-slate-950 p-6 lg:p-8">
+          {children}
+        </main>
+      </div>
     </div>
   );
 }

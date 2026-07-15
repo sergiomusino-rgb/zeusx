@@ -1,4 +1,6 @@
 {
+  "access_denied": "Accès refusé",
+  "back_to_dashboard": "Retour au Dashboard",
   "welcome": "Bienvenue sur ZeusX",
   "start": "Commencer",
   "pricing": "Tarifs et Conditions",
@@ -327,18 +329,39 @@
   "success_url_app": "URL App",
   "success_qr_access": "Accès QR",
   "success_qr_placeholder": "Le code QR apparaîtra une fois que vous aurez généré votre première app.",
-  "success_scan_qr": "Scannez avec l'appareil photo de votre smartphone"
+  "success_scan_qr": "Scannez avec l'appareil photo de votre smartphone",
+  "management_guide_title": "Guide de la Console de Gestion",
+  "management_guide_subtitle": "Tout ce dont vous avez besoin pour gérer vos apps et paiements",
+  "management_guide_quick": "Guide Rapide",
+  "management_guide_commercial": "Conseils Commerciaux",
+  "management_guide_faq": "FAQ",
+  "management_guide_legal": "Disclaimer Légal",
+  "management_guide_quick_title": "Votre Tableau de Contrôle",
+  "management_guide_quick_desc": "Bienvenue dans le Programme Partenaire ZeusX. Cette console est votre centre de commande pour gérer votre business de manière autonome et efficace.",
+  "management_guide_app_management": "Gestion des Apps",
+  "management_guide_app_mgmt_1": "Créez et configurez vos applications en quelques clics. Le système génère automatiquement des liens de paiement dédiés pour vos clients.",
+  "management_guide_app_mgmt_2": "Comptabilité: suivez vos encaissements et la quote de service dûe à ZeusX. La section 'Suivi des Dettes' vous montre toujours votre solde mis à jour.",
+  "management_guide_app_mgmt_3": "Statut Clients: surveillez en temps réel qui est actif et qui est en expiration. Les apps sont activées et suspendues automatiquement par le système selon les paiements reçus.",
+  "management_guide_commercial_title": "Stratégies pour votre Succès",
+  "management_guide_commercial_desc": "Pour maximiser les profits et garantir la satisfaction de vos clients, nous vous suggérons de:",
+  "management_guide_sales_process": "Définissez votre marge",
+  "management_guide_sales_1": "Vous avez toute liberté de fixer le prix de vente final pour vos clients. Rappelez que la quote fixe pour ZeusX est de 50€/mois; tout ce qui excède ce montant est votre profit net.",
+  "management_guide_sales_2": "La valeur du support local: vos clients vous choisissent pour votre présence et assistance. Offrez des configurations personnalisées et un support rapide: c'est cette avantage compétitif qui vous récompense par rapport aux grands opérateurs en ligne.",
+  "management_guide_sales_3": "Visez la continuité: gérez avec soin les expirations de vos clients. Un renouvellement ponctuel garantit que le service ne soit jamais interrompu, protégeant votre flux de revenus récurrents.",
+  "management_guide_faq_title": "Questions Fréquentes",
+  "management_faq_q1": "Comment sont calculées les commissions?",
+  "management_faq_a1": "Pour chaque app active, une quote fixe de 50€/mois est prévue, enregistrée comme dette vers ZeusX.",
+  "management_faq_q2": "Que se passe-t-il si un client annule son abonnement?",
+  "management_faq_a2": "Le système reçoit la notification automatiquement: l'app est désactivée et la commission cesse de s'accumuler le mois suivant.",
+  "management_faq_q3": "ZeusX peut-il me remplacer?",
+  "management_faq_a3": "Le modèle s'appuie sur le partenariat. L'option de Takeover est une mesure d'urgence technique, activable uniquement en cas de non-paiement prolongé ou d'inactivité du partenaire, pour garantir la continuité du service à l'utilisateur final.",
+  "management_guide_legal_title": "Disclaimer et Notes Légales",
+  "management_legal_partnership": "Nature du Partenariat",
+  "management_legal_partnership_desc": "La relation entre ZeusX et le Partenaire est de nature commerciale entre entités indépendantes. Le Partenaire est seul responsable de sa gestion fiscale et commerciale.",
+  "management_legal_liability": "Limitation de Responsabilité",
+  "management_legal_liability_desc": "La plateforme est fournie 'tel quel'. ZeusX n'est pas responsable de ventes manquées ou de pertes découlant d'une mauvaise gestion par le Partenaire.",
+  "management_legal_takeover": "Droit d'Intervention (Takeover)",
+  "management_legal_takeover_desc": "Afin de protéger l'utilisateur final, ZeusX se réserve le droit d'intervenir sur la gestion de l'app en cas de violation des conditions, non-paiement ou inactivité du Partenaire.",
+  "management_legal_acceptance": "Acceptation",
+  "management_legal_acceptance_desc": "L'utilisation de la plateforme ZeusX implique l'acceptation intégrale des présentes conditions."
 }
-
-
-
-
-
-
-
-
-
-
-
-
-
