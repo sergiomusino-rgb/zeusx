@@ -5,22 +5,25 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { getTablesBySector, SECTOR_LABELS, getAllTables, UITable } from '@/lib/table-config';
 import { useLanguage } from '@/src/lib/LanguageContext';
+import { useUserPlan } from '@/src/lib/useUserPlan';
 
-  import {
-   LayoutDashboard,
-   Sparkles,
-   MessageSquare,
-   Eye,
-   FolderKanban,
-   Settings,
-   Crown,
-   Shield,
-   ChevronRight,
-   Database,
-   ArrowLeft,
-   X,
-   FileText,
- } from 'lucide-react';
+import {
+  LayoutDashboard,
+  Sparkles,
+  MessageSquare,
+  Eye,
+  FolderKanban,
+  Settings,
+  Crown,
+  Shield,
+  ChevronRight,
+  Database,
+  ArrowLeft,
+  X,
+  FileText,
+  BarChart3,
+  BookOpen,
+} from 'lucide-react';
 
 // ═══════════════════════════════════════════════════════════════════════════
 // Constants
@@ -37,13 +40,9 @@ const SECTOR_ICONS: Record<string, string> = {
 // ═══════════════════════════════════════════════════════════════════════════
 
 interface SidebarProps {
-  /** ID dell'app selezionata (per filtrare i dati) */
   appId?: string;
-  /** Se true, mostra il menu delle tabelle dati */
   showTableNavigation?: boolean;
-  /** Callback per tornare alla dashboard principale */
   onBackToDashboard?: () => void;
-  /** Callback per chiudere la sidebar su mobile */
   onClose?: () => void;
 }
 
@@ -53,6 +52,8 @@ interface NavItem {
   icon: React.ReactNode;
   isActive: boolean;
   isPrimary?: boolean;
+  isPremium?: boolean;
+  isAdmin?: boolean;
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -78,6 +79,7 @@ export default function Sidebar({
 }: SidebarProps) {
   const pathname = usePathname();
   const { t } = useLanguage();
+  const { isProOrBusiness, isAdmin } = useUserPlan();
 
   // ─── Main Navigation Items ──────────────────────────────────────────────
   const mainNavItems: NavItem[] = useMemo(
@@ -120,16 +122,25 @@ export default function Sidebar({
         isActive: isPathActive(pathname, '/pricing'),
       },
       {
+        label: t('nav_management'),
+        href: '/dashboard/management',
+        icon: <BarChart3 size={18} />,
+        isActive: isPathActive(pathname, '/dashboard/management'),
+        isPremium: true,
+      },
+      {
+        label: t('nav_management_guide'),
+        href: '/management/guide',
+        icon: <BookOpen size={18} />,
+        isActive: isPathActive(pathname, '/management/guide'),
+        isPremium: true,
+      },
+      {
         label: t('nav_admin'),
         href: '/admin',
         icon: <Shield size={18} />,
         isActive: isPathActive(pathname, '/admin'),
-      },
-      {
-        label: t('nav_settings'),
-        href: '/dashboard/settings',
-        icon: <Settings size={18} />,
-        isActive: isPathActive(pathname, '/dashboard/settings'),
+        isAdmin: true,
       },
       {
         label: t('nav_terms'),
@@ -143,10 +154,15 @@ export default function Sidebar({
         icon: <Shield size={18} />,
         isActive: isPathActive(pathname, '/dashboard/privacy'),
       },
+      {
+        label: t('nav_settings'),
+        href: '/dashboard/settings',
+        icon: <Settings size={18} />,
+        isActive: isPathActive(pathname, '/dashboard/settings'),
+      },
     ],
     [pathname, showTableNavigation, t]
   );
-
 
   // ─── Table Navigation Items ─────────────────────────────────────────────
   const sectors = useMemo(() => getTablesBySector(), []);
@@ -169,7 +185,6 @@ export default function Sidebar({
         .scrollbar-dark::-webkit-scrollbar-thumb:hover {
           background: rgba(100, 116, 139, 0.7);
         }
-        /* Firefox */
         .scrollbar-dark {
           scrollbar-width: thin;
           scrollbar-color: rgba(71, 85, 105, 0.5) transparent;
@@ -189,7 +204,6 @@ export default function Sidebar({
             >
               <X size={22} />
             </button>
-
           </div>
         )}
 
@@ -206,7 +220,6 @@ export default function Sidebar({
               {t('sidebar_app_badge')}
             </span>
           )}
-
         </div>
 
         {/* ── Navigation ────────────────────────────────────────────────── */}
@@ -220,13 +233,21 @@ export default function Sidebar({
               <ArrowLeft size={16} />
               {t('sidebar_back_to_dashboard')}
             </button>
-
           )}
 
           {/* Main Navigation */}
           {!showTableNavigation && (
             <div className="space-y-1">
               {mainNavItems.map((item) => {
+                // Nascondi le voci premium se l'utente non è PRO/Business
+                if (item.isPremium && !isProOrBusiness) {
+                  return null;
+                }
+                // Nascondi le voci admin se l'utente non è admin
+                if (item.isAdmin && !isAdmin) {
+                  return null;
+                }
+                
                 const handleClick = onClose
                   ? () => setTimeout(() => onClose(), 150)
                   : undefined;
@@ -261,7 +282,6 @@ export default function Sidebar({
                 <span className="text-[10px] font-semibold uppercase tracking-widest text-slate-500">
                   {t('sidebar_table_data')}
                 </span>
-
               </div>
 
               {/* Sectors */}
@@ -307,14 +327,8 @@ export default function Sidebar({
                     <br />
                     {t('sidebar_create_app_hint')}
                   </p>
-
                 </div>
               )}
-            </div>
-          )}
-          {/* Quick access to Pricing when not in table view */}
-          {!showTableNavigation && (
-            <div className="mt-4 border-t border-slate-800/60 pt-3">
             </div>
           )}
         </nav>
@@ -331,7 +345,6 @@ export default function Sidebar({
             <span className="rounded-md bg-indigo-500/10 px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-indigo-400">
               {t('sidebar_plan_pro')}
             </span>
-
           </div>
         </div>
       </aside>
