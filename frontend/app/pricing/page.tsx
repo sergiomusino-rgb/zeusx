@@ -66,12 +66,12 @@ export default function PricingPage() {
     {
       id: 'starter',
       name: 'STARTER',
-      setupPrice: '0',
-      monthlyFee: '50',
+      setupPrice: '4.99',
+      monthlyFee: '25',
       slots: '1',
       features: [
         t('pricing_slots_included_singular'),
-        t('pricing_per_app').replace('{fee}', '50€') + ' (dopo 1 mese gratis)',
+        t('pricing_per_app').replace('{fee}', '25€') + ' (dopo 1 mese gratis)',
         t('calendar_all_day') + ' 30 giorni inclusi',
         'Supporto email'
       ],
@@ -98,11 +98,11 @@ export default function PricingPage() {
       id: 'business',
       name: 'BUSINESS',
       setupPrice: '250',
-      monthlyFee: '50',
+      monthlyFee: '25',
       slots: '250',
       features: [
         '250 ' + t('pricing_slots_included'),
-        t('pricing_per_app').replace('{fee}', '50€'),
+        t('pricing_per_app').replace('{fee}', '25€'),
         t('calendar_all_day') + ' 30 giorni inclusi',
         'Supporto dedicato 24/7',
         'API illimitate',
