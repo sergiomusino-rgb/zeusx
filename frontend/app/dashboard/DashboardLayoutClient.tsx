@@ -115,8 +115,8 @@ export default function DashboardLayoutClient({
 
         {/* ─── Main Content Area ───────────────────────────────────────── */}
         <div className="flex flex-1 flex-col overflow-hidden">
-          {/* Mobile Header (visible only on small screens) */}
-          <header className="flex h-16 items-center justify-between border-b border-slate-800 bg-slate-900 px-4 md:hidden">
+           {/* Mobile Header (visible only on small screens) */}
+           <header className="flex h-16 items-center justify-between border-b border-slate-800 bg-slate-900 px-4 md:hidden">
             {shouldShowSidebar ? (
               <button
                 onClick={() => setMobileMenuOpen(true)}
@@ -134,7 +134,7 @@ export default function DashboardLayoutClient({
             >
               ⚡ ZEUSX
             </Link>
-            <div className="w-10" /> {/* Spacer for centering */}
+            <LanguageSelector />
           </header>
 
           {/* Desktop Header (hidden on mobile) - uniform on all dashboard pages */}
@@ -154,16 +154,9 @@ export default function DashboardLayoutClient({
               )}
             </div>
 
-            <div className="flex items-center gap-4">
-              <LanguageSelector />
-              <Link
-                href="/"
-                className="text-xs text-slate-400 transition-colors hover:text-white"
-              >
-                {t('header_logout')}
-              </Link>
-
-            </div>
+           <div className="flex items-center gap-4">
+               <LanguageSelector />
+             </div>
           </header>
 
 

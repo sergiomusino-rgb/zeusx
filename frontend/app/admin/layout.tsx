@@ -150,7 +150,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
           >
             ⚡ ZEUSX
           </Link>
-          <div className="w-10" /> {/* Spacer for centering */}
+          <LanguageSelector />
         </header>
 
         {/* Desktop Header (hidden on mobile) */}
@@ -164,15 +164,9 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
             </Link>
           </div>
 
-          <div className="flex items-center gap-4">
-            <LanguageSelector />
-            <Link
-              href="/"
-              className="text-xs text-slate-400 transition-colors hover:text-white"
-            >
-              {t('header_logout')}
-            </Link>
-          </div>
+  <div className="flex items-center gap-4">
+             <LanguageSelector />
+           </div>
         </header>
 
         {/* Scrollable Content */}

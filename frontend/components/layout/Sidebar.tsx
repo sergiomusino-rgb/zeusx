@@ -23,6 +23,7 @@ import {
   FileText,
   BarChart3,
   BookOpen,
+  LogOut,
 } from 'lucide-react';
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -136,13 +137,6 @@ export default function Sidebar({
         isPremium: true,
       },
       {
-        label: t('nav_admin'),
-        href: '/admin',
-        icon: <Shield size={18} />,
-        isActive: isPathActive(pathname, '/admin'),
-        isAdmin: true,
-      },
-      {
         label: t('nav_terms'),
         href: '/dashboard/terms',
         icon: <FileText size={18} />,
@@ -155,10 +149,23 @@ export default function Sidebar({
         isActive: isPathActive(pathname, '/dashboard/privacy'),
       },
       {
+        label: t('nav_admin'),
+        href: '/admin',
+        icon: <Shield size={18} />,
+        isActive: isPathActive(pathname, '/admin'),
+        isAdmin: true,
+      },
+      {
         label: t('nav_settings'),
         href: '/dashboard/settings',
         icon: <Settings size={18} />,
         isActive: isPathActive(pathname, '/dashboard/settings'),
+      },
+      {
+        label: t('logout'),
+        href: '/',
+        icon: <LogOut size={18} />,
+        isActive: false,
       },
     ],
     [pathname, showTableNavigation, t]

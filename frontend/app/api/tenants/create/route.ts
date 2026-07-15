@@ -25,15 +25,71 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Nome e slug sono obbligatori' }, { status: 400 });
     }
 
-    // Verifica che l'utente non abbia già un tenant
+// Verifica che l'utente abbia già un tenant (tramite owner_id o membership)
     const { data: existingTenant } = await supabase
       .from('tenants')
       .select('id')
       .eq('owner_id', user.id)
       .single();
 
+    // Se non ha un tenant come owner, controlla la membership
+    let existingTenantFromMembership = null;
+    if (!existingTenant) {
+      const { data: membership } = await supabase
+        .from('tenant_members')
+        .select('tenant_id')
+        .eq('user_id', user.id)
+        .limit(1)
+        .single();
+      
+      if (membership) {
+        const { data: tenant } = await supabase
+          .from('tenants')
+          .select('id, name, slug, plan, app_limit, total_apps_created')
+          .eq('id', membership.tenant_id)
+          .single();
+        existingTenantFromMembership = tenant;
+      }
+    }
+
+    // Crea il profilo utente se non esiste (anche se ha già un tenant)
+    // Usa il service role per bypassare le policy RLS
+    const { data: existingProfile, error: profileCheckError } = await supabase
+      .from('profiles')
+      .select('id')
+      .eq('user_id', user.id)
+      .single();
+
+    if (profileCheckError && profileCheckError.code !== 'PGRST116') {
+      // PGRST116 = no rows found, which is expected if profile doesn't exist
+      console.error('[API tenants/create] Errore controllo profilo:', profileCheckError);
+    }
+
+    if (!existingProfile) {
+      const { error: profileError } = await supabase
+        .from('profiles')
+        .insert({
+          user_id: user.id,
+          email: user.email,
+          full_name: user.user_metadata?.full_name || user.email?.split('@')[0],
+          role: 'admin',
+          subscription_plan: 'starter',
+        });
+
+      if (profileError) {
+        console.error('[API tenants/create] Errore creazione profilo:', profileError);
+      }
+    }
+
+    // Se l'utente ha già un tenant (come owner o tramite membership), ritorna quello
     if (existingTenant) {
+      console.log('[API tenants/create] Found existing tenant as owner');
       return NextResponse.json({ tenant: existingTenant }, { status: 200 });
+    }
+    
+    if (existingTenantFromMembership) {
+      console.log('[API tenants/create] Found existing tenant via membership');
+      return NextResponse.json({ tenant: existingTenantFromMembership }, { status: 200 });
     }
 
     // Crea il tenant con piano starter (1 slot gratuito)
@@ -68,6 +124,7 @@ export async function POST(req: NextRequest) {
       console.error('[API tenants/create] Errore creazione membership:', memberError);
     }
 
+    console.log('[API tenants/create] Created new tenant:', tenant.id);
     return NextResponse.json({ tenant }, { status: 201 });
   } catch (error) {
     console.error('[API tenants/create] Errore:', error);
