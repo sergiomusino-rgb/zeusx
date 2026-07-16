@@ -4,13 +4,13 @@ export default function InfoPage() {
   const plans = [
     {
       name: 'STARTER',
-      setup: '€0',
-      monthly: '50€/mese per app',
+      setup: '€4,99',
+      monthly: '25€/mese per app',
       slots: 1,
       features: [
         '1 slot app incluso',
         '1 mese gratis di prova',
-        'Fee mensile: 50€/app (dopo il mese gratis)',
+        'Fee mensile: 25€/app (dopo il mese gratis)',
         'Supporto email',
         'Trial 30 giorni inclusi',
       ],
@@ -31,11 +31,11 @@ export default function InfoPage() {
     {
       name: 'BUSINESS',
       setup: '€250',
-      monthly: '50€/mese per app',
-      slots: 250,
+      monthly: '25€/mese per app',
+      slots: 100,
       features: [
-        '250 slot app inclusi',
-        'Fee mensile: 50€/app',
+        '100 slot app inclusi',
+        'Fee mensile: 25€/app',
         'Trial 30 giorni inclusi',
         'Supporto dedicato 24/7',
         'API illimitate',
