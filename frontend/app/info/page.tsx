@@ -58,11 +58,8 @@ export default function InfoPage() {
         <LanguageSelector />
       </header>
 
-      <div className="max-w-4xl mx-auto px-6 pb-20">
-        {/* Torna alla home */}
-        <Link href="/" className="inline-flex items-center gap-2 text-indigo-400 hover:text-indigo-300 mb-10 transition">
-          ← Torna alla home
-        </Link>
+      <div className="max-w-4xl mx-auto px-6 pt-20 pb-20">
+        {/* Header bar fissato in alto */}
 
         {/* Prezzi */}
         <h1 className="text-4xl md:text-5xl font-black mb-4">I nostri piani</h1>
