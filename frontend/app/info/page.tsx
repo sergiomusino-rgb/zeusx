@@ -48,7 +48,7 @@ export default function InfoPage() {
   return (
     <div className="min-h-screen bg-slate-950 text-white">
       {/* HEADER */}
-      <header className="flex h-16 items-center justify-between border-b border-slate-800 bg-slate-900 px-6">
+      <header className="sticky top-0 z-50 flex h-16 items-center justify-between border-b border-slate-800 bg-slate-900 px-6">
         <Link href="/" className="text-sm font-medium text-slate-400 transition-colors hover:text-white">
           ← Torna alla home
         </Link>
