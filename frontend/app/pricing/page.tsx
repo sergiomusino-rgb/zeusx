@@ -99,9 +99,9 @@ export default function PricingPage() {
       name: 'BUSINESS',
       setupPrice: '250',
       monthlyFee: '25',
-      slots: '250',
+      slots: '100',
       features: [
-        '250 ' + t('pricing_slots_included'),
+        '100 ' + t('pricing_slots_included'),
         t('pricing_per_app').replace('{fee}', '25€'),
         t('calendar_all_day') + ' 30 giorni inclusi',
         'Supporto dedicato 24/7',
