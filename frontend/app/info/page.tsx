@@ -203,24 +203,6 @@ export default function InfoPage() {
           </section>
         </div>
 
-        {/* CTA finale */}
-        <div className="mt-16 text-center">
-          <h3 className="text-2xl font-bold mb-4">Pronto a iniziare?</h3>
-          <div className="flex flex-col sm:flex-row gap-4 justify-center">
-            <Link
-              href="/login"
-              className="bg-indigo-600 hover:bg-indigo-700 text-white font-semibold px-8 py-4 rounded-xl transition"
-            >
-              Inizia gratis
-            </Link>
-            <Link
-              href="/"
-              className="bg-slate-800 hover:bg-slate-700 text-white font-semibold px-8 py-4 rounded-xl transition"
-            >
-              Torna alla home
-            </Link>
-          </div>
-        </div>
       </div>
     </div>
   );
