@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import LanguageSelector from '@/components/LanguageSelector';
 
 export default function InfoPage() {
   const plans = [
@@ -47,10 +48,14 @@ export default function InfoPage() {
   return (
     <div className="min-h-screen bg-slate-950 text-white">
       {/* HEADER */}
-      <header className="pt-8 pb-6 flex justify-center items-center gap-4">
-        <Link href="/" className="text-5xl md:text-6xl font-black tracking-tighter text-white">
-          ZEUS<span className="text-indigo-500">X</span>
+      <header className="flex h-16 items-center justify-between border-b border-slate-800 bg-slate-900 px-6">
+        <Link href="/" className="text-sm font-medium text-slate-400 transition-colors hover:text-white">
+          ← Torna alla home
         </Link>
+        <Link href="/" className="bg-gradient-to-r from-blue-400 to-indigo-500 bg-clip-text text-2xl font-black tracking-wider text-transparent">
+          ⚡ ZEUSX
+        </Link>
+        <LanguageSelector />
       </header>
 
       <div className="max-w-4xl mx-auto px-6 pb-20">
