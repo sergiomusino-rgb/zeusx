@@ -61,9 +61,6 @@ export default function Home() {
           className="h-14 w-14 rounded-full object-cover"
         />
         <p className="text-xs font-semibold text-slate-400">{t('sidebar_by')}</p>
-        <span className="rounded-md bg-indigo-500/10 px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-indigo-400">
-          {t('sidebar_plan_pro')}
-        </span>
       </div>
 
     </div>
