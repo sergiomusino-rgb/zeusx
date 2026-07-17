@@ -4,7 +4,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 
 // Configurazione Totalium
-const TOTALIUM_API_URL = process.env.TOTALIUM_API_URL || 'https://api-accounts.totalium.app';
+const TOTALIUM_API_URL = process.env.TOTALIUM_API_URL || 'https://api.totalium.app/v1';
 const TOTALIUM_API_KEY = process.env.TOTALIUM_API_KEY;
 
 // Log per debug
@@ -153,18 +153,30 @@ export async function POST(request: NextRequest) {
     // Chiama l'API di Totalium
     const finalUrl = `${TOTALIUM_API_URL}/generate`;
     console.log('[Totalium] Inviando richiesta a:', finalUrl);
+    console.log('[Totalium] API Key presente:', !!TOTALIUM_API_KEY);
     
-    const response = await fetch(finalUrl, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'api-key': TOTALIUM_API_KEY,
-      },
-      body: JSON.stringify({
-        prompt: fullPrompt,
-        stream: false
-      }),
-    });
+    let response;
+    try {
+      response = await fetch(finalUrl, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'api-key': TOTALIUM_API_KEY,
+        },
+        body: JSON.stringify({
+          prompt: fullPrompt,
+          stream: false
+        }),
+      });
+    } catch (fetchErr) {
+      console.error('[Totalium] Fetch error:', fetchErr);
+      return NextResponse.json({
+        success: false,
+        error: 'Errore di rete nella chiamata a Totalium',
+        code: 'FETCH_ERROR',
+        details: fetchErr instanceof Error ? fetchErr.message : String(fetchErr)
+      }, { status: 503 });
+    }
     
     const data = await response.json();
     

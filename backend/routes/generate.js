@@ -5,7 +5,7 @@ const express = require('express');
 const router = express.Router();
 
 // Configurazione Totalium
-const TOTALIUM_API_URL = process.env.TOTALIUM_API_URL || 'https://api-accounts.totalium.app';
+const TOTALIUM_API_URL = process.env.TOTALIUM_API_URL || 'https://api.totalium.app/v1';
 const TOTALIUM_API_KEY = process.env.TOTALIUM_API_KEY;
 
 // Log dell'URL per debug

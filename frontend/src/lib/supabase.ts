@@ -6,7 +6,10 @@ const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
 // Extract project ref from URL for correct storage key
 const projectRef = supabaseUrl?.match(/https:\/\/([^.]+)/)?.[1] || 'zeusx';
 
-export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
+// Evita la duplicazione in sviluppo (Singleton pattern)
+const globalForSupabase = globalThis as unknown as { supabase: ReturnType<typeof createClient> };
+
+export const supabase = globalForSupabase.supabase || createClient(supabaseUrl, supabaseAnonKey, {
   auth: {
     persistSession: true,
     autoRefreshToken: true,
@@ -14,6 +17,8 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
     flowType: 'pkce',
   },
 });
+
+if (process.env.NODE_ENV !== 'production') globalForSupabase.supabase = supabase;
 
 export function getAccessTokenFromStorage(): string | null {
   if (typeof window === 'undefined') return null;
