@@ -1,9 +1,10 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useLanguage } from '@/src/lib/LanguageContext';
-import { MessageSquare, Send, Key, Loader2 } from 'lucide-react';
+import { supabase } from '@/src/lib/supabase';
+import { MessageSquare, Send, Loader2 } from 'lucide-react';
 
 // Pattern per riconoscere richieste di creazione app
 const CREATE_APP_PATTERNS = [
@@ -15,15 +16,47 @@ const CREATE_APP_PATTERNS = [
   /make\s+(?:an?\s+)?app\s+(?:for\s+)?(.+)/i,
 ];
 
+// Messaggi di caricamento dinamici
+const LOADING_MESSAGES = [
+  "Sto configurando il database...",
+  "Generando l'interfaccia con Tailwind...",
+  "Ottimizzando le tabelle...",
+  "Creando i campi personalizzati...",
+  "Impostando i colori ATOMIC DARK...",
+  "Finalizzando la tua app..."
+];
+
 export default function GeneratorPage() {
   const router = useRouter();
   const { t } = useLanguage();
   const [messages, setMessages] = useState<{role: string, text: string, isAppLink?: boolean, appUrl?: string}[]>([]);
   const [input, setInput] = useState('');
   const [isProcessing, setIsProcessing] = useState(false);
-  const [apiKey, setApiKey] = useState('');
-  const [showApiKeyForm, setShowApiKeyForm] = useState(false);
-  const [pendingAppRequest, setPendingAppRequest] = useState<{activityName: string, activityType: string} | null>(null);
+  const [showLoadingOverlay, setShowLoadingOverlay] = useState(false);
+  const [loadingMessageIndex, setLoadingMessageIndex] = useState(0);
+  const [userId, setUserId] = useState<string | null>(null);
+
+  // Ottieni l'utente corrente
+  useEffect(() => {
+    const getUser = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        setUserId(user.id);
+      }
+    };
+    getUser();
+  }, [supabase]);
+
+  // Gestione messaggi di caricamento rotanti
+  useEffect(() => {
+    let interval: NodeJS.Timeout;
+    if (showLoadingOverlay) {
+      interval = setInterval(() => {
+        setLoadingMessageIndex(prev => (prev + 1) % LOADING_MESSAGES.length);
+      }, 4000);
+    }
+    return () => clearInterval(interval);
+  }, [showLoadingOverlay]);
 
   // Estrae nome attività e tipo dalla richiesta
   const parseAppRequest = (text: string): { activityName: string; activityType: string } | null => {
@@ -33,7 +66,7 @@ export default function GeneratorPage() {
     let activityType = 'custom';
     if (lowerText.includes('ecommerce') || lowerText.includes('e-commerce') || lowerText.includes('shop') || lowerText.includes('negozio') || lowerText.includes('store')) {
       activityType = 'ecommerce';
-    } else if (lowerText.includes('ristorante') || lowerText.includes('restaurant') || lowerText.includes('cibo') || lowerText.includes('food')) {
+    } else if (lowerText.includes('ristorante') || lowerText.includes('restaurant') || lowerText.includes('cibo') || lowerText.includes('food') || lowerText.includes('pizzeria')) {
       activityType = 'restaurant';
     } else if (lowerText.includes('negozio') || lowerText.includes('retail') || lowerText.includes('shop')) {
       activityType = 'retail';
@@ -86,110 +119,63 @@ export default function GeneratorPage() {
     setInput('');
     setIsProcessing(true);
 
-    // Controlla se è una richiesta di creazione app
-    const appRequest = parseAppRequest(text);
-    
-    if (appRequest) {
-      // Se non c'è API Key, mostra il form
-      if (!apiKey.trim()) {
-        setPendingAppRequest(appRequest);
-        setShowApiKeyForm(true);
-        setMessages(prev => [...prev, { 
-          role: 'ai', 
-          text: 'Per creare l\'app su Totalium, inserisci la tua API Key qui sotto.'
-        }]);
-        setIsProcessing(false);
-        return;
-      }
-      
-      // Chiama il proxy ZEUSX con API Key
-      try {
-        const response = await fetch('/api/zeusx-proxy', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            action: 'createApp',
-            activityName: appRequest.activityName,
-            activityType: appRequest.activityType,
-            apiKey: apiKey
-          })
-        });
+    // Mostra overlay di caricamento Atomic Dark SEMPRE
+    setShowLoadingOverlay(true);
+    setLoadingMessageIndex(0);
 
-        const data = await response.json();
-        
-        if (data.success && data.appUrl) {
-          setMessages(prev => [...prev, { 
-            role: 'ai', 
-            text: t('zeusx_generator_app_created'),
-            isAppLink: true,
-            appUrl: data.appUrl
-          }]);
-        } else {
-          setMessages(prev => [...prev, { 
-            role: 'ai', 
-            text: data.error || t('zeusx_generator_error_create')
-          }]);
-        }
-      } catch (err) {
-        console.error("Errore creazione app:", err);
-        setMessages(prev => [...prev, { 
-          role: 'ai', 
-          text: t('zeusx_generator_error_connection')
-        }]);
-      }
-    } else {
-      // Chat normale - risposta AI
-      setMessages(prev => [...prev, { 
-        role: 'ai', 
-        text: t('zeusx_generator_chat_response')
-      }]);
-    }
-    
-    setIsProcessing(false);
-  };
-
-  const handleApiKeySubmit = async () => {
-    if (!pendingAppRequest || !apiKey.trim()) return;
-    
-    setIsProcessing(true);
-    setShowApiKeyForm(false);
-    
     try {
-      const response = await fetch('/api/zeusx-proxy', {
+      // Chiama la rotta /api/generate con userPrompt
+      const response = await fetch('/api/generate', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          action: 'createApp',
-          activityName: pendingAppRequest.activityName,
-          activityType: pendingAppRequest.activityType,
-          apiKey: apiKey
+          userPrompt: text
         })
       });
 
       const data = await response.json();
       
-      if (data.success && data.appUrl) {
-        setMessages(prev => [...prev, { 
-          role: 'ai', 
-          text: t('zeusx_generator_app_created'),
-          isAppLink: true,
-          appUrl: data.appUrl
-        }]);
+      if (data.success && data.data) {
+        // Salva su Supabase
+        const saveResponse = await fetch('/api/generate/save', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            schema: data.data,
+            appName: data.data.appName || 'app-generata',
+            sector: data.data.sector || 'custom',
+            userId: userId
+          })
+        });
+
+        const saveData = await saveResponse.json();
+        
+        if (saveData.success) {
+          // Redirect alla pagina di successo
+          router.push(`/dashboard/generator/success?appSlug=${saveData.slug}&title=${encodeURIComponent(saveData.appName || 'App Generata')}`);
+        } else {
+          setShowLoadingOverlay(false);
+          setMessages(prev => [...prev, { 
+            role: 'ai', 
+            text: saveData.error || "Errore nel salvataggio dell'app"
+          }]);
+        }
       } else {
+        setShowLoadingOverlay(false);
         setMessages(prev => [...prev, { 
           role: 'ai', 
-          text: data.error || t('zeusx_generator_error_create')
+          text: data.error || "Errore nella generazione dell'interfaccia"
         }]);
       }
     } catch (err) {
-      console.error("Errore creazione app:", err);
+      console.error("Errore generazione app:", err);
+      setShowLoadingOverlay(false);
       setMessages(prev => [...prev, { 
         role: 'ai', 
-        text: t('zeusx_generator_error_connection')
+        text: "Errore di connessione. Riprova più tardi."
       }]);
     }
     
-    setPendingAppRequest(null);
     setIsProcessing(false);
   };
 
@@ -251,37 +237,10 @@ export default function GeneratorPage() {
             ))}
           </div>
 
-          {/* API Key Form (inline) */}
-          {showApiKeyForm && (
-            <div className="mb-4 p-4 bg-gray-800 rounded-xl">
-              <div className="flex items-center gap-2 mb-3">
-                <Key className="w-4 h-4 text-indigo-400" />
-                <p className="text-sm text-gray-300">Inserisci la tua API Key per creare l'app su Totalium:</p>
-              </div>
-              <div className="flex gap-2">
-                <input
-                  type="password"
-                  className="flex-1 p-3 bg-gray-700 text-white rounded-lg border border-gray-600 focus:outline-none focus:border-indigo-500"
-                  value={apiKey}
-                  onChange={(e) => setApiKey(e.target.value)}
-                  placeholder="API Key..."
-                  onKeyDown={(e) => e.key === 'Enter' && handleApiKeySubmit()}
-                />
-                <button
-                  onClick={handleApiKeySubmit}
-                  disabled={isProcessing || !apiKey.trim()}
-                  className="bg-indigo-600 hover:bg-indigo-700 disabled:bg-gray-600 text-white px-4 py-2 rounded-lg font-semibold transition flex items-center justify-center"
-                >
-                  {isProcessing ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Crea App'}
-                </button>
-              </div>
-            </div>
-          )}
-
           {/* Input */}
           <div className="flex gap-2">
             <input 
-              className="flex-1 p-3 bg-gray-800 text-white rounded-lg border border-gray-700 focus:outline-none focus:border-indigo-500"
+              className="flex-1 p-3 bg-gray-800 text-white rounded-lg border border-gray-700 focus:outline-none focus:border-violet-500"
               value={input}
               onChange={(e) => setInput(e.target.value)}
               onKeyDown={(e) => e.key === 'Enter' && handleSendMessage()}
@@ -291,14 +250,38 @@ export default function GeneratorPage() {
             <button 
               onClick={() => handleSendMessage()} 
               disabled={isProcessing || !input.trim()}
-              className="bg-indigo-600 hover:bg-indigo-700 disabled:bg-gray-600 text-white px-6 py-3 rounded-lg font-semibold transition flex items-center justify-center"
+              className="bg-violet-600 hover:bg-violet-500 disabled:bg-gray-600 text-white px-6 py-3 rounded-lg font-semibold transition flex items-center justify-center"
             >
               <Send className="w-4 h-4" />
             </button>
           </div>
         </div>
-
       </div>
+
+      {/* Loading Overlay - Atomic Dark Style */}
+      {showLoadingOverlay && (
+        <div className="fixed inset-0 bg-slate-950/95 backdrop-blur-md flex items-center justify-center z-50">
+          <div className="text-center">
+            {/* Pulsating violet circle animation */}
+            <div className="relative w-24 h-24 mx-auto mb-8">
+              <div className="absolute inset-0 bg-violet-600/30 rounded-full animate-pulse"></div>
+              <div className="absolute inset-2 bg-violet-600/50 rounded-full animate-ping"></div>
+              <div className="absolute inset-4 bg-violet-600 rounded-full flex items-center justify-center">
+                <Loader2 className="w-8 h-8 text-white animate-spin" />
+              </div>
+            </div>
+            
+            {/* Dynamic loading message */}
+            <h2 className="text-2xl font-bold text-white mb-4">
+              {LOADING_MESSAGES[loadingMessageIndex]}
+            </h2>
+            
+            <p className="text-gray-400">
+              Stiamo generando la tua interfaccia...
+            </p>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

@@ -9,6 +9,7 @@
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.110.3",
-    "pg": "^8.22.0"
+    "pg": "^8.22.0",
+    "qrcode.react": "^4.2.0"
   }
 }

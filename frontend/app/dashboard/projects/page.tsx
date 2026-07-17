@@ -201,20 +201,6 @@ export default function ProjectsPage() {
           <div style={{ textAlign: 'center', padding: '60px 20px', background: '#1e293b', borderRadius: '16px', border: '1px solid #334155' }}>
             <div style={{ fontSize: '48px', marginBottom: '16px' }}>📱</div>
             <h2 style={{ color: '#ffffff', fontSize: '20px', fontWeight: 600, marginBottom: '8px' }}>{t('projects_no_projects')}</h2>
-            <p style={{ color: '#94a3b8', fontSize: '15px', marginBottom: '24px' }}>{t('projects_no_projects_desc')}</p>
-            <Link
-              href="/dashboard/generator"
-              style={{
-                display: 'inline-flex', alignItems: 'center', gap: '8px',
-                padding: '12px 24px', borderRadius: '12px', border: 'none',
-                background: 'linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%)',
-                color: '#fff', fontSize: '15px', fontWeight: 600,
-                cursor: 'pointer', textDecoration: 'none',
-              }}
-            >
-              <Plus size={18} />
-              {t('projects_create_first')}
-            </Link>
           </div>
         ) : (
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(340px, 1fr))', gap: '20px' }}>

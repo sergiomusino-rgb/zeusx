@@ -22,6 +22,7 @@ import {
 } from 'lucide-react';
   import { QRCodeCanvas } from 'qrcode.react';
   import { useLanguage } from '@/src/lib/LanguageContext';
+  import TrialBanner from './TrialBanner';
 
 // ─── Interfaces ───────────────────────────────────────────────────────────────
 
@@ -2498,6 +2499,9 @@ export default function ViewerProFinal() {
 
       {/* Main Content */}
       <main style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+        {/* Trial Banner - mostra stato trial/pagamento */}
+        <TrialBanner />
+        
         {/* Top bar (mobile toggle) */}
         <header style={{
           padding: '16px 24px', borderBottom: `2px solid ${colors.primary}`,

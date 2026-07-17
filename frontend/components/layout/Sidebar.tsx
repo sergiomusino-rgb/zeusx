@@ -24,6 +24,7 @@ import {
   BarChart3,
   BookOpen,
   LogOut,
+  CreditCard,
 } from 'lucide-react';
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -148,7 +149,7 @@ export default function Sidebar({
         icon: <Shield size={18} />,
         isActive: isPathActive(pathname, '/dashboard/privacy'),
       },
-      {
+{
         label: t('nav_admin'),
         href: '/admin',
         icon: <Shield size={18} />,
@@ -160,6 +161,12 @@ export default function Sidebar({
         href: '/dashboard/settings',
         icon: <Settings size={18} />,
         isActive: isPathActive(pathname, '/dashboard/settings'),
+      },
+      {
+        label: 'Pagamenti',
+        href: '/dashboard/payments',
+        icon: <CreditCard size={18} />,
+        isActive: isPathActive(pathname, '/dashboard/payments'),
       },
       {
         label: t('logout'),

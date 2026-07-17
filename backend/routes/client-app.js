@@ -18,6 +18,7 @@ function getSupabase() {
 }
 
 // POST /a/:slug - Client login with password
+// Supporta sia slug che totalum_app_id come identificatore
 router.post('/a/:slug', async (req, res) => {
   try {
     const { slug } = req.params;
@@ -29,12 +30,25 @@ router.post('/a/:slug', async (req, res) => {
 
     const supabase = getSupabase();
 
-    // Find app by slug
-    const { data: app, error } = await supabase
+    // Find app by slug OR totalum_app_id (per supportare URL come /a/pizzeria)
+    // Prima cerca per slug, poi per totalum_app_id come fallback
+    let { data: app, error } = await supabase
       .from('apps')
       .select('*')
       .eq('slug', slug)
       .single();
+
+    // Se non trovata per slug, cerca per totalum_app_id
+    if (error || !app) {
+      const { data: appByTotalum, error: totalumError } = await supabase
+        .from('apps')
+        .select('*')
+        .eq('totalum_app_id', slug)
+        .single();
+      
+      app = appByTotalum;
+      error = totalumError;
+    }
 
     if (error || !app) {
       return res.status(404).json({ error: 'App non trovata' });
@@ -415,7 +429,31 @@ router.get('/client/apps/:appId/export', clientAuthMiddleware, async (req, res) 
   }
 });
 
+// Helper: Find app by slug or totalum_app_id
+async function findAppBySlugOrTotalum(supabase, identifier) {
+  // Prima cerca per slug, poi per totalum_app_id come fallback
+  let { data: app, error } = await supabase
+    .from('apps')
+    .select('id, slug, totalum_app_id, config')
+    .eq('slug', identifier)
+    .single();
+
+  if (error || !app) {
+    const { data: appByTotalum, error: totalumError } = await supabase
+      .from('apps')
+      .select('id, slug, totalum_app_id, config')
+      .eq('totalum_app_id', identifier)
+      .single();
+    
+    app = appByTotalum;
+    error = totalumError;
+  }
+
+  return { app, error };
+}
+
 // POST /a/:slug/settings - Save admin settings (branding)
+// Supporta sia slug che totalum_app_id come identificatore
 router.post('/a/:slug/settings', async (req, res) => {
   try {
     const { slug } = req.params;
@@ -427,12 +465,8 @@ router.post('/a/:slug/settings', async (req, res) => {
 
     const supabase = getSupabase();
 
-    // Find app by slug
-    const { data: app, error: appError } = await supabase
-      .from('apps')
-      .select('id, config')
-      .eq('slug', slug)
-      .single();
+    // Find app by slug or totalum_app_id
+    const { app, error: appError } = await findAppBySlugOrTotalum(supabase, slug);
 
     if (appError || !app) {
       return res.status(404).json({ error: 'App non trovata' });
@@ -470,6 +504,7 @@ router.post('/a/:slug/settings', async (req, res) => {
 });
 
 // POST /a/:slug/change-password - Change client password
+// Supporta sia slug che totalum_app_id come identificatore
 router.post('/a/:slug/change-password', async (req, res) => {
   try {
     const { slug } = req.params;
@@ -485,12 +520,8 @@ router.post('/a/:slug/change-password', async (req, res) => {
 
     const supabase = getSupabase();
 
-    // Find app by slug
-    const { data: app, error: appError } = await supabase
-      .from('apps')
-      .select('id, tenant_id, client_password')
-      .eq('slug', slug)
-      .single();
+    // Find app by slug or totalum_app_id
+    const { app, error: appError } = await findAppBySlugOrTotalum(supabase, slug);
 
     if (appError || !app) {
       return res.status(404).json({ error: 'App non trovata' });

@@ -597,6 +597,9 @@ app.use('/api', require('./routes/custom-tables'));
 // --- INVOICES ROUTES (fatturazione) ---
 app.use('/api', require('./routes/invoices'));
 
+// --- GENERATE ROUTE (Totalium Dynamic UI) ---
+app.use('/api', require('./routes/generate'));
+
 // --- APP REGISTRY ROUTES (Management Console) ---
 app.use('/api', require('./routes/app-registry'));
 

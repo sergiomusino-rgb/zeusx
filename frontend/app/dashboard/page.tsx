@@ -127,10 +127,8 @@ export default function DashboardPage() {
     }
   };
 
-  return (
+    return (
     <div className="p-8">
-      <p className="text-gray-400 mb-8">{t('dashboard_welcome')}</p>
-
       <Suspense fallback={null}>
         <SyncPlanBanner />
       </Suspense>

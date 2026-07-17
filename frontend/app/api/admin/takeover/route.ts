@@ -113,10 +113,12 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    // Get app details using RPC function
-    const { data, error } = await supabaseAdmin.rpc('get_app_for_takeover', {
-      target_app_id: appId
-    });
+    // Get app details from apps table
+    const { data, error } = await supabaseAdmin
+      .from('apps')
+      .select('id, name, totalum_app_id, tenant_id, stripe_connect_id, is_managed_by_platform, client_subscription_price, status')
+      .eq('id', appId)
+      .single();
 
     if (error) {
       return NextResponse.json(
@@ -125,7 +127,7 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    return NextResponse.json({ data: data?.[0] || null });
+    return NextResponse.json({ data: data || null });
   } catch (error) {
     console.error('Error fetching app for takeover:', error);
     return NextResponse.json(
@@ -159,10 +161,55 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Execute takeover using RPC function
-    const { data, error } = await supabaseAdmin.rpc('admin_takeover_reseller_app', {
-      target_app_id: app_id
-    });
+    // Get app details first
+    const { data: appData, error: appError } = await supabaseAdmin
+      .from('apps')
+      .select('id, name, tenant_id, stripe_connect_id, is_managed_by_platform')
+      .eq('id', app_id)
+      .single();
+
+    if (appError || !appData) {
+      return NextResponse.json(
+        { error: 'App non trovata' },
+        { status: 404 }
+      );
+    }
+
+    // Se l'app ha stripe_connect_id, dobbiamo cancellare eventuali abbonamenti attivi
+    // e impostare un flag per farli riattivare sul nuovo sistema
+    if (appData.stripe_connect_id) {
+      try {
+        // Recupera tutte le subscription attive per questo account connesso
+        // Nota: dobbiamo cercare nelle subscription collegate al nostro account principale
+        // che hanno application_fee per questo stripe_connect_id
+        
+        // Per ora, segnaliamo che l'app ha bisogno di reset pagamento
+        // Il cliente dovrà riattivare l'abbonamento al prossimo accesso
+        await supabaseAdmin
+          .from('apps')
+          .update({ 
+            is_managed_by_platform: true,
+            payment_reset_required: true,
+            updated_at: new Date().toISOString()
+          })
+          .eq('id', app_id);
+      } catch (stripeError) {
+        console.error('Error during Stripe cleanup:', stripeError);
+        // Continuiamo comunque con il takeover
+      }
+    }
+
+    // Set is_managed_by_platform to TRUE
+    const { data, error } = await supabaseAdmin
+      .from('apps')
+      .update({ 
+        is_managed_by_platform: true,
+        payment_reset_required: true,
+        updated_at: new Date().toISOString()
+      })
+      .eq('id', app_id)
+      .select('id, name, totalum_app_id')
+      .single();
 
     if (error) {
       return NextResponse.json(
@@ -171,35 +218,26 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const result = data?.[0];
-    
-    if (!result?.success) {
-      return NextResponse.json(
-        { error: result?.message || 'Takeover failed' },
-        { status: 400 }
-      );
-    }
-
     // Get user email for notification
-    const { data: appData } = await supabaseAdmin
-      .from('app_registry')
-      .select('reseller_id, original_reseller_id')
-      .eq('id', app_id)
+    const { data: tenantData } = await supabaseAdmin
+      .from('tenants')
+      .select('owner_id')
+      .eq('id', appData.tenant_id)
       .single();
 
-    if (appData?.original_reseller_id) {
-      const { data: userData } = await supabaseAdmin.auth.getUser(appData.original_reseller_id);
+    if (tenantData?.owner_id) {
+      const { data: userData } = await supabaseAdmin.auth.getUser(tenantData.owner_id);
       if (userData?.user?.email) {
-        await sendTakeoverNotification(userData.user.email, result.app_name);
+        await sendTakeoverNotification(userData.user.email, appData.name);
       }
     }
 
     return NextResponse.json({
       success: true,
-      message: result.message,
-      app_name: result.app_name,
-      original_reseller_id: result.original_reseller_id,
-      new_checkout_url: result.new_checkout_url
+      message: 'App messa in gestione diretta da ZeusX',
+      app_name: appData.name,
+      app_id: appData.id,
+      is_managed_by_platform: true
     });
   } catch (error) {
     console.error('Error executing takeover:', error);
