@@ -142,7 +142,7 @@ router.post('/generate', async (req, res) => {
       });
     }
 
-    // ─── CONTROLLO SLOTS ───────────────────────────────────────────────────────────
+    // ─── CONTROLLO SLOTS (solo verifica, non decrementa ancora) ───────────────────────
     const tenant = await getUserTenant(user.id);
     
     if (!tenant) {
@@ -153,12 +153,12 @@ router.post('/generate', async (req, res) => {
       });
     }
 
-    const slotCheck = await checkAndDecrementSlots(tenant.id);
-    
-    if (!slotCheck.success) {
+    // Verifica slot disponibili (senza decrementare)
+    const slotsAvailable = tenant.app_limit - tenant.total_apps_created;
+    if (slotsAvailable <= 0) {
       return res.status(403).json({
         success: false,
-        error: slotCheck.error,
+        error: 'Slot esauriti. Aggiorna il tuo piano per creare nuovi gestionali.',
         code: 'SLOTS_EXHAUSTED'
       });
     }
@@ -170,7 +170,9 @@ router.post('/generate', async (req, res) => {
     const sectorValue = sector || 'app';
     const appNameValue = appName || 'Gestionale';
     const base = `zeusx-${sectorValue}-${ts}${rnd}`.toLowerCase().replace(/[^a-z0-9-]/g, '-');
-    const projectId = base.slice(0, 35).replace(/-$/, '');
+    // Assicura che il projectId inizi con una lettera (requisito Totalum)
+    const validProjectId = base.replace(/^[^a-z]/, 'z');
+    const projectId = validProjectId.slice(0, 35).replace(/-$/, '');
 
     // Costruisci il prompt completo
     const fullPrompt = userPrompt
@@ -265,7 +267,22 @@ router.post('/generate', async (req, res) => {
       });
     }
 
-    // Step 3: Restituisci URL di reindirizzamento
+    // Step 3: Decrementa gli slot (dopo conferma API)
+    if (supabase) {
+      const { error: updateError } = await supabase
+        .from('tenants')
+        .update({ total_apps_created: tenant.total_apps_created + 1 })
+        .eq('id', tenant.id);
+
+      if (updateError) {
+        console.error('[Totalum] Errore aggiornamento slot dopo successo API:', updateError);
+        // Non bloccare la risposta, ma loggiamo l'errore
+      } else {
+        console.log(`[Totalum] Slot aggiornato: ${tenant.total_apps_created} -> ${tenant.total_apps_created + 1}`);
+      }
+    }
+
+    // Step 4: Restituisci URL di reindirizzamento
     const projectUrl = `https://www.totalum.app/projects/${projectId}`;
 
     return res.json({

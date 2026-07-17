@@ -1,120 +1,117 @@
-// ─── Totalium Generate API Route (Next.js App Router) ───────────────────────────────
-// Genera interfacce dinamiche tramite l'API di Totalium con stile ATOMIC DARK
+// ─── Totalum Generate API Route (Next.js App Router) ───────────────────────────────
+// Genera interfacce dinamiche tramite l'API di Totalum con stile ATOMIC DARK
+// CON CONTROLlo SLOTS
 
 import { NextRequest, NextResponse } from 'next/server';
+import { createClient } from '@supabase/supabase-js';
 
-// Configurazione Totalium
-const TOTALIUM_API_URL = process.env.TOTALIUM_API_URL || 'https://api.totalium.app/v1';
-const TOTALIUM_API_KEY = process.env.TOTALIUM_API_KEY;
+// Configurazione Totalum
+const TOTALUM_API_URL = process.env.TOTALUM_API_URL || 'https://api-accounts.totalum.app';
+const TOTALUM_API_KEY = process.env.TOTALUM_API_KEY;
+
+// Configurazione Supabase (Service Role per bypassare RLS)
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
+const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
+const supabase = createClient(supabaseUrl, serviceRoleKey);
 
 // Log per debug
-console.log('[Totalium Next.js] API URL:', TOTALIUM_API_URL);
-console.log('[Totalium Next.js] API Key presente:', !!TOTALIUM_API_KEY);
+console.log('[Totalum Next.js] API URL:', TOTALUM_API_URL);
+console.log('[Totalum Next.js] API Key presente:', !!TOTALUM_API_KEY);
 
-// ─── System Prompt per ATOMIC DARK ───────────────────────────────────────────────
-
-const ATOMIC_DARK_SYSTEM_PROMPT = `Sei un generatore di interfacce UI specializzato. Genera SOLO un oggetto JSON valido, senza testo aggiuntivo, senza markdown, senza spiegazioni.
-
-STILE ATOMIC DARK:
-- Sfondi: 'bg-slate-950' o 'bg-slate-900'
-- Card e pannelli: 'bg-slate-900/40 border border-slate-800/80 backdrop-blur-md rounded-2xl'
-- Colori di accento: Viola vibrante ('bg-violet-600 hover:bg-violet-500', 'text-violet-400')
-- Input: Sfondi scuri con focus viola ('focus:border-violet-500')
-
-Schema JSON richiesto:
-{
-  "appName": "Nome dell'app",
-  "sector": "settore-kebab-case",
-  "description": "Descrizione breve",
-  "schema": {
-    "tables": [
-      {
-        "name": "snake_case_singolare",
-        "label": "Etichetta singolare",
-        "labelPlural": "Etichetta plurale",
-        "icon": "emoji opzionale",
-        "fields": [
-          {
-            "id": "snake_case",
-            "type": "text|number|date|datetime|boolean|email|phone|textarea|select|multiselect|relation|currency|file|image",
-            "label": "Etichetta campo",
-            "required": true|false,
-            "options": ["opzione1", "opzione2"],
-            "target": "nome_tabella_target",
-            "targetLabel": "campo_label_target"
-          }
-        ]
-      }
-    ]
-  },
-  "ui": {
-    "primaryColor": "#6366f1",
-    "sidebar": ["nome_tabella_1", "nome_tabella_2"],
-    "dashboardCards": [
-      { "type": "count|sum|latest|chart", "table": "nome_tabella", "label": "Label", "field": "campo_numerico" }
-    ]
-  }
+// ─── Helper: Get user from auth token ───────────────────────────────────────────────
+async function getUserFromToken(token: string) {
+  const { data: { user } } = await supabase.auth.getUser(token);
+  return user;
 }
 
-Regole:
-- Genera almeno 2-4 tabelle con relazioni logiche
-- Usa solo snake_case per name, id, sector
-- I campi relation devono puntare a tabelle esistenti
-- Non includere id, created_at, updated_at (aggiunti automaticamente)
-- Output SOLO JSON puro, niente blocchi di codice markdown.`;
+// ─── Helper: Get or create tenant for user (as owner or member) ─────────────────────
+const ADMIN_USER_ID = 'd3eda57f-692a-4904-ac5f-93bdaaec8ce5';
 
-// ─── Helper: Sanitizza JSON response ───────────────────────────────────────────────
+async function getUserTenant(userId: string) {
+  // Prima controlla se è owner
+  const { data: ownedTenant } = await supabase
+    .from('tenants')
+    .select('id, plan, app_limit, total_apps_created')
+    .eq('owner_id', userId)
+    .single();
 
-function sanitizeJsonResponse(rawText: string): string {
-  if (!rawText) return rawText;
-  
-  // Rimuovi blocchi markdown ```json ... ``` o ``` ... ```
-  let cleaned = rawText
-    .replace(/```json\s*/gi, '')
-    .replace(/```\s*/gi, '')
-    .replace(/^`+$/gm, '')
-    .trim();
-  
-  // Se il testo inizia con un oggetto o array, estrailo
-  const jsonMatch = cleaned.match(/(\{[\s\S]*\}|\[[\s\S]*\})/);
-  if (jsonMatch) {
-    cleaned = jsonMatch[1];
+  if (ownedTenant) return ownedTenant;
+
+  // Se non è owner, controlla la membership
+  const { data: membership } = await supabase
+    .from('tenant_members')
+    .select('tenant_id')
+    .eq('user_id', userId)
+    .limit(1)
+    .single();
+
+  if (membership) {
+    const { data: tenant } = await supabase
+      .from('tenants')
+      .select('id, plan, app_limit, total_apps_created')
+      .eq('id', membership.tenant_id)
+      .single();
+    return tenant;
   }
-  
-  return cleaned;
+
+  // Se l'utente non ha un tenant, creane uno con 0 slot (deve acquistare un piano)
+  // Nota: non possiamo ottenere l'email qui, useremo un valore di default
+  const { data: newTenant } = await supabase
+    .from('tenants')
+    .insert({
+      owner_id: userId,
+      name: 'Tenant personale',
+      slug: `tenant-${userId.slice(0, 8)}`,
+      plan: 'free',
+      app_limit: 0,
+      total_apps_created: 0,
+    })
+    .select('id, plan, app_limit, total_apps_created')
+    .single();
+
+  // Crea la membership
+  if (newTenant) {
+    await supabase.from('tenant_members').insert({
+      tenant_id: newTenant.id,
+      user_id: userId,
+      role: 'owner',
+    });
+  }
+
+  return newTenant;
 }
 
-// ─── Helper: Gestione errori Totalium ─────────────────────────────────────────────
+// ─── Helper: Check and decrement slots ─────────────────────────────────────────────
+async function checkAndDecrementSlots(tenantId: string) {
+  // Usa una transazione per evitare race condition
+  const { data: tenant, error: fetchError } = await supabase
+    .from('tenants')
+    .select('app_limit, total_apps_created')
+    .eq('id', tenantId)
+    .single();
 
-function handleTotaliumError(status: number, data: any) {
-  const errorMessages: Record<number, { error: string; message: string; code: string }> = {
-    401: {
-      error: 'Chiave API non valida',
-      message: "L'API key di Totalium non è valida o è mancante. Verifica la configurazione.",
-      code: 'INVALID_API_KEY'
-    },
-    429: {
-      error: 'Limite crediti superato',
-      message: "Hai superato il limite giornaliero dei crediti. Passa al piano successivo per continuare.",
-      code: 'CREDIT_LIMIT_EXCEEDED'
-    },
-    402: {
-      error: 'Credito insufficiente',
-      message: "Credito insufficiente per completare l'operazione. Aggiungi crediti al tuo account Totalium.",
-      code: 'INSUFFICIENT_CREDITS'
-    },
-    412: {
-      error: 'Pagamento richiesto',
-      message: "È richiesto un pagamento per utilizzare questo endpoint. Aggiorna il tuo piano.",
-      code: 'PAYMENT_REQUIRED'
-    }
-  };
-  
-  return errorMessages[status] || {
-    error: data?.error || `Errore ${status}`,
-    message: data?.message || `Si è verificato un errore (${status})`,
-    code: 'UNKNOWN_ERROR'
-  };
+  if (fetchError || !tenant) {
+    return { success: false, error: 'Tenant non trovato' };
+  }
+
+  const slotsAvailable = tenant.app_limit - tenant.total_apps_created;
+
+  // Controllo slot
+  if (slotsAvailable <= 0) {
+    return { success: false, error: 'Slot esauriti. Aggiorna il tuo piano per creare nuovi gestionali.' };
+  }
+
+  // Decrementa gli slot
+  const { error: updateError } = await supabase
+    .from('tenants')
+    .update({ total_apps_created: tenant.total_apps_created + 1 })
+    .eq('id', tenantId);
+
+  if (updateError) {
+    return { success: false, error: 'Errore nell\'aggiornamento degli slot' };
+  }
+
+  return { success: true };
 }
 
 // ─── POST /api/generate ───────────────────────────────────────────────────────────
@@ -133,108 +130,174 @@ export async function POST(request: NextRequest) {
       }, { status: 400 });
     }
     
-    // Verifica API Key
-    if (!TOTALIUM_API_KEY) {
+    // Verifica autenticazione
+    const authHeader = request.headers.get('authorization');
+    if (!authHeader?.startsWith('Bearer ')) {
       return NextResponse.json({
         success: false,
-        error: 'API Key di Totalium non configurata',
+        error: 'Autenticazione richiesta',
+        code: 'UNAUTHORIZED'
+      }, { status: 401 });
+    }
+
+    const token = authHeader.slice(7);
+    const user = await getUserFromToken(token);
+
+    if (!user) {
+      return NextResponse.json({
+        success: false,
+        error: 'Utente non autenticato',
+        code: 'UNAUTHORIZED'
+      }, { status: 401 });
+    }
+
+    // Verifica API Key
+    if (!TOTALUM_API_KEY) {
+      return NextResponse.json({
+        success: false,
+        error: 'API Key di Totalum non configurata',
         code: 'API_KEY_NOT_CONFIGURED'
       }, { status: 503 });
     }
+
+    // ─── CONTROLLO SLOTS (solo verifica, non decrementa ancora) ───────────────────────
+    // Admin: salta il controllo degli slot
+    let tenant = null;
+    if (user.id === ADMIN_USER_ID) {
+      console.log('[generate] Admin user, skipping slot check');
+    } else {
+      tenant = await getUserTenant(user.id);
+      
+      if (!tenant) {
+        return NextResponse.json({
+          success: false,
+          error: 'Nessun tenant associato all\'utente',
+          code: 'NO_TENANT'
+        }, { status: 403 });
+      }
+
+      // Verifica slot disponibili (senza decrementare)
+      const slotsAvailable = tenant.app_limit - tenant.total_apps_created;
+      if (slotsAvailable <= 0) {
+        return NextResponse.json({
+          success: false,
+          error: 'Slot esauriti. Aggiorna il tuo piano per creare nuovi gestionali.',
+          code: 'SLOTS_EXHAUSTED'
+        }, { status: 403 });
+      }
+    }
+
+    // ─── GENERAZIONE PROGETTO ───────────────────────────────────────────────────────
+    // Genera projectId univoco
+    const timestamp = Date.now().toString(36);
+    const random = Math.random().toString(36).substring(2, 8);
+    const projectId = `zeusx-${appName || sector || 'app'}-${timestamp}-${random}`.toLowerCase().replace(/[^a-z0-9-]/g, '-');
     
+    // Assicura che il projectId inizi con una lettera (requisito Totalum)
+    const validProjectId = projectId.replace(/^[^a-z]/, 'z');
+    
+    // Limita a 35 caratteri
+    const finalProjectId = validProjectId.slice(0, 35).replace(/-$/, '');
+
     // Costruisci il prompt completo
     const sectorValue = sector || 'gestione aziendale';
     const appNameValue = appName || 'Gestionale';
     
     const fullPrompt = userPrompt 
-      ? `${ATOMIC_DARK_SYSTEM_PROMPT}\n\nRichiesta dell'utente: ${userPrompt}\n\nSettore: ${sectorValue}\n\nNome app: ${appNameValue}`
-      : `${ATOMIC_DARK_SYSTEM_PROMPT}\n\nGenera un'interfaccia per: ${sectorValue}\n\nNome app: ${appNameValue}`;
-    
-    // Chiama l'API di Totalium
-    const finalUrl = `${TOTALIUM_API_URL}/generate`;
-    console.log('[Totalium] Inviando richiesta a:', finalUrl);
-    console.log('[Totalium] API Key presente:', !!TOTALIUM_API_KEY);
-    
-    let response;
-    try {
-      response = await fetch(finalUrl, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'api-key': TOTALIUM_API_KEY,
-        },
-        body: JSON.stringify({
-          prompt: fullPrompt,
-          stream: false
-        }),
-      });
-    } catch (fetchErr) {
-      console.error('[Totalium] Fetch error:', fetchErr);
+      ? `${userPrompt}\n\nSettore: ${sectorValue}\n\nNome app: ${appNameValue}`
+      : `Genera un'interfaccia per: ${sectorValue}\n\nNome app: ${appNameValue}`;
+
+    // Step 1: Crea il progetto su Totalum
+    console.log('[Totalum] Creazione progetto:', finalProjectId);
+
+    const createProjectResponse = await fetch(`${TOTALUM_API_URL}/api/v1/vcaas/projects`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'api-key': TOTALUM_API_KEY,
+      },
+      body: JSON.stringify({
+        projectId: finalProjectId,
+        description: `App generata da ZeusX: ${appNameValue}`
+      }),
+    });
+
+    const createProjectText = await createProjectResponse.text();
+    console.log('[Totalum] Create project response:', createProjectText);
+
+    if (!createProjectResponse.ok) {
+      let errorData;
+      try {
+        errorData = JSON.parse(createProjectText);
+      } catch {
+        errorData = { errors: { errorMessage: createProjectText } };
+      }
+      
       return NextResponse.json({
         success: false,
-        error: 'Errore di rete nella chiamata a Totalium',
-        code: 'FETCH_ERROR',
-        details: fetchErr instanceof Error ? fetchErr.message : String(fetchErr)
-      }, { status: 503 });
+        error: errorData?.errors?.errorMessage || 'Errore nella creazione del progetto',
+        code: errorData?.errors?.errorCode || 'CREATE_PROJECT_ERROR',
+        details: errorData
+      }, { status: createProjectResponse.status });
     }
-    
-    const data = await response.json();
-    
-    // Gestione errori specifici di Totalium
-    if (!response.ok) {
-      const errorInfo = handleTotaliumError(response.status, data);
+
+    // Step 2: Avvia l'agente su Totalum
+    console.log('[Totalum] Avvio agente per progetto:', finalProjectId);
+
+    const startAgentResponse = await fetch(`${TOTALUM_API_URL}/api/v1/vcaas/projects/${finalProjectId}/agent/start`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'api-key': TOTALUM_API_KEY,
+      },
+      body: JSON.stringify({
+        prompt: fullPrompt
+      }),
+    });
+
+    const startAgentText = await startAgentResponse.text();
+    console.log('[Totalum] Start agent response:', startAgentText);
+
+    if (!startAgentResponse.ok) {
+      let errorData;
+      try {
+        errorData = JSON.parse(startAgentText);
+      } catch {
+        errorData = { errors: { errorMessage: startAgentText } };
+      }
+      
       return NextResponse.json({
         success: false,
-        error: errorInfo.error,
-        message: errorInfo.message,
-        code: errorInfo.code,
-        details: data
-      }, { status: response.status });
+        error: errorData?.errors?.errorMessage || "Errore nell'avvio dell'agente",
+        code: errorData?.errors?.errorCode || 'START_AGENT_ERROR',
+        details: errorData
+      }, { status: startAgentResponse.status });
     }
-    
-    // Estrai il contenuto dalla risposta
-    let rawContent = data.choices?.[0]?.message?.content || data.content || data.response || '';
-    
-    // Sanitizza il JSON
-    const sanitized = sanitizeJsonResponse(rawContent);
-    
-    // Parse del JSON
-    let generatedSchema: any;
-    try {
-      generatedSchema = JSON.parse(sanitized);
-    } catch (parseErr) {
-      console.error('[generate] JSON parse error. Raw:', rawContent);
-      return NextResponse.json({
-        success: false,
-        error: "Il modello ha restituito un JSON non valido",
-        code: 'INVALID_JSON_RESPONSE',
-        raw: rawContent
-      }, { status: 500 });
+
+    // Step 3: Decrementa gli slot (dopo conferma API)
+    if (tenant && supabase) {
+      const { error: updateError } = await supabase
+        .from('tenants')
+        .update({ total_apps_created: tenant.total_apps_created + 1 })
+        .eq('id', tenant.id);
+
+      if (updateError) {
+        console.error('[Totalum] Errore aggiornamento slot dopo successo API:', updateError);
+      } else {
+        console.log(`[Totalum] Slot aggiornato: ${tenant.total_apps_created} -> ${tenant.total_apps_created + 1}`);
+      }
     }
-    
-    // Validazione schema minimo
-    if (!generatedSchema.schema || !generatedSchema.schema.tables) {
-      return NextResponse.json({
-        success: false,
-        error: 'Schema generato non valido: manca schema.tables',
-        code: 'INVALID_SCHEMA'
-      }, { status: 400 });
-    }
-    
-    // Aggiungi le classi ATOMIC DARK al UI se non presenti
-    if (generatedSchema.ui) {
-      generatedSchema.ui.atomicDark = {
-        background: 'bg-slate-950',
-        card: 'bg-slate-900/40 border border-slate-800/80 backdrop-blur-md rounded-2xl',
-        accent: 'bg-violet-600 hover:bg-violet-500',
-        accentText: 'text-violet-400',
-        inputFocus: 'focus:border-violet-500'
-      };
-    }
-    
+
+    // Step 4: Restituisci URL di reindirizzamento
+    const projectUrl = `https://www.totalum.app/projects/${finalProjectId}`;
+
     return NextResponse.json({
       success: true,
-      data: generatedSchema
+      data: {
+        projectId: finalProjectId,
+        projectUrl: projectUrl,
+        message: 'Progetto creato con successo. L\'agente sta generando l\'interfaccia.'
+      }
     });
     
   } catch (err) {
