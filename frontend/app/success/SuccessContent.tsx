@@ -1,28 +1,37 @@
 "use client";
 
 import { useEffect, useState } from 'react';
-import { useSearchParams, useRouter } from 'next/navigation'; // Aggiunto useRouter
+import { useSearchParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 
 export default function SuccessPage() {
   const searchParams = useSearchParams();
-  const router = useRouter(); // Inizializzato il router
+  const router = useRouter();
   const sessionId = searchParams.get('session_id');
+  const appSlug = searchParams.get('appSlug');
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    if (sessionId) {
-      console.log("Pagamento completato con sessione:", sessionId);
+    if (sessionId || appSlug) {
+      console.log("Pagamento completato con sessione:", sessionId, "o appSlug:", appSlug);
       setLoading(false);
 
       // Reindirizzamento automatico dopo 3 secondi
       const timer = setTimeout(() => {
-        router.push('/dashboard');
+        // Se abbiamo appSlug, reindirizza al dettaglio dell'app
+        if (appSlug) {
+          router.push(`/dashboard/projects/${appSlug}`);
+        } else {
+          router.push('/dashboard');
+        }
       }, 3000);
 
-      return () => clearTimeout(timer); // Pulizia del timer
+      return () => clearTimeout(timer);
     }
-  }, [sessionId, router]);
+  }, [sessionId, appSlug, router]);
+
+  // Determina l'URL del pulsante principale
+  const buttonHref = appSlug ? `/dashboard/projects/${appSlug}` : '/dashboard';
 
   return (
     <div className="flex flex-col items-center justify-center min-h-screen bg-gray-50 p-6 text-center">
@@ -35,19 +44,27 @@ export default function SuccessPage() {
         
         <h1 className="text-2xl font-bold text-gray-800 mb-2">Pagamento Riuscito!</h1>
         <p className="text-gray-600 mb-6">
-          Grazie per aver acquistato i crediti ZEUSX. Il tuo account è stato aggiornato. Verrai reindirizzato alla dashboard a breve...
+          {appSlug 
+            ? "L'app è stata creata con successo! Verrai reindirizzato ai dettagli dell'app a breve..."
+            : "Grazie per aver acquistato i crediti ZEUSX. Il tuo account è stato aggiornato. Verrai reindirizzato alla dashboard a breve..."
+          }
         </p>
 
         <Link 
-          href="/dashboard" 
+          href={buttonHref}
           className="block w-full bg-blue-600 text-white py-3 rounded-xl font-semibold hover:bg-blue-700 transition-colors"
         >
-          Vai subito alla Dashboard
+          {appSlug ? "Vai ai dettagli dell'app" : "Vai subito alla Dashboard"}
         </Link>
       </div>
       
       <p className="mt-6 text-sm text-gray-400">
-        ID Transazione: {sessionId ? sessionId.substring(0, 15) + "..." : "N/A"}
+        {sessionId 
+          ? `ID Transazione: ${sessionId.substring(0, 15)}...` 
+          : appSlug 
+            ? `App Slug: ${appSlug}` 
+            : "N/A"
+        }
       </p>
     </div>
   );

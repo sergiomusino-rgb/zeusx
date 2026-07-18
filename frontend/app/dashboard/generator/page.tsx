@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { useLanguage } from '@/src/lib/LanguageContext';
 import { supabaseBrowser } from '@/src/lib/supabase-browser';
@@ -28,7 +28,7 @@ const LOADING_MESSAGES = [
 
 export default function GeneratorPage() {
   const router = useRouter();
-  const { t } = useLanguage();
+  const { t, locale } = useLanguage();
   const [messages, setMessages] = useState<{role: string, text: string, isAppLink?: boolean, appUrl?: string}[]>([]);
   const [input, setInput] = useState('');
   const [isProcessing, setIsProcessing] = useState(false);
@@ -147,7 +147,8 @@ export default function GeneratorPage() {
           'Authorization': `Bearer ${session.access_token}`
         },
         body: JSON.stringify({
-          userPrompt: text
+          userPrompt: text,
+          lang: locale
         })
       });
 

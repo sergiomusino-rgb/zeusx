@@ -199,13 +199,42 @@ export async function POST(request: NextRequest) {
     // Limita a 35 caratteri
     const finalProjectId = validProjectId.slice(0, 35).replace(/-$/, '');
 
-    // Costruisci il prompt completo
+    // ─── COSTRUZIONE PROMPT MULTILINGUA DINAMICO ────────────────────────────
     const sectorValue = sector || 'gestione aziendale';
     const appNameValue = appName || 'Gestionale';
     
-    const fullPrompt = userPrompt 
+    // Mappa dei nomi lingua per il prompt
+    const LANG_NAMES: Record<string, string> = {
+      it: 'italiano',
+      en: 'inglese',
+      fr: 'francese',
+      de: 'tedesco',
+      es: 'spagnolo',
+    };
+    
+    // Determina la lingua da usare: lang passato dalla UI (selettore), altrimenti 'it'
+    const selectedLang = lang && ['it', 'en', 'fr', 'de', 'es'].includes(lang) ? lang : 'it';
+    const languageName = LANG_NAMES[selectedLang] || 'italiano';
+    
+    // Costruisci il System Prompt con la lingua dinamica
+    const basePrompt = userPrompt 
       ? `${userPrompt}\n\nSettore: ${sectorValue}\n\nNome app: ${appNameValue}`
       : `Genera un'interfaccia per: ${sectorValue}\n\nNome app: ${appNameValue}`;
+    
+    const languageDirective = `\n\n⚠️ DIRETTIVA LINGUA OBBLIGATORIA:\nL'intera interfaccia utente dell'applicazione (menu, tabelle, pulsanti, messaggi di errore e dati dimostrativi iniziali) deve essere generata rigorosamente nella lingua associata al codice: "${selectedLang}" (${languageName}). Se il codice è 'de', l'app deve essere in tedesco; se è 'it', in italiano, e così via.`;
+
+    // ─── DIRETTIVA IMPOSTAZIONI AZIENDA DINAMICHE ──────────────────────────
+    const companySettingsDirective = `\n\n⚠️ DIRETTIVA IMPOSTAZIONI AZIENDA (VIETATO HARDCODING):\nNon inserire nomi, testi o dati aziendali fissi direttamente nel codice dei componenti. Ogni blueprint deve includere obbligatoriamente una tabella di database globale chiamata 'company_settings' e una pagina 'Impostazioni' (tradotta nella lingua selezionata) nell'app del cliente. Questa pagina deve permettere al cliente finale di modificare liberamente i valori di default: Nome Azienda/Ditta, Logo, Intestazione, Partita IVA e Indirizzo. Tutti i componenti del layout devono leggere questi dati in modo dinamico dal database 'company_settings'.`;
+
+    // ─── DIRETTIVA BRANDING WHITE LABEL ZEUSX ──────────────────────────────
+    const brandingDirective = `\n\n⚠️ DIRETTIVA BRANDING WHITE LABEL:\nAssicurati che nel layout dell'applicazione venga inserito correttamente il logo e il branding di ZeusX (nel footer o nella barra laterale con la dicitura "Powered by ZeusX"), verificando che i percorsi degli asset siano validi e vengano renderizzati senza errori.`;
+
+    // Combina il prompt completo
+    const fullPrompt = `${basePrompt}${languageDirective}${companySettingsDirective}${brandingDirective}`;
+
+    // Log della lingua selezionata per debug
+    console.log('[Totalum] Lingua selezionata per la generazione:', selectedLang, languageName);
+    console.log('[Totalum] Prompt completo con direttive:', fullPrompt.substring(0, 200) + '...');
 
     // Step 1: Crea il progetto su Totalum
     console.log('[Totalum] Creazione progetto:', finalProjectId);

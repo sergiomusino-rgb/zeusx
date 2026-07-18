@@ -8,6 +8,7 @@ import { useParams, useRouter } from 'next/navigation';
 import { supabase } from '@/src/lib/supabase';
 import TrialPaywall from './app/TrialPaywall';
 import ZeusXBrandingFooter from '@/components/ZeusXBrandingFooter';
+import Link from 'next/link';
 
 type AppStatus = 'trial' | 'active' | 'expired';
 
@@ -18,6 +19,10 @@ interface AppInfo {
   trial_ends_at: string | null;
 }
 
+interface Profile {
+  role: 'admin' | 'reseller' | 'viewer' | 'editor' | null;
+}
+
 export default function AppLayout({ children }: PropsWithChildren) {
   const params = useParams();
   const router = useRouter();
@@ -26,6 +31,7 @@ export default function AppLayout({ children }: PropsWithChildren) {
   const [appInfo, setAppInfo] = useState<AppInfo | null>(null);
   const [loading, setLoading] = useState(true);
   const [user, setUser] = useState<any>(null);
+  const [userRole, setUserRole] = useState<'admin' | 'reseller' | null>(null);
   const [showAuth, setShowAuth] = useState(false);
 
   useEffect(() => {
@@ -34,13 +40,7 @@ export default function AppLayout({ children }: PropsWithChildren) {
       const { data: { user } } = await supabase.auth.getUser();
       setUser(user);
       
-      if (!user) {
-        setShowAuth(true);
-        setLoading(false);
-        return;
-      }
-
-      // Get app info
+      // Get app info first (needed for back link)
       const { data: app } = await supabase
         .from('apps')
         .select('id, name, status, trial_ends_at')
@@ -48,6 +48,24 @@ export default function AppLayout({ children }: PropsWithChildren) {
         .single();
       
       setAppInfo(app);
+
+      if (!user) {
+        setShowAuth(true);
+        setLoading(false);
+        return;
+      }
+
+      // Get user profile to check role (admin/reseller)
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('role')
+        .eq('user_id', user.id)
+        .single();
+      
+      if (profile && (profile as any).role === 'admin' || (profile as any).role === 'reseller') {
+        setUserRole((profile as any).role);
+      }
+
       setLoading(false);
     };
     init();
@@ -100,6 +118,18 @@ export default function AppLayout({ children }: PropsWithChildren) {
       <ThemeProvider slug={slug}>
         <AuthProvider slug={slug}>
           <div className="flex flex-col min-h-screen bg-slate-950">
+            {/* Back to Dashboard button - visible only for admin/reseller sessions */}
+            {userRole && appInfo && (
+              <div className="p-4">
+                <Link
+                  href={`/dashboard/projects/${appInfo.id}`}
+                  className="inline-flex items-center gap-2 text-sm text-slate-400 hover:text-violet-400 transition-colors"
+                >
+                  <span className="text-violet-500">←</span>
+                  <span>Torna alla Dashboard</span>
+                </Link>
+              </div>
+            )}
             <div className="flex-1">
               {children}
             </div>
