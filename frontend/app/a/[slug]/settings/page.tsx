@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import { CreditCard, XCircle, CheckCircle, Loader2 } from 'lucide-react';
+import { CreditCard, XCircle, CheckCircle, Loader2, Mail, Lock, Eye, EyeOff } from 'lucide-react';
 import { supabase } from '@/src/lib/supabase';
 import ZeusXBrandingFooter from '@/components/ZeusXBrandingFooter';
 
@@ -14,6 +14,7 @@ interface AppInfo {
   status: AppStatus;
   trial_ends_at: string | null;
   stripe_subscription_id: string | null;
+  client_email?: string;
 }
 
 export default function SettingsPage() {
@@ -38,7 +39,7 @@ export default function SettingsPage() {
       // Get app info
       const { data: app } = await supabase
         .from('apps')
-        .select('id, name, status, trial_ends_at, stripe_subscription_id')
+        .select('id, name, status, trial_ends_at, stripe_subscription_id, client_email')
         .eq('slug', slug)
         .single();
       
@@ -95,6 +96,79 @@ export default function SettingsPage() {
     }
   };
 
+  // Credenziali form
+  const [showCredentialsForm, setShowCredentialsForm] = useState(false);
+  const [clientEmail, setClientEmail] = useState('');
+  const [currentPassword, setCurrentPassword] = useState('');
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [showPasswords, setShowPasswords] = useState(false);
+  const [credentialsLoading, setCredentialsLoading] = useState(false);
+  const [credentialsMessage, setCredentialsMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+
+  const handleUpdateCredentials = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setCredentialsLoading(true);
+    setCredentialsMessage(null);
+
+    try {
+      // Validazioni
+      if (!clientEmail || !clientEmail.includes('@')) {
+        setCredentialsMessage({ type: 'error', text: 'Inserisci un\'email valida' });
+        setCredentialsLoading(false);
+        return;
+      }
+
+      if (newPassword && newPassword.length < 8) {
+        setCredentialsMessage({ type: 'error', text: 'La password deve essere di almeno 8 caratteri' });
+        setCredentialsLoading(false);
+        return;
+      }
+
+      if (newPassword && newPassword !== confirmPassword) {
+        setCredentialsMessage({ type: 'error', text: 'Le password non corrispondono' });
+        setCredentialsLoading(false);
+        return;
+      }
+
+      if (newPassword && !currentPassword) {
+        setCredentialsMessage({ type: 'error', text: 'Inserisci la password attuale per confermare' });
+        setCredentialsLoading(false);
+        return;
+      }
+
+      const updateData: any = {
+        client_email: clientEmail,
+      };
+
+      if (newPassword) {
+        updateData.client_password = newPassword;
+      }
+
+      const response = await fetch(`/api/a/${slug}/update-credentials`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(updateData),
+      });
+
+      const data = await response.json();
+
+      if (data.success) {
+        setCredentialsMessage({ type: 'success', text: 'Credenziali aggiornate con successo!' });
+        setCurrentPassword('');
+        setNewPassword('');
+        setConfirmPassword('');
+        setShowPasswords(false);
+      } else {
+        setCredentialsMessage({ type: 'error', text: data.error || 'Errore durante l\'aggiornamento' });
+      }
+    } catch (err) {
+      setCredentialsMessage({ type: 'error', text: 'Errore di connessione' });
+    } finally {
+      setCredentialsLoading(false);
+    }
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen bg-slate-950 flex items-center justify-center">
@@ -145,7 +219,7 @@ export default function SettingsPage() {
         </div>
 
         {/* Subscription Management */}
-        <div className="bg-slate-900/40 border border-slate-800/80 backdrop-blur-md rounded-2xl p-6">
+        <div className="bg-slate-900/40 border border-slate-800/80 backdrop-blur-md rounded-2xl p-6 mb-6">
           <h2 className="text-xl font-bold mb-4">Gestione Abbonamento</h2>
           
           {isTrial || isExpired ? (
@@ -174,6 +248,136 @@ export default function SettingsPage() {
               )}
               Disdici Abbonamento
             </button>
+          )}
+        </div>
+
+        {/* Credenziali di Accesso */}
+        <div className="bg-slate-900/40 border border-slate-800/80 backdrop-blur-md rounded-2xl p-6">
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-xl font-bold">Sicurezza</h2>
+            <button
+              onClick={() => setShowCredentialsForm(!showCredentialsForm)}
+              className="text-violet-400 hover:text-violet-300 text-sm font-medium"
+            >
+              {showCredentialsForm ? 'Nascondi' : 'Modifica Credenziali'}
+            </button>
+          </div>
+
+          {appInfo.client_email && (
+            <div className="mb-4 p-4 bg-slate-800/50 rounded-lg">
+              <div className="flex items-center gap-2 text-gray-400 text-sm mb-1">
+                <Mail size={16} />
+                <span>Email di accesso attuale:</span>
+              </div>
+              <p className="text-white font-mono text-sm">{appInfo.client_email}</p>
+            </div>
+          )}
+
+          {showCredentialsForm && (
+            <form onSubmit={handleUpdateCredentials} className="space-y-4">
+              <div>
+                <label className="block text-gray-400 text-sm mb-2">Nuova Email di Accesso</label>
+                <div className="relative">
+                  <Mail className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500" size={18} />
+                  <input
+                    type="email"
+                    value={clientEmail}
+                    onChange={(e) => setClientEmail(e.target.value)}
+                    placeholder="email@esempio.com"
+                    className="w-full bg-slate-800 border border-slate-700 rounded-lg py-3 pl-10 pr-4 text-white placeholder-gray-500 focus:outline-none focus:border-violet-500"
+                    required
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-gray-400 text-sm mb-2">Password Attuale</label>
+                <div className="relative">
+                  <Lock className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500" size={18} />
+                  <input
+                    type={showPasswords ? 'text' : 'password'}
+                    value={currentPassword}
+                    onChange={(e) => setCurrentPassword(e.target.value)}
+                    placeholder="••••••••"
+                    className="w-full bg-slate-800 border border-slate-700 rounded-lg py-3 pl-10 pr-12 text-white placeholder-gray-500 focus:outline-none focus:border-violet-500"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPasswords(!showPasswords)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-400"
+                  >
+                    {showPasswords ? <EyeOff size={18} /> : <Eye size={18} />}
+                  </button>
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-gray-400 text-sm mb-2">Nuova Password (opzionale)</label>
+                <div className="relative">
+                  <Lock className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500" size={18} />
+                  <input
+                    type={showPasswords ? 'text' : 'password'}
+                    value={newPassword}
+                    onChange={(e) => setNewPassword(e.target.value)}
+                    placeholder="Minimo 8 caratteri"
+                    className="w-full bg-slate-800 border border-slate-700 rounded-lg py-3 pl-10 pr-4 text-white placeholder-gray-500 focus:outline-none focus:border-violet-500"
+                    minLength={8}
+                  />
+                </div>
+                <p className="text-xs text-gray-500 mt-1">Lascia vuoto per mantenere la password attuale</p>
+              </div>
+
+              {newPassword && (
+                <div>
+                  <label className="block text-gray-400 text-sm mb-2">Conferma Nuova Password</label>
+                  <div className="relative">
+                    <Lock className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500" size={18} />
+                    <input
+                      type={showPasswords ? 'text' : 'password'}
+                      value={confirmPassword}
+                      onChange={(e) => setConfirmPassword(e.target.value)}
+                      placeholder="Ripeti la nuova password"
+                      className="w-full bg-slate-800 border border-slate-700 rounded-lg py-3 pl-10 pr-4 text-white placeholder-gray-500 focus:outline-none focus:border-violet-500"
+                    />
+                  </div>
+                </div>
+              )}
+
+              {credentialsMessage && (
+                <div className={`p-4 rounded-lg flex items-start gap-3 ${
+                  credentialsMessage.type === 'success' 
+                    ? 'bg-green-500/10 border border-green-500/30' 
+                    : 'bg-red-500/10 border border-red-500/30'
+                }`}>
+                  {credentialsMessage.type === 'success' ? (
+                    <CheckCircle className="text-green-400 mt-0.5" size={18} />
+                  ) : (
+                    <XCircle className="text-red-400 mt-0.5" size={18} />
+                  )}
+                  <p className={`text-sm ${credentialsMessage.type === 'success' ? 'text-green-400' : 'text-red-400'}`}>
+                    {credentialsMessage.text}
+                  </p>
+                </div>
+              )}
+
+              <button
+                type="submit"
+                disabled={credentialsLoading}
+                className="w-full bg-violet-600 hover:bg-violet-500 disabled:bg-gray-600 text-white py-3 px-6 rounded-xl font-semibold transition-colors flex items-center justify-center gap-2"
+              >
+                {credentialsLoading ? (
+                  <>
+                    <Loader2 className="w-5 h-5 animate-spin" />
+                    Aggiornamento...
+                  </>
+                ) : (
+                  <>
+                    <CheckCircle className="w-5 h-5" />
+                    Salva Credenziali
+                  </>
+                )}
+              </button>
+            </form>
           )}
         </div>
       </div>

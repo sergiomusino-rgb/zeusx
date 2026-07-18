@@ -114,7 +114,10 @@ router.post('/generate', async (req, res) => {
 
     // Verifica autenticazione
     const authHeader = req.headers['authorization'];
+    console.log('[AUTH] Token ricevuto nel backend:', authHeader);
+    
     if (!authHeader?.startsWith('Bearer ')) {
+      console.error('[AUTH] Header Authorization mancante o non in formato Bearer');
       return res.status(401).json({
         success: false,
         error: 'Autenticazione richiesta',
@@ -123,13 +126,29 @@ router.post('/generate', async (req, res) => {
     }
 
     const token = authHeader.slice(7);
-    const user = await getUserFromToken(token);
-
-    if (!user) {
+    console.log('[AUTH] Token estratto (primi 20 caratteri):', token.substring(0, 20) + '...');
+    
+    try {
+      const user = await getUserFromToken(token);
+      
+      if (!user) {
+        console.error('[AUTH] Utente non autenticato - token non valido o scaduto');
+        return res.status(401).json({
+          success: false,
+          error: 'Utente non autenticato',
+          code: 'UNAUTHORIZED'
+        });
+      }
+      
+      console.log('[AUTH] Utente autenticato con successo:', user.id);
+    } catch (error) {
+      console.error('[AUTH] Errore validazione token:', error.message);
+      console.error('[AUTH] Stack trace:', error.stack);
       return res.status(401).json({
         success: false,
-        error: 'Utente non autenticato',
-        code: 'UNAUTHORIZED'
+        error: 'Errore nella validazione del token',
+        code: 'TOKEN_VALIDATION_ERROR',
+        details: error.message
       });
     }
 
@@ -230,8 +249,10 @@ router.post('/generate', async (req, res) => {
       }
     }
 
-    // Step 2: Avvia l'agente su Totalum
+    // Step 2: Avvia l'agente su Totalum (con retry per BRIDGE_ERROR)
     console.log('[Totalum] Avvio agente per progetto:', projectId);
+    console.log('[Totalum] API Key (primi 20 caratteri):', TOTALUM_API_KEY?.substring(0, 20) + '...');
+    console.log('[Totalum] URL completo:', `${TOTALUM_API_URL}/api/v1/vcaas/projects/${projectId}/agent/start`);
 
     const startAgentResponse = await fetch(`${TOTALUM_API_URL}/api/v1/vcaas/projects/${projectId}/agent/start`, {
       method: 'POST',
@@ -244,9 +265,12 @@ router.post('/generate', async (req, res) => {
       }),
     });
 
+    console.log('[Totalum] Start agent status:', startAgentResponse.status);
+    console.log('[Totalum] Start agent headers:', Object.fromEntries(startAgentResponse.headers.entries()));
+
     if (!startAgentResponse.ok) {
       const startAgentError = await startAgentResponse.text();
-      console.error('[Totalum] Start agent error:', startAgentError);
+      console.error('[Totalum] Start agent error body:', startAgentError);
 
       let errorData;
       try {
@@ -258,13 +282,56 @@ router.post('/generate', async (req, res) => {
       const status = startAgentResponse.status;
       const errorMessage = errorData?.errors?.errorMessage || `Errore nell'avvio dell'agente (${status})`;
       const errorCode = errorData?.errors?.errorCode || 'START_AGENT_ERROR';
+      
+      // Se è un errore 401 BRIDGE_ERROR, ritenta una volta dopo 3 secondi
+      if (status === 401) {
+        console.log('[Totalum] BRIDGE_ERROR rilevato, attesa 3 secondi e riprovo...');
+        await new Promise(resolve => setTimeout(resolve, 3000));
+        
+        const retryResponse = await fetch(`${TOTALUM_API_URL}/api/v1/vcaas/projects/${projectId}/agent/start`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'api-key': TOTALUM_API_KEY,
+          },
+          body: JSON.stringify({
+            prompt: fullPrompt
+          }),
+        });
+        
+        const retryText = await retryResponse.text();
+        console.log('[Totalum] Retry start agent response:', retryText);
+        
+        if (retryResponse.ok) {
+          // Successo al secondo tentativo, continua con il flusso normale
+          console.log('[Totalum] Agente avviato con successo al secondo tentativo');
+        } else {
+          let retryErrorData;
+          try {
+            retryErrorData = JSON.parse(retryText);
+          } catch {
+            retryErrorData = { errors: { errorMessage: retryText } };
+          }
+          
+          const retryStatus = retryResponse.status;
+          const retryErrorMessage = retryErrorData?.errors?.errorMessage || `Errore nell'avvio dell'agente (${retryStatus})`;
+          const retryErrorCode = retryErrorData?.errors?.errorCode || 'START_AGENT_ERROR';
 
-      return res.status(status).json({
-        success: false,
-        error: errorMessage,
-        code: errorCode,
-        details: errorData
-      });
+          return res.status(retryStatus).json({
+            success: false,
+            error: retryErrorMessage,
+            code: retryErrorCode,
+            details: retryErrorData
+          });
+        }
+      } else {
+        return res.status(status).json({
+          success: false,
+          error: errorMessage,
+          code: errorCode,
+          details: errorData
+        });
+      }
     }
 
     // Step 3: Decrementa gli slot (dopo conferma API)

@@ -73,7 +73,7 @@ export async function POST(req: NextRequest) {
           email: user.email,
           full_name: user.user_metadata?.full_name || user.email?.split('@')[0],
           role: 'admin',
-          subscription_plan: 'starter',
+          subscription_plan: 'free',
         });
 
       if (profileError) {
@@ -92,15 +92,15 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ tenant: existingTenantFromMembership }, { status: 200 });
     }
 
-    // Crea il tenant con piano starter (1 slot gratuito)
+    // Crea il tenant con piano free (0 slot di base, l'utente deve acquistare un piano)
     const { data: tenant, error: tenantError } = await supabase
       .from('tenants')
       .insert({
         owner_id: user.id,
         name,
         slug,
-        plan: 'starter',
-        app_limit: 1,
+        plan: 'free',
+        app_limit: 0,
         total_apps_created: 0,
       })
       .select()

@@ -45,7 +45,7 @@ async function getOrCreateTenant(supabase: ReturnType<typeof createClient>, user
       name: user.email ? `Tenant di ${user.email}` : 'Tenant personale',
       slug: `tenant-${user.id.slice(0, 8)}`,
       plan: 'free',
-      app_limit: 5,
+      app_limit: 0,
       total_apps_created: 0,
     })
     .select('id')
@@ -83,7 +83,7 @@ async function canCreateApp(supabase: ReturnType<typeof createClient>, tenantId:
           name: 'Admin Tenant',
           slug: `admin-${userId.slice(0, 8)}`,
           plan: 'free',
-          app_limit: 5,
+          app_limit: 0,
           total_apps_created: 0,
         })
         .select('plan, app_limit, total_apps_created')
@@ -242,29 +242,48 @@ export async function POST(req: Request) {
     const slug = generateSlug(finalName, sector);
     const clientPassword = generatePassword();
 
-    // Salva app
-    const { data: app, error: appError } = await supabase
-      .from('apps')
-      .insert({
-        tenant_id: tenantId,
-        blueprint_id: blueprintId,
-        name: finalName,
-        config: blueprint,
-        trial_ends_at: trialEndsAt.toISOString(),
-        expires_at: expiresAt.toISOString(),
-        slug,
-        client_password: clientPassword,
-        client_email: user.email, // Email di default dell'utente ZeusX
-        client_active: true,
-        expiry_warning_sent: false,
-        is_active: true,
-      })
-      .select('id, name, trial_ends_at, expires_at, slug, client_password, client_email')
-      .single();
+     // Salva app
+     const { data: app, error: appError } = await supabase
+       .from('apps')
+       .insert({
+         tenant_id: tenantId,
+         blueprint_id: blueprintId,
+         name: finalName,
+         config: blueprint,
+         trial_ends_at: trialEndsAt.toISOString(),
+         expires_at: expiresAt.toISOString(),
+         slug,
+         client_password: clientPassword,
+         client_email: user.email, // Email di default dell'utente ZeusX
+         client_active: true,
+         expiry_warning_sent: false,
+         is_active: true,
+         status: 'trial', // Stato iniziale: trial
+       })
+       .select('id, name, trial_ends_at, expires_at, slug, client_password, client_email, status')
+       .single();
 
     if (appError || !app) {
       console.error('[API /apps] app insert error:', appError);
       return NextResponse.json({ error: 'Errore salvataggio app' }, { status: 500 });
+    }
+
+    // Registra l'app nella app_registry per la Management Console
+    const appUrl = `${process.env.NEXT_PUBLIC_APP_URL || 'https://zeusx.vercel.app'}/a/${slug}`;
+    const { error: registryError } = await supabase
+      .from('app_registry')
+      .insert({
+        reseller_id: user.id,
+        app_name: finalName,
+        app_url: appUrl,
+        status: 'active',
+        monthly_fee: 0.00,
+        zeusx_share: 0.00,
+      });
+
+    if (registryError) {
+      console.error('[API /apps] app_registry insert error:', registryError);
+      // Non bloccare la creazione app se fallisce l'aggiornamento registry
     }
 
     // Incrementa il contatore permanente di app create (non si libera mai)

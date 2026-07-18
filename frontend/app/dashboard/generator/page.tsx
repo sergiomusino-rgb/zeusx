@@ -3,8 +3,8 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useLanguage } from '@/src/lib/LanguageContext';
-import { supabase } from '@/src/lib/supabase';
-import { MessageSquare, Send, Loader2 } from 'lucide-react';
+import { supabaseBrowser } from '@/src/lib/supabase-browser';
+import { MessageSquare, Send, Loader2, AlertTriangle, CreditCard } from 'lucide-react';
 
 // Pattern per riconoscere richieste di creazione app
 const CREATE_APP_PATTERNS = [
@@ -33,19 +33,20 @@ export default function GeneratorPage() {
   const [input, setInput] = useState('');
   const [isProcessing, setIsProcessing] = useState(false);
   const [showLoadingOverlay, setShowLoadingOverlay] = useState(false);
+  const [showSlotsExhaustedModal, setShowSlotsExhaustedModal] = useState(false);
   const [loadingMessageIndex, setLoadingMessageIndex] = useState(0);
   const [userId, setUserId] = useState<string | null>(null);
 
   // Ottieni l'utente corrente
   useEffect(() => {
     const getUser = async () => {
-      const { data: { user } } = await supabase.auth.getUser();
+      const { data: { user } } = await supabaseBrowser.auth.getUser();
       if (user) {
         setUserId(user.id);
       }
     };
     getUser();
-  }, [supabase]);
+  }, [supabaseBrowser]);
 
   // Gestione messaggi di caricamento rotanti
   useEffect(() => {
@@ -124,10 +125,27 @@ export default function GeneratorPage() {
     setLoadingMessageIndex(0);
 
     try {
+      // Get auth session for token
+      const { data: { session } } = await supabaseBrowser.auth.getSession();
+      
+      // Verifica che l'utente sia autenticato
+      if (!session?.access_token) {
+        setShowLoadingOverlay(false);
+        setMessages(prev => [...prev, { 
+          role: 'ai', 
+          text: 'Devi effettuare il login per creare un\'app.'
+        }]);
+        router.push('/login');
+        return;
+      }
+      
       // Chiama la rotta /api/generate con userPrompt
       const response = await fetch('/api/generate', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${session.access_token}`
+        },
         body: JSON.stringify({
           userPrompt: text
         })
@@ -135,31 +153,16 @@ export default function GeneratorPage() {
 
       const data = await response.json();
       
+      // Gestione errore 403 - Slot esauriti
+      if (response.status === 403 && data.code === 'SLOTS_EXHAUSTED') {
+        setShowLoadingOverlay(false);
+        setShowSlotsExhaustedModal(true);
+        return;
+      }
+      
       if (data.success && data.data) {
-        // Salva su Supabase
-        const saveResponse = await fetch('/api/generate/save', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            schema: data.data,
-            appName: data.data.appName || 'app-generata',
-            sector: data.data.sector || 'custom',
-            userId: userId
-          })
-        });
-
-        const saveData = await saveResponse.json();
-        
-        if (saveData.success) {
-          // Redirect alla pagina di successo
-          router.push(`/dashboard/generator/success?appSlug=${saveData.slug}&title=${encodeURIComponent(saveData.appName || 'App Generata')}`);
-        } else {
-          setShowLoadingOverlay(false);
-          setMessages(prev => [...prev, { 
-            role: 'ai', 
-            text: saveData.error || "Errore nel salvataggio dell'app"
-          }]);
-        }
+        // Redirect alla pagina di attesa con projectId
+        router.push(`/dashboard/generator/attesa/${data.data.projectId}`);
       } else {
         setShowLoadingOverlay(false);
         setMessages(prev => [...prev, { 
@@ -177,6 +180,11 @@ export default function GeneratorPage() {
     }
     
     setIsProcessing(false);
+  };
+
+  const handleUpgrade = () => {
+    setShowSlotsExhaustedModal(false);
+    router.push('/pricing');
   };
 
   return (
@@ -279,6 +287,44 @@ export default function GeneratorPage() {
             <p className="text-gray-400">
               Stiamo generando la tua interfaccia...
             </p>
+          </div>
+        </div>
+      )}
+
+      {/* Slots Exhausted Modal - Atomic Dark Style */}
+      {showSlotsExhaustedModal && (
+        <div className="fixed inset-0 bg-slate-950/95 backdrop-blur-md flex items-center justify-center z-50">
+          <div className="max-w-md w-full mx-4">
+            <div className="bg-slate-900/40 border border-slate-800/80 backdrop-blur-md rounded-2xl p-8 text-center">
+              <div className="w-16 h-16 bg-red-500/20 rounded-full flex items-center justify-center mx-auto mb-6">
+                <AlertTriangle className="w-8 h-8 text-red-400" />
+              </div>
+              
+              <h2 className="text-2xl font-bold text-white mb-4">
+                Slot esauriti
+              </h2>
+              
+              <p className="text-gray-300 text-sm mb-8">
+                Hai raggiunto il limite massimo di app generabili per il tuo piano. 
+                Aggiorna il tuo piano per creare nuovi gestionali.
+              </p>
+              
+              <div className="flex gap-3">
+                <button
+                  onClick={() => setShowSlotsExhaustedModal(false)}
+                  className="flex-1 bg-gray-700 hover:bg-gray-600 text-white py-3 px-6 rounded-xl font-semibold transition-colors"
+                >
+                  Chiudi
+                </button>
+                <button
+                  onClick={handleUpgrade}
+                  className="flex-1 bg-violet-600 hover:bg-violet-500 text-white py-3 px-6 rounded-xl font-semibold transition-colors flex items-center justify-center gap-2"
+                >
+                  <CreditCard className="w-4 h-4" />
+                  Upgrade
+                </button>
+              </div>
+            </div>
           </div>
         </div>
       )}

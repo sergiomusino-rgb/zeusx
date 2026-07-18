@@ -15,6 +15,25 @@ function getSupabase() {
 }
 
 /**
+ * Mappa i piani agli slot da aggiungere (cumulativo)
+ * - free: 0 slot
+ * - starter: +1 slot
+ * - pro: +5 slot
+ * - business: +100 slot
+ * - extra_slot: +1 slot
+ */
+function getSlotsForPlan(planId: string): number {
+  const slotsMap: Record<string, number> = {
+    free: 0,
+    starter: 1,
+    pro: 5,
+    business: 100,
+    extra_slot: 1,
+  };
+  return slotsMap[planId] || 0;
+}
+
+/**
  * POST /api/webhooks/stripe
  * Webhook per ricevere eventi da Stripe (da account connessi)
  * Gestisce checkout.session.completed e invoice.paid
@@ -43,8 +62,11 @@ export async function POST(request: NextRequest) {
     // Gestisci gli eventi di interesse
     switch (event.type) {
       case 'checkout.session.completed':
+        await handleCheckoutSessionCompleted(event, supabase);
+        break;
+      
       case 'invoice.paid':
-        await handlePaymentSuccess(event, supabase);
+        await handleInvoicePaid(event, supabase);
         break;
       
       case 'invoice.payment_failed':
@@ -78,10 +100,103 @@ export async function POST(request: NextRequest) {
 }
 
 /**
- * Gestisce il successo di un pagamento
+ * Gestisce il successo di un checkout session
+ * Aggiorna lo stato dell'app o aggiunge gli slot in base al tipo
+ */
+async function handleCheckoutSessionCompleted(event: Stripe.Event, supabase: any) {
+  const data = event.data.object as any;
+  
+  // Estrai totalum_app_id dai metadata (pagamento per app cliente)
+  let totalum_app_id: string | null = null;
+  let planId: string | null = null;
+  let tenantId: string | null = null;
+  
+  if (data.metadata) {
+    totalum_app_id = data.metadata.totalum_app_id ?? null;
+    planId = data.metadata.plan_id ?? null;
+    tenantId = data.metadata.tenant_id ?? null;
+  }
+  
+  // Caso 1: Pagamento per un'app cliente (Stripe Connect)
+  if (totalum_app_id) {
+    const { error } = await supabase
+      .from('apps')
+      .update({ 
+        status: 'active',
+        updated_at: new Date().toISOString()
+      })
+      .eq('totalum_app_id', totalum_app_id);
+
+    if (error) {
+      console.error('[Stripe Webhook] Errore aggiornamento stato app:', error);
+    } else {
+      console.log(`[Stripe Webhook] App ${totalum_app_id} impostata a 'active'`);
+    }
+    return;
+  }
+  
+  // Caso 2: Pagamento per un piano/utente (aggiungi slot)
+  if (planId && tenantId) {
+    const slotsToAdd = getSlotsForPlan(planId);
+    
+    if (slotsToAdd > 0) {
+      // Aggiungi gli slot in modo cumulativo
+      const { error } = await supabase
+        .from('tenants')
+        .update({ 
+          app_limit: supabase.raw('app_limit + ?', slotsToAdd),
+          plan: planId,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', tenantId);
+
+      if (error) {
+        console.error('[Stripe Webhook] Errore aggiunta slot:', error);
+      } else {
+        console.log(`[Stripe Webhook] Aggiunti ${slotsToAdd} slot al tenant ${tenantId} per piano ${planId}`);
+      }
+    }
+    
+    // Aggiorna o crea la subscription
+    const customerId = data.customer;
+    const subscriptionId = data.subscription;
+    
+    if (customerId) {
+      const { data: existingSub } = await supabase
+        .from('subscriptions')
+        .select('id')
+        .eq('tenant_id', tenantId)
+        .single();
+      
+      if (existingSub) {
+        await supabase
+          .from('subscriptions')
+          .update({
+            stripe_customer_id: customerId,
+            stripe_subscription_id: subscriptionId,
+            status: 'active',
+            updated_at: new Date().toISOString()
+          })
+          .eq('tenant_id', tenantId);
+      } else {
+        await supabase
+          .from('subscriptions')
+          .insert({
+            tenant_id: tenantId,
+            stripe_customer_id: customerId,
+            stripe_subscription_id: subscriptionId,
+            status: 'active'
+          });
+      }
+    }
+  }
+}
+
+/**
+ * Gestisce il pagamento di una fattura
  * Aggiorna lo stato dell'app a 'active'
  */
-async function handlePaymentSuccess(event: Stripe.Event, supabase: any) {
+async function handleInvoicePaid(event: Stripe.Event, supabase: any) {
   const data = event.data.object as any;
   
   // Estrai totalum_app_id dai metadata
@@ -96,123 +211,8 @@ async function handlePaymentSuccess(event: Stripe.Event, supabase: any) {
     totalum_app_id = data.lines.data[0].price.metadata.totalum_app_id ?? null;
   }
 
-  if (!totalum_app_id) {
-    console.warn('[Stripe Webhook] Nessun totalum_app_id nei metadata');
-    return;
-  }
-
-  // Aggiorna lo stato dell'app a 'active'
-  const { error } = await supabase
-    .from('apps')
-    .update({ 
-      status: 'active',
-      updated_at: new Date().toISOString()
-    })
-    .eq('totalum_app_id', totalum_app_id);
-
-  if (error) {
-    console.error('[Stripe Webhook] Errore aggiornamento stato app:', error);
-  } else {
-    console.log(`[Stripe Webhook] App ${totalum_app_id} impostata a 'active'`);
-  }
-}
-
-/**
- * Gestisce un pagamento fallito
- * Aggiorna lo stato dell'app a 'expired' se necessario
- */
-async function handlePaymentFailed(event: Stripe.Event, supabase: any) {
-  const data = event.data.object as any;
-  
-  const totalum_app_id = data.metadata?.totalum_app_id ?? null;
-  
-  if (!totalum_app_id) {
-    console.warn('[Stripe Webhook] Nessun totalum_app_id nei metadata per payment_failed');
-    return;
-  }
-
-  // Qui potresti voler inviare una notifica o aggiornare lo stato
-  console.log(`[Stripe Webhook] Pagamento fallito per app ${totalum_app_id}`);
-}
-
-/**
- * Gestisce lo scollegamento di Stripe Connect
- * Quando un User revoca l'accesso, porta l'app sotto gestione diretta
- */
-async function handleOAuthDeauthorized(event: Stripe.Event, supabase: any) {
-  const data = event.data.object as any;
-  
-  // L'account Stripe Connect che è stato scollegato
-  const accountId = data.account;
-  
-  if (!accountId) {
-    console.warn('[Stripe Webhook] Nessun account ID in oauth.deauthorized');
-    return;
-  }
-
-  console.log(`[Stripe Webhook] Account ${accountId} scollegato, cerco app associate...`);
-
-  // Trova tutte le app associate a questo stripe_connect_id
-  const { data: apps, error } = await supabase
-    .from('apps')
-    .select('id, name, totalum_app_id, tenant_id')
-    .eq('stripe_connect_id', accountId);
-
-  if (error) {
-    console.error('[Stripe Webhook] Errore ricerca app:', error);
-    return;
-  }
-
-  if (!apps || apps.length === 0) {
-    console.log(`[Stripe Webhook] Nessuna app trovata per account ${accountId}`);
-    return;
-  }
-
-  // Imposta is_managed_by_platform = true per tutte le app trovate
-  for (const app of apps) {
-    const { error: updateError } = await supabase
-      .from('apps')
-      .update({ 
-        is_managed_by_platform: true,
-        payment_reset_required: true,
-        updated_at: new Date().toISOString()
-      })
-      .eq('id', app.id);
-
-  if (updateError) {
-      console.error(`[Stripe Webhook] Errore takeover app ${app.id}:`, updateError);
-    } else {
-      console.log(`[Stripe Webhook] App ${app.id} (${app.name}) messa in gestione diretta`);
-    }
-  }
-}
-
-/**
- * Gestisce la cancellazione/pausa dell'abbonamento di un User
- * Quando un User cancella il suo abbonamento a ZeusX, prendi in gestione le sue app
- */
-async function handleUserSubscriptionCancelled(event: Stripe.Event, supabase: any) {
-  const data = event.data.object as any;
-  
-  // L'ID del cliente Stripe
-  const customerId = data.customer;
-  
-  if (!customerId) {
-    console.warn('[Stripe Webhook] Nessun customer ID nell\'evento');
-    return;
-  }
-
-  console.log(`[Stripe Webhook] Abbonamento User ${customerId} cancellato/pausato, cerco app associate...`);
-
-  // Trova la subscription associata a questo customer_id
-  const { data: subscription, error: subscriptionError } = await supabase
-    .from('subscriptions')
-    .select('tenant_id')
-    .eq('stripe_customer_id', customerId)
-    .single();
-
-  if (subscriptionError || !subscription) {
-    console.warn(`[Stripe Webhook] Subscription non trovata per customer ${customerId}`);
+  if (totalum_app_id) {
+    // Aggiorna lo stato dell'app a 'active'
     return;
   }
 

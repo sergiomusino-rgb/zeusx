@@ -136,7 +136,9 @@ export default function ProjectsPage() {
   };
 
   const getStatusBadge = (app: App) => {
-    if (app.expires_at && new Date(app.expires_at) < new Date()) {
+    // Controlla sia expires_at che trial_ends_at per la scadenza
+    const expiryDate = app.expires_at || app.trial_ends_at;
+    if (expiryDate && new Date(expiryDate) < new Date()) {
       return <span style={{ background: '#ef444420', color: '#ef4444', padding: '4px 10px', borderRadius: '9999px', fontSize: '12px', fontWeight: 600 }}>{t('projects_status_expired')}</span>;
     }
     if (app.client_active === false) {

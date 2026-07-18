@@ -7,7 +7,7 @@ const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT
 
 export async function DELETE(
   req: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const authHeader = req.headers.get('authorization');
@@ -28,7 +28,7 @@ export async function DELETE(
       return NextResponse.json({ error: 'Utente non autenticato' }, { status: 401 });
     }
 
-    const { id } = params;
+    const { id } = await params;
 
     // Usa service role per bypassare RLS e verificare ownership
     const adminClient = createClient(supabaseUrl, serviceRoleKey, {
@@ -48,7 +48,7 @@ export async function DELETE(
 
     const { data: app, error: appError } = await adminClient
       .from('apps')
-      .select('id, tenant_id')
+      .select('id, tenant_id, client_active, expires_at')
       .eq('id', id)
       .single();
 

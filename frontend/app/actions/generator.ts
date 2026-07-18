@@ -287,6 +287,26 @@ export async function generateAppAction(input: GenerateAppInput): Promise<Genera
     
     console.log('[generateAppAction] Using tenantId:', tenantId);
 
+    // ─── CONTROLLO SLOTS ───────────────────────────────────────────────────────────
+    // Admin: salta il controllo degli slot
+    const ADMIN_USER_ID = 'd3eda57f-692a-4904-ac5f-93bdaaec8ce5';
+    if (userId !== ADMIN_USER_ID) {
+      const { data: tenant, error: tenantError } = await supabaseAdmin
+        .from('tenants')
+        .select('app_limit, total_apps_created')
+        .eq('id', tenantId)
+        .single();
+
+      if (tenantError || !tenant) {
+        return { success: false, error: 'Tenant non trovato' };
+      }
+
+      const slotsAvailable = tenant.app_limit - tenant.total_apps_created;
+      if (slotsAvailable <= 0) {
+        return { success: false, error: 'Slot esauriti. Aggiorna il tuo piano per creare nuovi gestionali.' };
+      }
+    }
+
     // Call LLM to generate schema (lang influenza la lingua dei label generati)
     const systemPrompt = buildSystemPrompt(input.prompt, input.appName, input.sector, input.lang);
     const rawResponse = await callLLM(systemPrompt);
@@ -397,6 +417,26 @@ export async function generateAppAction(input: GenerateAppInput): Promise<Genera
       // Rollback: delete the app
       await supabaseAdmin.from('apps').delete().eq('id', newApp.id);
       return { success: false, error: 'Errore nel salvataggio della definizione: ' + (definitionError?.message || 'unknown') };
+    }
+
+    // Register app in app_registry for Management Console
+    const appUrl = `${process.env.NEXT_PUBLIC_APP_URL || 'https://zeusx.vercel.app'}/a/${slug}`;
+    const { error: registryError } = await supabaseAdmin
+      .from('app_registry')
+      .insert({
+        reseller_id: userId,
+        app_name: appName,
+        app_url: appUrl,
+        status: 'active',
+        monthly_fee: 0.00,
+        zeusx_share: 0.00,
+      });
+
+    if (registryError) {
+      console.error('[generateAppAction] Error registering app in app_registry:', registryError);
+      // Non bloccare la creazione app se fallisce l'aggiornamento registry
+    } else {
+      console.log('[generateAppAction] app_registry created successfully');
     }
 
     return {

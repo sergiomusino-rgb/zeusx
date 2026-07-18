@@ -12,7 +12,10 @@ if (!supabaseUrl || !supabaseAnonKey) {
   );
 }
 
-export const supabaseBrowser = createClient(supabaseUrl, supabaseAnonKey, {
+// Singleton pattern per evitare istanze multiple di GoTrueClient
+const globalForSupabaseBrowser = globalThis as unknown as { supabaseBrowser: ReturnType<typeof createClient> };
+
+export const supabaseBrowser = globalForSupabaseBrowser.supabaseBrowser || createClient(supabaseUrl, supabaseAnonKey, {
   auth: {
     persistSession: true,
     autoRefreshToken: true,
@@ -24,3 +27,5 @@ export const supabaseBrowser = createClient(supabaseUrl, supabaseAnonKey, {
     },
   },
 });
+
+if (process.env.NODE_ENV !== 'production') globalForSupabaseBrowser.supabaseBrowser = supabaseBrowser;

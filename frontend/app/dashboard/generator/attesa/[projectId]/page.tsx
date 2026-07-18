@@ -22,6 +22,97 @@ export default function WaitingPage() {
   const endRef = useRef<HTMLDivElement>(null);
   const { t } = useLanguage();
 
+  // Funzione di mock per testare il salvataggio senza chiamare l'agente reale
+  const handleMockSuccess = async () => {
+    console.log('[MOCK] Simulazione successo generazione...');
+    
+    // Ferma il polling
+    if (pollRef.current) {
+      clearInterval(pollRef.current);
+      pollRef.current = null;
+    }
+    
+    // Imposta lo stato come se l'agente avesse finito
+    setStatus('done');
+    setProjectUrl('https://www.totalum.app/projects/'+projectId);
+    
+    // Simula un progetto di test
+    const mockProjectId = 'project_mock_123';
+    const mockSchema = {
+      appName: 'Gestionale Test',
+      sector: 'test',
+      description: 'App di test per debugging',
+      schema: {
+        tables: [
+          {
+            name: 'clienti',
+            label: 'Clienti',
+            labelPlural: 'Clienti',
+            fields: [
+              { id: 'nome', type: 'text', label: 'Nome', required: true },
+              { id: 'email', type: 'email', label: 'Email', required: true }
+            ]
+          }
+        ]
+      },
+      ui: {
+        primaryColor: '#6366f1',
+        sidebar: ['clienti']
+      }
+    };
+    
+    // Recupera il token di autenticazione
+    const { data: { session } } = await supabaseBrowser.auth.getSession();
+    if (!session?.access_token) {
+      console.error('[MOCK] Nessun token di autenticazione trovato');
+      return;
+    }
+    
+    // Chiama l'endpoint di salvataggio
+    console.log('[MOCK] Chiamata a /api/generate/save con dati di test...');
+    try {
+      const saveResponse = await fetch('/api/generate/save', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${session.access_token}`
+        },
+        body: JSON.stringify({
+          schema: mockSchema,
+          appName: 'Gestionale Test Mock',
+          sector: 'test',
+          userId: (await supabaseBrowser.auth.getUser()).data.user?.id
+        })
+      });
+      
+      console.log('[MOCK] Save response status:', saveResponse.status, saveResponse.statusText);
+      
+      let saveResult;
+      try {
+        saveResult = await saveResponse.json();
+        console.log('[MOCK] Save response body:', saveResult);
+      } catch (parseError) {
+        console.error('[MOCK] Error parsing save response:', parseError);
+        const textResponse = await saveResponse.text();
+        console.error('[MOCK] Save response text:', textResponse);
+      }
+      
+      if (saveResponse.ok && saveResult?.success) {
+        console.log('[MOCK] ✅ App salvata con successo!');
+        setTimeout(() => {
+          router.push(`/dashboard/generator/success?projectId=${encodeURIComponent(mockProjectId)}&projectUrl=${encodeURIComponent('https://www.totalum.app/projects/'+mockProjectId)}`);
+        }, 1500);
+      } else {
+        console.error('[MOCK] ❌ Errore salvataggio:', saveResult);
+        setTimeout(() => {
+          router.push(`/dashboard/generator/success?projectId=${encodeURIComponent(mockProjectId)}&projectUrl=${encodeURIComponent('https://www.totalum.app/projects/'+mockProjectId)}`);
+        }, 2000);
+      }
+    } catch (err) {
+      console.error('[MOCK] Errore durante il salvataggio:', err);
+    }
+  };
+
   useEffect(() => { endRef.current?.scrollIntoView({behavior:'smooth'}); }, [conversations]);
 
   useEffect(() => {
@@ -82,9 +173,63 @@ export default function WaitingPage() {
             if (pr.ok) {
               const pd = await pr.json();
               if (pd.data?.temporalDevelopmentProjectUrl) setPreviewUrl(pd.data.temporalDevelopmentProjectUrl);
+              
+              // Salva l'app nel database Supabase locale
+              console.log('[WaitingPage] Saving app to Supabase...');
+              const saveResponse = await fetch('/api/generate/save', {
+                method: 'POST',
+                headers: {
+                  'Content-Type': 'application/json',
+                  'Authorization': `Bearer ${session.access_token}`
+                },
+                body: JSON.stringify({
+                  schema: pd.data?.schema || {},
+                  appName: pd.data?.name || projectId,
+                  sector: pd.data?.sector || 'generale',
+                  userId: (await supabaseBrowser.auth.getUser()).data.user?.id
+                })
+              });
+              
+              console.log('[WaitingPage] Save response status:', saveResponse.status, saveResponse.statusText);
+              
+              let saveResult;
+              try {
+                saveResult = await saveResponse.json();
+                console.log('[WaitingPage] Save response body:', saveResult);
+              } catch (parseError) {
+                console.error('[WaitingPage] Error parsing save response:', parseError);
+                const textResponse = await saveResponse.text();
+                console.error('[WaitingPage] Save response text:', textResponse);
+                saveResult = { success: false, error: 'Invalid JSON response' };
+              }
+              
+              if (saveResponse.ok && saveResult.success) {
+                console.log('[WaitingPage] App saved successfully:', saveResult);
+                // Redirect SOLO dopo salvataggio riuscito
+                setTimeout(() => {
+                  router.push(`/dashboard/generator/success?projectId=${encodeURIComponent(projectId)}&projectUrl=${encodeURIComponent(projectUrl)}`);
+                }, 1500);
+              } else {
+                console.error('[WaitingPage] Error saving app:', {
+                  status: saveResponse.status,
+                  result: saveResult
+                });
+                // Anche in caso di errore, redirect dopo 2 secondi
+                setTimeout(() => {
+                  router.push(`/dashboard/generator/success?projectId=${encodeURIComponent(projectId)}&projectUrl=${encodeURIComponent(projectUrl)}`);
+                }, 2000);
+              }
+            } else {
+              // Se non riusciamo a prendere i dettagli, redirect lo stesso
+              setTimeout(() => {
+                router.push(`/dashboard/generator/success?projectId=${encodeURIComponent(projectId)}&projectUrl=${encodeURIComponent(projectUrl)}`);
+              }, 2000);
             }
           } catch (err) {
             console.error('[WaitingPage] Error fetching project details:', err);
+            setTimeout(() => {
+              router.push(`/dashboard/generator/success?projectId=${encodeURIComponent(projectId)}&projectUrl=${encodeURIComponent(projectUrl)}`);
+            }, 2000);
           }
           
           if (pollRef.current) clearInterval(pollRef.current);
@@ -103,15 +248,6 @@ export default function WaitingPage() {
     };
   },[projectId]);
 
-  // Redirect automatico alla pagina di successo dopo 2 secondi
-  useEffect(() => {
-    if (status === 'done' && projectUrl) {
-      const redirectTimer = setTimeout(() => {
-        router.push(`/dashboard/generator/success?projectId=${encodeURIComponent(projectId)}&projectUrl=${encodeURIComponent(projectUrl)}`);
-      }, 2000);
-      return () => clearTimeout(redirectTimer);
-    }
-  }, [status, projectUrl, projectId, router]);
 
   const icon = status==='creating'?<Construction className="w-16 h-16 text-violet-400 animate-bounce"/>:
                status==='building'?<Loader2 className="w-16 h-16 text-violet-400 animate-spin"/>:
@@ -128,6 +264,18 @@ export default function WaitingPage() {
 
   return (
     <div className="min-h-screen bg-slate-950 flex items-center justify-center p-8">
+      {/* Pulsante di mock per debugging - solo in development */}
+      {process.env.NODE_ENV === 'development' && (
+        <div className="fixed top-4 right-4 z-50">
+          <button 
+            onClick={handleMockSuccess}
+            className="bg-red-600 hover:bg-red-500 text-white px-4 py-2 rounded-lg font-semibold shadow-lg text-sm"
+          >
+            🧪 MOCK SUCCESS (0€)
+          </button>
+        </div>
+      )}
+      
       <div className="max-w-2xl w-full bg-slate-900/60 border border-slate-800/80 backdrop-blur-md rounded-3xl p-8 md:p-12 text-center">
         <div className="mb-6 flex justify-center">{icon}</div>
         <h1 className="text-3xl md:text-4xl font-bold text-white mb-4">{title}</h1>

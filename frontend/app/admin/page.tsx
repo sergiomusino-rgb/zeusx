@@ -337,7 +337,9 @@ export default function AdminPage() {
                <h3 className="text-sm font-semibold text-slate-300 mb-4">{t('admin_recent_apps')}</h3>
                <div className="space-y-2">
                  {recentApps.slice(0, 8).map((a: any) => {
-                   const expired = a.expires_at && new Date(a.expires_at) < new Date();
+                    // Controlla sia trial_ends_at che expires_at per la scadenza
+                    const expiryDate = a.trial_ends_at || a.expires_at;
+                    const expired = expiryDate && new Date(expiryDate) < new Date();
                    return (
                      <div key={a.id} className="flex items-center justify-between bg-slate-800 rounded-lg px-4 py-3">
                        <div>
@@ -476,21 +478,23 @@ export default function AdminPage() {
                  </thead>
                  <tbody className="divide-y divide-slate-800">
                    {recentApps.map((a: any) => {
-                     const expired = a.expires_at && new Date(a.expires_at) < new Date();
-                     const isOwnedByAdmin = a.ownership_status === 'admin_owned';
-                     return (
-                       <tr key={a.id} className="hover:bg-slate-800/50">
-                         <td className="px-5 py-3 font-medium">{a.name}</td>
-                         <td className="px-5 py-3">
-                           {expired ? (
-                             <span className="px-2 py-1 rounded text-xs font-medium bg-red-600/20 text-red-400">{t('admin_status_expired_badge')}</span>
-                           ) : isOwnedByAdmin ? (
-                             <span className="px-2 py-1 rounded text-xs font-medium bg-orange-600/20 text-orange-400">{t('admin_status_admin_owned')}</span>
-                           ) : (
-                             <span className="px-2 py-1 rounded text-xs font-medium bg-emerald-600/20 text-emerald-400">{t('admin_status_active_badge')}</span>
-                           )}
-                         </td>
-                         <td className="px-5 py-3 text-slate-400">{a.expires_at ? new Date(a.expires_at).toLocaleDateString('it-IT') : '-'}</td>
+                      // Controlla sia trial_ends_at che expires_at per la scadenza
+                      const expiryDate = a.trial_ends_at || a.expires_at;
+                      const expired = expiryDate && new Date(expiryDate) < new Date();
+                      const isOwnedByAdmin = a.ownership_status === 'admin_owned';
+                      return (
+                        <tr key={a.id} className="hover:bg-slate-800/50">
+                          <td className="px-5 py-3 font-medium">{a.name}</td>
+                          <td className="px-5 py-3">
+                            {expired ? (
+                              <span className="px-2 py-1 rounded text-xs font-medium bg-red-600/20 text-red-400">{t('admin_status_expired_badge')}</span>
+                            ) : isOwnedByAdmin ? (
+                              <span className="px-2 py-1 rounded text-xs font-medium bg-orange-600/20 text-orange-400">{t('admin_status_admin_owned')}</span>
+                            ) : (
+                              <span className="px-2 py-1 rounded text-xs font-medium bg-emerald-600/20 text-emerald-400">{t('admin_status_active_badge')}</span>
+                            )}
+                          </td>
+                          <td className="px-5 py-3 text-slate-400">{expiryDate ? new Date(expiryDate).toLocaleDateString('it-IT') : '-'}</td>
                          <td className="px-5 py-3 text-slate-400">{new Date(a.created_at).toLocaleDateString('it-IT')}</td>
                          <td className="px-5 py-3">
                            {a.slug && (

@@ -19,25 +19,44 @@ function getSupabase() {
 // Middleware autenticazione
 async function authMiddleware(req, res, next) {
   const authHeader = req.headers.authorization;
+  console.log('[AUTH-APP-RECORDS] Token ricevuto:', authHeader);
+  
   if (!authHeader || !authHeader.startsWith('Bearer ')) {
+    console.error('[AUTH-APP-RECORDS] Header Authorization mancante o non in formato Bearer');
     return res.status(401).json({ error: 'Token mancante' });
   }
 
   const token = authHeader.substring(7);
+  console.log('[AUTH-APP-RECORDS] Token estratto (primi 20 caratteri):', token.substring(0, 20) + '...');
+  
   const supabase = createClient(
     process.env.SUPABASE_URL || '',
     process.env.SUPABASE_ANON_KEY || '',
     { global: { headers: { Authorization: `Bearer ${token}` } } }
   );
 
-  const { data: { user }, error } = await supabase.auth.getUser();
-  if (error || !user) {
-    return res.status(401).json({ error: 'Token non valido' });
+  try {
+    const { data: { user }, error } = await supabase.auth.getUser();
+    
+    if (error) {
+      console.error('[AUTH-APP-RECORDS] Errore validazione token:', error.message);
+      return res.status(401).json({ error: 'Token non valido', details: error.message });
+    }
+    
+    if (!user) {
+      console.error('[AUTH-APP-RECORDS] Utente non trovato nel token');
+      return res.status(401).json({ error: 'Token non valido' });
+    }
+    
+    console.log('[AUTH-APP-RECORDS] Utente autenticato:', user.id);
+    req.user = user;
+    req.supabase = supabase;
+    next();
+  } catch (error) {
+    console.error('[AUTH-APP-RECORDS] Errore durante validazione:', error.message);
+    console.error('[AUTH-APP-RECORDS] Stack:', error.stack);
+    return res.status(401).json({ error: 'Errore autenticazione', details: error.message });
   }
-
-  req.user = user;
-  req.supabase = supabase;
-  next();
 }
 
 // Middleware verifica membership tenant

@@ -8,6 +8,7 @@ const supabase = createClient(
 );
 
 const PLAN_PRICES: Record<string, number> = {
+  free: 0,
   starter: 10,
   pro: 25,
   business: 50,
@@ -60,8 +61,41 @@ export async function GET(req: NextRequest) {
     }));
 
     const now = new Date();
-    const activeApps = appsWithOwnership.filter(a => a.client_active !== false && a.expires_at && new Date(a.expires_at) > now);
-    const expiredApps = appsWithOwnership.filter(a => a.client_active === false || (a.expires_at && new Date(a.expires_at) < now));
+    // Logica di determinazione stato app:
+    // 1. Prima controlla status (trial, active, expired)
+    // 2. Poi controlla expires_at o trial_ends_at
+    // 3. Infine controlla client_active o is_active come fallback
+    const activeApps = appsWithOwnership.filter(a => {
+      // Se status è 'active', l'app è attiva
+      if (a.status === 'active') return true;
+      
+      // Se status è 'trial', controlla se la prova è scaduta
+      if (a.status === 'trial') {
+        // Controlla trial_ends_at o expires_at
+        const expiryDate = a.trial_ends_at || a.expires_at;
+        if (!expiryDate || new Date(expiryDate) > now) return true;
+      }
+      
+      // Fallback: controlla client_active o is_active
+      if (a.client_active === true || a.is_active === true) return true;
+      
+      return false;
+    });
+    const expiredApps = appsWithOwnership.filter(a => {
+      // Se status è 'expired', l'app è scaduta
+      if (a.status === 'expired') return true;
+      
+      // Se status è 'trial', controlla se la prova è scaduta
+      if (a.status === 'trial') {
+        const expiryDate = a.trial_ends_at || a.expires_at;
+        if (expiryDate && new Date(expiryDate) < now) return true;
+      }
+      
+      // Fallback: controlla client_active o is_active
+      if (a.client_active === false || a.is_active === false) return true;
+      
+      return false;
+    });
 
     const dist: Record<string, number> = {};
     tenants.forEach(t => { const p = t.plan || 'free'; dist[p] = (dist[p] || 0) + 1; });

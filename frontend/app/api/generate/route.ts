@@ -241,10 +241,10 @@ export async function POST(request: NextRequest) {
       }, { status: createProjectResponse.status });
     }
 
-    // Step 2: Avvia l'agente su Totalum
+    // Step 2: Avvia l'agente su Totalum (con retry per BRIDGE_ERROR)
     console.log('[Totalum] Avvio agente per progetto:', finalProjectId);
 
-    const startAgentResponse = await fetch(`${TOTALUM_API_URL}/api/v1/vcaas/projects/${finalProjectId}/agent/start`, {
+    let startAgentResponse = await fetch(`${TOTALUM_API_URL}/api/v1/vcaas/projects/${finalProjectId}/agent/start`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -255,8 +255,28 @@ export async function POST(request: NextRequest) {
       }),
     });
 
-    const startAgentText = await startAgentResponse.text();
+    let startAgentText = await startAgentResponse.text();
     console.log('[Totalum] Start agent response:', startAgentText);
+
+    // Se è un errore 401 BRIDGE_ERROR, ritenta una volta dopo 3 secondi
+    if (!startAgentResponse.ok && startAgentResponse.status === 401) {
+      console.log('[Totalum] BRIDGE_ERROR rilevato, attesa 3 secondi e riprovo...');
+      await new Promise(resolve => setTimeout(resolve, 3000));
+      
+      startAgentResponse = await fetch(`${TOTALUM_API_URL}/api/v1/vcaas/projects/${finalProjectId}/agent/start`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'api-key': TOTALUM_API_KEY,
+        },
+        body: JSON.stringify({
+          prompt: fullPrompt
+        }),
+      });
+      
+      startAgentText = await startAgentResponse.text();
+      console.log('[Totalum] Retry start agent response:', startAgentText);
+    }
 
     if (!startAgentResponse.ok) {
       let errorData;
