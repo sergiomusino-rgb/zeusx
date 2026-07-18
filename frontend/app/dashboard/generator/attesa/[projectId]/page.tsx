@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef } from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import { Loader2, CheckCircle2, ExternalLink, AlertCircle, Construction } from 'lucide-react';
+import { Loader2, CheckCircle2, AlertCircle, Construction } from 'lucide-react';
 import { supabaseBrowser } from '@/src/lib/supabase-browser';
 import { useLanguage } from '@/src/lib/LanguageContext';
 
@@ -15,8 +15,6 @@ export default function WaitingPage() {
   const projectId = params.projectId as string;
   const [status, setStatus] = useState<'creating' | 'building' | 'done' | 'error'>('creating');
   const [conversations, setConversations] = useState<{author:string;message:string;messageType:string}[]>([]);
-  const [projectUrl, setProjectUrl] = useState('');
-  const [previewUrl, setPreviewUrl] = useState('');
   const [errorMsg, setErrorMsg] = useState('');
   const pollRef = useRef<NodeJS.Timeout|null>(null);
   const endRef = useRef<HTMLDivElement>(null);
@@ -34,10 +32,8 @@ export default function WaitingPage() {
     
     // Imposta lo stato come se l'agente avesse finito
     setStatus('done');
-    setProjectUrl('https://www.totalum.app/projects/'+projectId);
     
     // Simula un progetto di test
-    const mockProjectId = 'project_mock_123';
     const mockSchema = {
       appName: 'Gestionale Test',
       sector: 'test',
@@ -99,14 +95,11 @@ export default function WaitingPage() {
       
       if (saveResponse.ok && saveResult?.success) {
         console.log('[MOCK] ✅ App salvata con successo!');
-        setTimeout(() => {
-          router.push(`/dashboard/generator/success?projectId=${encodeURIComponent(mockProjectId)}&projectUrl=${encodeURIComponent('https://www.totalum.app/projects/'+mockProjectId)}`);
-        }, 1500);
+        // Redirect immediato con slug e title
+        router.push(`/dashboard/generator/success?appSlug=${encodeURIComponent(saveResult.slug)}&projectId=${encodeURIComponent(projectId)}&title=${encodeURIComponent('Gestionale Test Mock')}`);
       } else {
         console.error('[MOCK] ❌ Errore salvataggio:', saveResult);
-        setTimeout(() => {
-          router.push(`/dashboard/generator/success?projectId=${encodeURIComponent(mockProjectId)}&projectUrl=${encodeURIComponent('https://www.totalum.app/projects/'+mockProjectId)}`);
-        }, 2000);
+        router.push(`/dashboard/generator/success?projectId=${encodeURIComponent(projectId)}&title=${encodeURIComponent('Gestionale Test Mock')}`);
       }
     } catch (err) {
       console.error('[MOCK] Errore durante il salvataggio:', err);
@@ -166,13 +159,11 @@ export default function WaitingPage() {
         if (a.realtimeConversation) setConversations(a.realtimeConversation);
         if (a.status==='done') {
           setStatus('done');
-          setProjectUrl('https://www.totalum.app/projects/'+projectId);
           
           try {
             const pr = await fetch(`${apiUrl}/api/v1/vcaas/projects/${projectId}`, { headers });
             if (pr.ok) {
               const pd = await pr.json();
-              if (pd.data?.temporalDevelopmentProjectUrl) setPreviewUrl(pd.data.temporalDevelopmentProjectUrl);
               
               // Salva l'app nel database Supabase locale
               console.log('[WaitingPage] Saving app to Supabase...');
@@ -205,31 +196,25 @@ export default function WaitingPage() {
               
               if (saveResponse.ok && saveResult.success) {
                 console.log('[WaitingPage] App saved successfully:', saveResult);
-                // Redirect SOLO dopo salvataggio riuscito
-                setTimeout(() => {
-                  router.push(`/dashboard/generator/success?projectId=${encodeURIComponent(projectId)}&projectUrl=${encodeURIComponent(projectUrl)}`);
-                }, 1500);
+                // Redirect immediato alla success page con slug e dati
+                const appSlug = saveResult.slug;
+                const appTitle = pd.data?.name || projectId;
+                router.push(`/dashboard/generator/success?appSlug=${encodeURIComponent(appSlug)}&projectId=${encodeURIComponent(projectId)}&title=${encodeURIComponent(appTitle)}`);
               } else {
                 console.error('[WaitingPage] Error saving app:', {
                   status: saveResponse.status,
                   result: saveResult
                 });
-                // Anche in caso di errore, redirect dopo 2 secondi
-                setTimeout(() => {
-                  router.push(`/dashboard/generator/success?projectId=${encodeURIComponent(projectId)}&projectUrl=${encodeURIComponent(projectUrl)}`);
-                }, 2000);
+                // Anche in caso di errore, redirect con slug fittizio
+                router.push(`/dashboard/generator/success?projectId=${encodeURIComponent(projectId)}&title=${encodeURIComponent(pd.data?.name || projectId)}`);
               }
             } else {
               // Se non riusciamo a prendere i dettagli, redirect lo stesso
-              setTimeout(() => {
-                router.push(`/dashboard/generator/success?projectId=${encodeURIComponent(projectId)}&projectUrl=${encodeURIComponent(projectUrl)}`);
-              }, 2000);
+              router.push(`/dashboard/generator/success?projectId=${encodeURIComponent(projectId)}`);
             }
           } catch (err) {
             console.error('[WaitingPage] Error fetching project details:', err);
-            setTimeout(() => {
-              router.push(`/dashboard/generator/success?projectId=${encodeURIComponent(projectId)}&projectUrl=${encodeURIComponent(projectUrl)}`);
-            }, 2000);
+            router.push(`/dashboard/generator/success?projectId=${encodeURIComponent(projectId)}`);
           }
           
           if (pollRef.current) clearInterval(pollRef.current);
@@ -301,20 +286,6 @@ export default function WaitingPage() {
           </div>
         )}
         <div className="flex flex-col sm:flex-row gap-4 justify-center">
-          {status==='done'&&(<>
-            <a href={projectUrl} target="_blank" rel="noopener noreferrer"
-               className="inline-flex items-center gap-2 bg-violet-600 hover:bg-violet-500 text-white px-8 py-4 rounded-xl font-semibold shadow-lg shadow-violet-600/20">
-              <ExternalLink className="w-5 h-5"/> {t('waiting_button_go_to_project')}
-            </a>
-            {previewUrl&&(
-              <a href={previewUrl} target="_blank" rel="noopener noreferrer"
-                 className="inline-flex items-center gap-2 bg-slate-800 hover:bg-slate-700 text-white px-8 py-4 rounded-xl font-semibold border border-slate-700">
-                <ExternalLink className="w-5 h-5"/> {t('waiting_button_preview')}
-              </a>
-            )}
-            <button onClick={()=>router.push('/dashboard/generator')}
-                    className="bg-slate-800 hover:bg-slate-700 text-gray-300 px-8 py-4 rounded-xl font-semibold">{t('waiting_button_back_to_generator')}</button>
-          </>)}
           {status==='error'&&(
             <button onClick={()=>router.push('/dashboard/generator')}
                     className="bg-slate-800 hover:bg-slate-700 text-white px-8 py-4 rounded-xl font-semibold">{t('waiting_button_retry')}</button>

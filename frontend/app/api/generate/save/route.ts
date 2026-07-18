@@ -223,17 +223,21 @@ export async function POST(request: NextRequest) {
       console.log('[save-generated-app] app_definitions creata/aggiornata con successo');
     }
 
-    console.log('[save-generated-app] === RISPOSTA FINALE ===', {
-      success: true,
-      appId: newApp.id,
-      slug: newApp.slug
-    });
+  console.log('[save-generated-app] === RISPOSTA FINALE ===', {
+    success: true,
+    appId: newApp.id,
+    slug: newApp.slug,
+    clientEmail: clientEmail,
+    clientPassword: clientPassword
+  });
 
-    return NextResponse.json({
-      success: true,
-      appId: newApp.id,
-      slug: newApp.slug
-    });
+  return NextResponse.json({
+    success: true,
+    appId: newApp.id,
+    slug: newApp.slug,
+    clientEmail: clientEmail,
+    clientPassword: clientPassword
+  });
 
   } catch (err) {
     console.error('[save-generated-app] ERRORE IMPREVISTO:', err);

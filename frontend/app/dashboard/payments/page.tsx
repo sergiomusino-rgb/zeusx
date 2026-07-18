@@ -3,6 +3,8 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@supabase/supabase-js';
+import { QRCodeSVG } from 'qrcode.react';
+import { Copy, Check, CreditCard, Loader2, AlertCircle, ExternalLink, Settings, Clock } from 'lucide-react';
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '';
@@ -11,11 +13,18 @@ const supabase = createClient(supabaseUrl, supabaseAnonKey);
 interface App {
   id: string;
   name: string;
+  slug: string;
   totalum_app_id: string | null;
   stripe_connect_id: string | null;
   client_subscription_price: number;
   status: 'trial' | 'active' | 'expired';
   trial_ends_at: string | null;
+  is_active: boolean;
+  created_at: string;
+  client_active: boolean;
+  expires_at: string | null;
+  client_email?: string;
+  client_password?: string;
 }
 
 export default function PaymentsPage() {
@@ -61,11 +70,20 @@ export default function PaymentsPage() {
 
     setStripeConnectId(profile?.stripe_connect_id || null);
 
-    // Recupera le app dell'utente
+    // Recupera il tenant_id dell'utente
+    const { data: membershipData } = await supabase
+      .from('tenant_members')
+      .select('tenant_id')
+      .eq('user_id', session.user.id)
+      .single();
+
+    const tenantId = membershipData?.tenant_id;
+
+    // Recupera le app del tenant
     const { data: appsData, error: appsError } = await supabase
       .from('apps')
-      .select('id, name, totalum_app_id, stripe_connect_id, client_subscription_price, status, trial_ends_at')
-      .eq('tenant_id', session.user.id);
+      .select('id, name, slug, totalum_app_id, stripe_connect_id, client_subscription_price, status, trial_ends_at, is_active, client_active, expires_at, client_email, client_password, created_at')
+      .eq('tenant_id', tenantId);
 
     if (appsError) {
       setError(appsError.message);

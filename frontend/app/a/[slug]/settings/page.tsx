@@ -2,7 +2,8 @@
 
 import { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import { CreditCard, XCircle, CheckCircle, Loader2, Mail, Lock, Eye, EyeOff } from 'lucide-react';
+import { CreditCard, XCircle, CheckCircle, Loader2, Mail, Lock, Eye, EyeOff, QrCode } from 'lucide-react';
+import { QRCodeSVG } from 'qrcode.react';
 import { supabase } from '@/src/lib/supabase';
 import ZeusXBrandingFooter from '@/components/ZeusXBrandingFooter';
 
@@ -379,6 +380,31 @@ export default function SettingsPage() {
               </button>
             </form>
           )}
+        </div>
+
+        {/* QR Code per accesso mobile */}
+        <div className="bg-slate-900/40 border border-slate-800/80 backdrop-blur-md rounded-2xl p-6 mb-6">
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-xl font-bold flex items-center gap-2">
+              <QrCode className="w-5 h-5 text-violet-400" />
+              Accesso Rapido
+            </h2>
+          </div>
+          
+          <div className="flex flex-col items-center">
+            <div className="bg-white p-4 rounded-xl mb-3">
+              <QRCodeSVG 
+                value={`${process.env.NEXT_PUBLIC_APP_URL || 'https://zeusx.vercel.app'}/a/${slug}`}
+                size={120}
+                bgColor="#ffffff"
+                fgColor="#000000"
+                level="M"
+              />
+            </div>
+            <p className="text-gray-400 text-sm text-center">
+              Scansiona per aprire l'app su smartphone
+            </p>
+          </div>
         </div>
       </div>
       

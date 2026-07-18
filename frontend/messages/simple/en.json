@@ -395,5 +395,9 @@
   "success_your_app": "Your App",
   "success_app_id_label": "App Identifier",
   "success_button_go_to_management": "Go to Management",
-  "success_button_new_prompt": "New Prompt"
+  "success_button_new_prompt": "New Prompt",
+  "success_credentials_label": "Client Credentials",
+  "success_email_label": "Email",
+  "success_password_label": "Password",
+  "success_loading_credentials": "Loading credentials..."
 }

@@ -1,9 +1,11 @@
 'use client';
 
 import { useSearchParams } from 'next/navigation';
-import { Sparkles, Copy, Check } from 'lucide-react';
+import { Sparkles, Copy, Check, Key, ExternalLink } from 'lucide-react';
+import { QRCodeSVG } from 'qrcode.react';
 import { useState, useEffect } from 'react';
 import { useLanguage } from '@/src/lib/LanguageContext';
+import { supabaseBrowser } from '@/src/lib/supabase-browser';
 
 export default function SuccessPage() {
   const searchParams = useSearchParams();
@@ -13,9 +15,48 @@ export default function SuccessPage() {
   const { t } = useLanguage();
 
   const [copied, setCopied] = useState(false);
+  const [credentials, setCredentials] = useState<{email?: string, password?: string} | null>(null);
+  const [loadingCredentials, setLoadingCredentials] = useState(false);
 
   // ID interno dell'app (pulito, senza riferimenti a URL esterni)
   const internalAppId = projectId || appSlug || 'N/A';
+  
+  // URL dell'app generata
+  const appUrl = appSlug ? `${process.env.NEXT_PUBLIC_APP_URL || 'https://zeusx.vercel.app'}/a/${appSlug}` : '';
+
+  // Recupera le credenziali se abbiamo lo slug
+  useEffect(() => {
+    if (!appSlug) return;
+    
+    const fetchCredentials = async () => {
+      setLoadingCredentials(true);
+      try {
+        const { data: { session } } = await supabaseBrowser.auth.getSession();
+        if (!session?.access_token) return;
+        
+        const response = await fetch(`/api/a/${appSlug}`, {
+          headers: {
+            'Authorization': `Bearer ${session.access_token}`
+          }
+        });
+        
+        if (response.ok) {
+          const data = await response.json();
+          // L'API ritorna i dati dell'app con client_email e client_password
+          setCredentials({
+            email: data.client_email,
+            password: data.client_password
+          });
+        }
+      } catch (error) {
+        console.error('Error fetching credentials:', error);
+      } finally {
+        setLoadingCredentials(false);
+      }
+    };
+    
+    fetchCredentials();
+  }, [appSlug]);
 
   // Demo placeholder quando non ci sono app generate
   if (!appSlug) {
@@ -142,6 +183,128 @@ export default function SuccessPage() {
               </button>
             </div>
           </div>
+
+          {/* App URL - with "Go" button */}
+          {appUrl && (
+            <div className="mb-6 p-4 bg-slate-800/50 rounded-xl">
+              <label className="block text-sm font-medium text-gray-400 mb-2">
+                {t('success_url_app')}
+              </label>
+              <div className="flex items-center gap-3">
+                <input
+                  type="text"
+                  readOnly
+                  value={appUrl}
+                  className="flex-1 text-lg bg-transparent text-emerald-400 truncate focus:outline-none"
+                />
+                <button
+                  onClick={() => window.open(appUrl, '_blank')}
+                  className="p-3 bg-violet-600 hover:bg-violet-500 rounded-lg transition-colors"
+                  title="Apri l'app"
+                >
+                  <ExternalLink className="w-5 h-5 text-white" />
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* QR Code for mobile access */}
+          {appUrl && (
+            <div className="mb-6 p-6 bg-slate-800/50 rounded-xl text-center">
+              <div className="inline-flex items-center justify-center w-16 h-16 rounded-xl bg-violet-500/20 mb-4">
+                <svg className="w-8 h-8 text-violet-400" viewBox="0 0 24 24" fill="currentColor">
+                  <path d="M3 3h4v4H3V3zm1 1h2v2H4V4zM3 19h4v4H3v-4zm1 1h2v2H4v-2zM19 3h4v4h-4V3zm1 1h2v2h-2V4zM19 19h4v4h-4v-4zm1 1h2v2h-2v-2zM7 7h2v2H7V7zm1 1h1v1H8V8zM7 15h2v2H7v-2zm1 1h1v1H8v-1z" />
+                </svg>
+              </div>
+              <h3 className="text-lg font-bold mb-3">{t('success_qr_access')}</h3>
+              <p className="text-gray-400 text-sm mb-4">
+                {t('success_scan_qr')}
+              </p>
+              <div className="inline-block p-4 bg-white rounded-xl">
+                <QRCodeSVG 
+                  value={appUrl} 
+                  size={120} 
+                  bgColor="#ffffff"
+                  fgColor="#000000"
+                  level="M"
+                />
+              </div>
+            </div>
+          )}
+
+          {/* Client Credentials - Only show if available */}
+          {credentials && (
+            <div className="mb-6 p-4 bg-slate-800/50 rounded-xl">
+              <h3 className="text-sm font-medium text-gray-400 mb-3 flex items-center gap-2">
+                <Key className="w-4 h-4" />
+                {t('success_credentials_label')}
+              </h3>
+              
+              {/* Email */}
+              <div className="mb-3">
+                <label className="block text-xs text-gray-500 mb-1">{t('success_email_label')}</label>
+                <div className="flex items-center gap-2">
+                  <input
+                    type="text"
+                    readOnly
+                    value={credentials.email || ''}
+                    className="flex-1 text-sm bg-transparent text-emerald-400 truncate focus:outline-none"
+                  />
+                  <button
+                    onClick={() => {
+                      if (credentials.email) {
+                        navigator.clipboard.writeText(credentials.email);
+                        setCopied(true);
+                        setTimeout(() => setCopied(false), 2000);
+                      }
+                    }}
+                    className="p-2 bg-slate-700 hover:bg-slate-600 rounded-lg transition-colors"
+                  >
+                    {copied ? (
+                      <Check className="w-4 h-4 text-green-400" />
+                    ) : (
+                      <Copy className="w-4 h-4 text-gray-300" />
+                    )}
+                  </button>
+                </div>
+              </div>
+
+              {/* Password - with Copy button */}
+              <div>
+                <label className="block text-xs text-gray-500 mb-1">{t('success_password_label')}</label>
+                <div className="flex items-center gap-2">
+                  <input
+                    type="text"
+                    readOnly
+                    value={credentials.password || ''}
+                    className="flex-1 text-sm bg-transparent text-amber-400 truncate focus:outline-none font-mono"
+                  />
+                  <button
+                    onClick={() => {
+                      if (credentials.password) {
+                        navigator.clipboard.writeText(credentials.password);
+                        setCopied(true);
+                        setTimeout(() => setCopied(false), 2000);
+                      }
+                    }}
+                    className="p-2 bg-slate-700 hover:bg-slate-600 rounded-lg transition-colors"
+                  >
+                    {copied ? (
+                      <Check className="w-4 h-4 text-green-400" />
+                    ) : (
+                      <Copy className="w-4 h-4 text-gray-300" />
+                    )}
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {loadingCredentials && (
+            <div className="mb-6 p-4 bg-slate-800/50 rounded-xl">
+              <p className="text-sm text-gray-400">{t('success_loading_credentials')}</p>
+            </div>
+          )}
         </div>
 
         {/* Action Buttons */}

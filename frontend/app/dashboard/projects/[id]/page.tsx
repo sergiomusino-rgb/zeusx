@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { supabase } from '@/src/lib/supabase';
+import { QRCodeSVG } from 'qrcode.react';
 
 interface App {
   id: string;
@@ -361,6 +362,22 @@ export default function AppDetailPage() {
               </div>
               <p className="text-xs text-slate-500">
                  Il cliente può cambiare la password in qualsiasi momento dall'interno dell'app.
+              </p>
+            </div>
+
+            {/* QR Code per accesso mobile */}
+            <div className="flex flex-col items-center pt-4">
+              <div className="bg-white p-4 rounded-xl mb-2">
+                <QRCodeSVG 
+                  value={`${window.location.origin}/a/${app.slug}`}
+                  size={100}
+                  bgColor="#ffffff"
+                  fgColor="#000000"
+                  level="M"
+                />
+              </div>
+              <p className="text-xs text-slate-400">
+                Scansiona per aprire su smartphone
               </p>
             </div>
 
