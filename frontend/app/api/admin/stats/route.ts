@@ -32,12 +32,12 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ error: 'Non autorizzato' }, { status: 403 });
     }
 
-    const [tenantsRes, appsRes, appRegistryRes, subsRes, paymentsRes] = await Promise.all([
+    const [tenantsRes, appsRes, appRegistryRes, subsRes, transactionsRes] = await Promise.all([
       supabase.from('tenants').select('*'),
       supabase.from('apps').select('*'),
       supabase.from('app_registry').select('id, ownership_status, reseller_id, original_reseller_id, checkout_url'),
       supabase.from('subscriptions').select('*'),
-      supabase.from('payments').select('*'),
+      supabase.from('transactions').select('*'),
     ]);
 
     if (tenantsRes.error) throw tenantsRes.error;
@@ -49,7 +49,7 @@ export async function GET(req: NextRequest) {
     const apps = appsRes.data || [];
     const appRegistry = appRegistryRes.data || [];
     const subs = subsRes.data || [];
-    const payments = paymentsRes.data || [];
+    const transactions = transactionsRes.data || [];
 
     // Create a map of app_registry data for quick lookup
     const appRegistryMap = new Map(appRegistry.map((a: any) => [a.id, a]));
@@ -100,15 +100,16 @@ export async function GET(req: NextRequest) {
     const dist: Record<string, number> = {};
     tenants.forEach(t => { const p = t.plan || 'free'; dist[p] = (dist[p] || 0) + 1; });
 
-    const revenue = payments.reduce((sum: number, p: any) => sum + (p.amount || 0), 0);
+    // Use total_amount from transactions table instead of amount
+    const revenue = transactions.reduce((sum: number, t: any) => sum + (t.total_amount || 0), 0);
 
     const monthly: Record<string, { count: number; revenue: number }> = {};
-    payments.forEach((p: any) => {
-      const d = new Date(p.created_at);
+    transactions.forEach((t: any) => {
+      const d = new Date(t.created_at);
       const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
       if (!monthly[key]) monthly[key] = { count: 0, revenue: 0 };
       monthly[key].count++;
-      monthly[key].revenue += p.amount || 0;
+      monthly[key].revenue += t.total_amount || 0;
     });
 
     const chartData = Object.entries(monthly)

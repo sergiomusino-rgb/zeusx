@@ -4,7 +4,7 @@
  */
 
 // App Status enum
-export type AppStatus = 'trial' | 'active' | 'expired';
+export type AppStatus = 'trial' | 'active' | 'past_due' | 'canceled';
 
 // Tabella apps - con i nuovi campi per Stripe Managed Payments
 export interface App {
@@ -18,11 +18,15 @@ export interface App {
   created_at: string | null; // TIMESTAMPTZ
   updated_at: string | null; // TIMESTAMPTZ
   
-  // Nuovi campi per Milestone 1 - Stripe Managed Payments
+  // Nuovi campi per Milestone 2 - Reseller/White-label checkout
   stripe_connect_id: string | null; // ID account Stripe Connect del proprietario
-  client_subscription_price: number; // Prezzo abbonamento clienti (default 0.00)
+  client_price: number; // Prezzo totale impostato dal reseller (default 25.00)
+  zeusx_fee: number; // Quota fissa mensile ZeusX (default 25.00)
+  stripe_subscription_id: string | null; // ID subscription Stripe legato alla singola app
   totalum_app_id: string | null; // ID app generata da Totalum
-  status: AppStatus; // Stato: trial, active, expired (default 'trial')
+  status: AppStatus; // Stato: trial, active, past_due, canceled (default 'trial')
+  trial_start: string | null; // TIMESTAMPTZ - inizio prova
+  trial_end: string | null; // TIMESTAMPTZ - fine prova
 }
 
 // Tabella tenants
@@ -80,9 +84,13 @@ export interface NewApp {
   name: string;
   config?: Record<string, unknown>;
   stripe_connect_id?: string | null;
-  client_subscription_price?: number;
+  client_price?: number;
+  zeusx_fee?: number;
+  stripe_subscription_id?: string | null;
   totalum_app_id?: string | null;
   status?: AppStatus;
+  trial_start?: string | null;
+  trial_end?: string | null;
 }
 
 // Input types per le operazioni di update
@@ -91,7 +99,11 @@ export interface UpdateApp {
   config?: Record<string, unknown>;
   is_active?: boolean;
   stripe_connect_id?: string | null;
-  client_subscription_price?: number;
+  client_price?: number;
+  zeusx_fee?: number;
+  stripe_subscription_id?: string | null;
   totalum_app_id?: string | null;
   status?: AppStatus;
+  trial_start?: string | null;
+  trial_end?: string | null;
 }
