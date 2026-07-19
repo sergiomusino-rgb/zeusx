@@ -9,10 +9,11 @@ const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '';
 const supabase = createClient(supabaseUrl, supabaseAnonKey);
 
 interface AppStatus {
-  status: 'trial' | 'active' | 'expired';
+  status: 'trial' | 'active' | 'expired' | 'past_due' | 'canceled';
   trial_ends_at: string | null;
   totalum_app_id: string | null;
   payment_reset_required: boolean;
+  stripe_subscription_id: string | null;
 }
 
 export default function TrialBanner() {
@@ -30,7 +31,7 @@ export default function TrialBanner() {
       // Recupera lo slug dell'app dal database
       const { data: app, error } = await supabase
         .from('apps')
-        .select('status, trial_ends_at, totalum_app_id, payment_reset_required')
+        .select('status, trial_ends_at, totalum_app_id, payment_reset_required, stripe_subscription_id')
         .eq('slug', slug)
         .single();
 
@@ -93,9 +94,12 @@ export default function TrialBanner() {
 
   // Se l'app è attiva, non mostra nulla
   if (appStatus?.status === 'active') return null;
+  
+  // Se l'app ha un abbonamento attivo (stripe_subscription_id) anche in trial, non bloccare
+  if (appStatus?.stripe_subscription_id && appStatus?.status === 'trial') return null;
 
-  // Se l'app è scaduta o trial terminato
-  if (appStatus?.status === 'expired' || 
+  // Se l'app è scaduta o trial terminato o stato pagamento problematico
+  if (appStatus?.status === 'expired' || appStatus?.status === 'past_due' || appStatus?.status === 'canceled' || 
       (appStatus?.status === 'trial' && getDaysRemaining(appStatus.trial_ends_at) <= 0)) {
     return (
       <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950">

@@ -10,13 +10,15 @@ import TrialPaywall from './app/TrialPaywall';
 import ZeusXBrandingFooter from '@/components/ZeusXBrandingFooter';
 import Link from 'next/link';
 
-type AppStatus = 'trial' | 'active' | 'expired';
+type AppStatus = 'trial' | 'active' | 'expired' | 'past_due' | 'canceled';
 
 interface AppInfo {
   id: string;
   name: string;
   status: AppStatus;
   trial_ends_at: string | null;
+  stripe_subscription_id: string | null;
+  client_subscription_price: number | null;
 }
 
 interface Profile {
@@ -43,7 +45,7 @@ export default function AppLayout({ children }: PropsWithChildren) {
       // Get app info first (needed for back link)
       const { data: app } = await supabase
         .from('apps')
-        .select('id, name, status, trial_ends_at')
+        .select('id, name, status, trial_ends_at, stripe_subscription_id, client_subscription_price')
         .eq('slug', slug)
         .single();
       
@@ -71,10 +73,34 @@ export default function AppLayout({ children }: PropsWithChildren) {
     init();
   }, [slug]);
 
-  // Check trial status
-  const isTrialExpired = appInfo?.status === 'trial' && 
-    appInfo.trial_ends_at && 
-    new Date(appInfo.trial_ends_at) < new Date();
+  // ─── LOGICA DI BLOCCO ACCESSO ──────────────────────────────────────────────
+  // L'app viene bloccata se:
+  // 1. Lo status è 'expired' (trial scaduto e nessun abbonamento attivo)
+  // 2. Lo status è 'past_due' o 'canceled' (abbonamento non in regola)
+  // 3. Lo status è 'trial' E la data di trial è scaduta E non c'è subscription_id attivo
+  const isAppBlocked = (() => {
+    if (!appInfo) return false;
+    
+    // Se l'app è attiva con abbonamento, non bloccare mai
+    if (appInfo.status === 'active') return false;
+    
+    // Se l'app è in stato di problema pagamento, blocca
+    if (appInfo.status === 'past_due' || appInfo.status === 'canceled') return true;
+    
+    // Se l'app è scaduta, blocca
+    if (appInfo.status === 'expired') return true;
+    
+    // Se è in trial, controlla la data di scadenza
+    if (appInfo.status === 'trial') {
+      // Se ha una subscription_id attiva, non bloccare (transizione da trial ad active)
+      if (appInfo.stripe_subscription_id) return false;
+      
+      // Se il trial è scaduto, blocca
+      if (appInfo.trial_ends_at && new Date(appInfo.trial_ends_at) < new Date()) return true;
+    }
+    
+    return false;
+  })();
 
   if (loading) {
     return (
@@ -108,9 +134,9 @@ export default function AppLayout({ children }: PropsWithChildren) {
     );
   }
 
-  // Show paywall if trial expired
-  if (isTrialExpired && appInfo) {
-    return <TrialPaywall appName={appInfo.name} trialEndsAt={appInfo.trial_ends_at!} />;
+  // Show paywall if app is blocked (trial expired OR subscription not active)
+  if (isAppBlocked && appInfo) {
+    return <TrialPaywall appName={appInfo.name} trialEndsAt={appInfo.trial_ends_at!} appId={appInfo.id} />;
   }
 
   return (

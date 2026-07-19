@@ -7,13 +7,19 @@ import ZeusXBrandingFooter from '@/components/ZeusXBrandingFooter';
 interface TrialPaywallProps {
   appName: string;
   trialEndsAt: string;
+  appId?: string;
 }
 
-export default function TrialPaywall({ appName, trialEndsAt }: TrialPaywallProps) {
+export default function TrialPaywall({ appName, trialEndsAt, appId }: TrialPaywallProps) {
   const router = useRouter();
 
   const handleSubscribe = () => {
-    router.push(`/a/${window.location.pathname.split('/')[2]}/settings`);
+    // Redirect to checkout page for this app
+    if (appId) {
+      router.push(`/checkout?app_id=${appId}`);
+    } else {
+      router.push(`/a/${window.location.pathname.split('/')[2]}/settings`);
+    }
   };
 
   return (
@@ -30,12 +36,17 @@ export default function TrialPaywall({ appName, trialEndsAt }: TrialPaywallProps
           </h1>
           
           <p className="text-gray-400 mb-4 sm:mb-6 text-sm">
-            Il periodo di prova di 30 giorni per "{appName}" è terminato il{' '}
+            Il periodo di prova per "{appName}" è terminato il{' '}
             {new Date(trialEndsAt).toLocaleDateString('it-IT')}.
           </p>
           
           <p className="text-gray-300 text-xs sm:text-sm mb-6 sm:mb-8">
             Attiva l'abbonamento per continuare ad accedere ai tuoi dati ed utilizzare l'applicazione.
+            {appId && (
+              <span className="block mt-2 text-yellow-400">
+                I tuoi dati sono al sicuro e verranno ripristinati dopo l'attivazione.
+              </span>
+            )}
           </p>
           
           <button
