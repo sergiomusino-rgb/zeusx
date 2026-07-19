@@ -10,13 +10,44 @@ export default function SuccessPage() {
   const sessionId = searchParams.get('session_id');
   const appSlug = searchParams.get('appSlug');
   const [loading, setLoading] = useState(true);
+  const [syncStatus, setSyncStatus] = useState<string>('');
 
   useEffect(() => {
     if (sessionId || appSlug) {
       console.log("Pagamento completato con sessione:", sessionId, "o appSlug:", appSlug);
-      setLoading(false);
+      
+      // Se abbiamo session_id, sincronizza il piano con Stripe
+      if (sessionId && !appSlug) {
+        setSyncStatus('Sincronizzazione del piano in corso...');
+        
+        fetch('/api/sync-plan', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ session_id: sessionId }),
+        })
+        .then(res => res.json())
+        .then(data => {
+          console.log('[Sync Plan] Risultato:', data);
+          if (data.success) {
+            setSyncStatus(`Piano ${data.plan} attivato con ${data.app_limit} slot!`);
+          } else if (data.paid === false) {
+            setSyncStatus('Attendi la conferma del pagamento...');
+          } else {
+            setSyncStatus('Piano sincronizzato con successo!');
+          }
+        })
+        .catch(err => {
+          console.error('[Sync Plan] Errore:', err);
+          setSyncStatus('Errore nella sincronizzazione del piano');
+        })
+        .finally(() => {
+          setLoading(false);
+        });
+      } else {
+        setLoading(false);
+      }
 
-      // Reindirizzamento automatico dopo 3 secondi
+      // Reindirizzamento automatico dopo 4 secondi (per dare tempo alla sync)
       const timer = setTimeout(() => {
         // Se abbiamo appSlug, reindirizza al dettaglio dell'app
         if (appSlug) {
@@ -24,7 +55,7 @@ export default function SuccessPage() {
         } else {
           router.push('/dashboard');
         }
-      }, 3000);
+      }, 4000);
 
       return () => clearTimeout(timer);
     }
@@ -49,6 +80,12 @@ export default function SuccessPage() {
             : "Grazie per aver acquistato i crediti ZEUSX. Il tuo account è stato aggiornato. Verrai reindirizzato alla dashboard a breve..."
           }
         </p>
+
+        {syncStatus && (
+          <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+            <p className="text-sm text-blue-700">{syncStatus}</p>
+          </div>
+        )}
 
         <Link 
           href={buttonHref}

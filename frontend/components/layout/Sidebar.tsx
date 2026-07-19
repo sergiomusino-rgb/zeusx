@@ -55,6 +55,7 @@ interface NavItem {
   isPrimary?: boolean;
   isPremium?: boolean;
   isAdmin?: boolean;
+  hideForAdmin?: boolean;
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -121,6 +122,7 @@ export default function Sidebar({
         href: '/pricing',
         icon: <Crown size={18} />,
         isActive: isPathActive(pathname, '/pricing'),
+        hideForAdmin: true,
       },
       {
         label: t('nav_management'),
@@ -252,6 +254,10 @@ export default function Sidebar({
                 }
                 // Nascondi le voci admin se l'utente non è admin
                 if (item.isAdmin && !isAdmin) {
+                  return null;
+                }
+                // Nascondi la voce pricing se l'utente è admin (non deve vedere piani)
+                if (item.hideForAdmin && isAdmin) {
                   return null;
                 }
                 

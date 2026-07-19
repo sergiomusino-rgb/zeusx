@@ -27,6 +27,7 @@ export interface App {
   status: AppStatus; // Stato: trial, active, past_due, canceled (default 'trial')
   trial_start: string | null; // TIMESTAMPTZ - inizio prova
   trial_end: string | null; // TIMESTAMPTZ - fine prova
+  production_url: string | null; // https://zeusx-app-mrpcz95k-188oie.totalum-project.com
 }
 
 // Tabella tenants
@@ -107,3 +108,4 @@ export interface UpdateApp {
   trial_start?: string | null;
   trial_end?: string | null;
 }
+  

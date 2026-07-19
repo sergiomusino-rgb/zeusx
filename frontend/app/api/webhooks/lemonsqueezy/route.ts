@@ -3,6 +3,16 @@ import { createClient } from '@supabase/supabase-js';
 import crypto from 'crypto';
 
 // ============================================================================
+// Mappa piani -> slot
+// ============================================================================
+const PLAN_SLOTS: Record<string, number> = {
+  free: 0,
+  starter: 1,
+  pro: 5,
+  business: 100,
+};
+
+// ============================================================================
 // Supabase Admin Client
 // ============================================================================
 
@@ -117,6 +127,41 @@ async function processSubscriptionPayment(event: any) {
 
   if (appError) {
     console.error('Error updating app status:', appError);
+  }
+
+  // ─── AGGIORNA TABELLA TENANTS ─────────────────────────────────────────────
+  // Trova il tenant associato al reseller
+  const { data: membership } = await supabaseAdmin
+    .from('tenant_members')
+    .select('tenant_id')
+    .eq('user_id', finalResellerId)
+    .single();
+
+  if (membership?.tenant_id) {
+    // Determina il piano in base all'importo pagato (o usa un default)
+    const planName = attributes.variant_name?.toLowerCase() || 'pro';
+    const slots = PLAN_SLOTS[planName] || PLAN_SLOTS.pro;
+
+    const { data: currentTenant } = await supabaseAdmin
+      .from('tenants')
+      .select('plan, app_limit')
+      .eq('id', membership.tenant_id)
+      .single();
+
+    if (currentTenant) {
+      const newAppLimit = Math.max(currentTenant.app_limit || 0, slots);
+
+      await supabaseAdmin
+        .from('tenants')
+        .update({
+          plan: planName,
+          app_limit: newAppLimit,
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', membership.tenant_id);
+
+      console.log(`[Webhook] Tenant ${membership.tenant_id} aggiornato: plan=${planName}, app_limit=${newAppLimit}`);
+    }
   }
 
   return { success: true, appRegistryId: finalAppRegistryId };

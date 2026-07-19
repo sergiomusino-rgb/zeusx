@@ -347,11 +347,15 @@ export default function AdminPage() {
                          <div className="text-xs text-slate-500">{new Date(a.created_at).toLocaleDateString('it-IT')}</div>
                        </div>
                        <div className="flex items-center gap-4">
-                         {a.slug && (
-                           <a href={`/a/${a.slug}`} target="_blank" rel="noopener noreferrer" className="text-xs text-blue-400 hover:text-blue-300">
-                             /a/{a.slug}
-                           </a>
-                         )}
+                          {a.production_url ? (
+                            <a href={a.production_url} target="_blank" rel="noopener noreferrer" className="text-xs text-blue-400 hover:text-blue-300">
+                              {a.production_url}
+                            </a>
+                          ) : a.slug ? (
+                            <a href={`/a/${a.slug}`} target="_blank" rel="noopener noreferrer" className="text-xs text-blue-400 hover:text-blue-300">
+                              /a/{a.slug}
+                            </a>
+                          ) : null}
                          <span className={`text-xs font-medium ${expired ? 'text-red-400' : 'text-emerald-400'}`}>
                            {expired ? t('admin_status_expired_badge') : t('admin_status_active_badge')}
                          </span>
@@ -497,11 +501,15 @@ export default function AdminPage() {
                           <td className="px-5 py-3 text-slate-400">{expiryDate ? new Date(expiryDate).toLocaleDateString('it-IT') : '-'}</td>
                          <td className="px-5 py-3 text-slate-400">{new Date(a.created_at).toLocaleDateString('it-IT')}</td>
                          <td className="px-5 py-3">
-                           {a.slug && (
-                             <a href={`/a/${a.slug}`} target="_blank" rel="noopener noreferrer" className="text-blue-400 hover:text-blue-300 text-xs">
-                               /a/{a.slug}
-                             </a>
-                           )}
+                          {a.production_url ? (
+                            <a href={a.production_url} target="_blank" rel="noopener noreferrer" className="text-blue-400 hover:text-blue-300 text-xs">
+                              {a.production_url}
+                            </a>
+                          ) : a.slug ? (
+                            <a href={`/a/${a.slug}`} target="_blank" rel="noopener noreferrer" className="text-blue-400 hover:text-blue-300 text-xs">
+                              /a/{a.slug}
+                            </a>
+                          ) : null}
                          </td>
                          <td className="px-5 py-3">
                            {!isOwnedByAdmin && (

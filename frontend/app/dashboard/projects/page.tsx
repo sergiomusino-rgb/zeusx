@@ -16,6 +16,7 @@ interface App {
   created_at: string;
   client_active: boolean;
   expires_at: string | null;
+  production_url: string | null;
 }
 
 export default function ProjectsPage() {
@@ -80,7 +81,7 @@ export default function ProjectsPage() {
       // Get apps for this tenant
       const { data: appsData, error: appsError } = await supabaseBrowser
         .from('apps')
-        .select('id, name, slug, trial_ends_at, is_active, created_at, client_active, expires_at')
+        .select('id, name, slug, trial_ends_at, is_active, created_at, client_active, expires_at, production_url')
         .eq('tenant_id', tenantId)
         .order('created_at', { ascending: false });
 
@@ -241,8 +242,10 @@ export default function ProjectsPage() {
 
                 {/* Actions */}
                 <div style={{ display: 'flex', gap: '12px' }}>
-                  <Link
-                    href={`/a/${app.slug}`}
+                  <a
+                    href={app.production_url || `/a/${app.slug}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
                     style={{
                       flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px',
                       padding: '10px 16px', borderRadius: '10px', border: 'none',
@@ -252,7 +255,7 @@ export default function ProjectsPage() {
                   >
                     <ExternalLink size={16} />
                     {t('projects_open')}
-                  </Link>
+                  </a>
                   <Link
                     href={`/dashboard/projects/${app.id}`}
                     style={{

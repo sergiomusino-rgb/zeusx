@@ -7,6 +7,9 @@ import { createClient } from '@supabase/supabase-js';
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
 const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
 
+// Admin user ID - bypassa tutti i limiti
+const ADMIN_USER_ID = 'd3eda57f-692a-4904-ac5f-93bdaaec8ce5';
+
 function getSupabaseAdmin() {
   return createClient(supabaseUrl, supabaseServiceKey);
 }
@@ -117,10 +120,12 @@ export async function POST(request: NextRequest) {
     }
 
     // Prepara i dati per l'inserimento
+    const productionAppUrl = `${process.env.NEXT_PUBLIC_APP_URL || 'https://zeusxapps.com'}/a/${slug}`;
     const appData = {
       name: appName,
       slug,
       tenant_id: tenantId,
+      production_url: productionAppUrl,
       config: {
         schema,
         ui: schema.ui || {},

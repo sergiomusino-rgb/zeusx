@@ -26,6 +26,9 @@ const LOADING_MESSAGES = [
   "Finalizzando la tua app..."
 ];
 
+// Admin user ID - bypassa tutti i limiti
+const ADMIN_USER_ID = 'd3eda57f-692a-4904-ac5f-93bdaaec8ce5';
+
 export default function GeneratorPage() {
   const router = useRouter();
   const { t, locale } = useLanguage();
@@ -36,6 +39,7 @@ export default function GeneratorPage() {
   const [showSlotsExhaustedModal, setShowSlotsExhaustedModal] = useState(false);
   const [loadingMessageIndex, setLoadingMessageIndex] = useState(0);
   const [userId, setUserId] = useState<string | null>(null);
+  const [isAdmin, setIsAdmin] = useState(false);
 
   // Ottieni l'utente corrente
   useEffect(() => {
@@ -43,6 +47,7 @@ export default function GeneratorPage() {
       const { data: { user } } = await supabaseBrowser.auth.getUser();
       if (user) {
         setUserId(user.id);
+        setIsAdmin(user.id === ADMIN_USER_ID);
       }
     };
     getUser();
@@ -154,10 +159,18 @@ export default function GeneratorPage() {
 
       const data = await response.json();
       
-      // Gestione errore 403 - Slot esauriti
+      // Gestione errore 403 - Slot esauriti (solo per non-admin)
       if (response.status === 403 && data.code === 'SLOTS_EXHAUSTED') {
         setShowLoadingOverlay(false);
-        setShowSlotsExhaustedModal(true);
+        if (!isAdmin) {
+          setShowSlotsExhaustedModal(true);
+        } else {
+          // Admin: mostra errore ma non bloccare con modal upgrade
+          setMessages(prev => [...prev, { 
+            role: 'ai', 
+            text: 'Errore temporaneo del sistema. Riprova.'
+          }]);
+        }
         return;
       }
       

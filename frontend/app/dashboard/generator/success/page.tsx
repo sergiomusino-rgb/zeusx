@@ -21,8 +21,50 @@ export default function SuccessPage() {
   // ID interno dell'app (pulito, senza riferimenti a URL esterni)
   const internalAppId = projectId || appSlug || 'N/A';
   
-  // URL dell'app generata
-  const appUrl = appSlug ? `${process.env.NEXT_PUBLIC_APP_URL || 'https://zeusx.vercel.app'}/a/${appSlug}` : '';
+  // URL dell'app generata - verrà sovrascritto dal database se disponibile
+  const [appUrl, setAppUrl] = useState<string>('');
+  const [loadingUrl, setLoadingUrl] = useState(true);
+
+  // Recupera l'URL di produzione dal database
+  useEffect(() => {
+    if (!appSlug) {
+      setLoadingUrl(false);
+      return;
+    }
+    
+    const fetchProductionUrl = async () => {
+      try {
+        const { data: { session } } = await supabaseBrowser.auth.getSession();
+        if (!session?.access_token) {
+          setAppUrl(`${process.env.NEXT_PUBLIC_APP_URL || 'https://zeusxapps.com'}/a/${appSlug}`);
+          setLoadingUrl(false);
+          return;
+        }
+        
+        const response = await fetch(`/api/a/${appSlug}`, {
+          headers: { 'Authorization': `Bearer ${session.access_token}` }
+        });
+        
+        if (response.ok) {
+          const data = await response.json();
+          if (data.production_url) {
+            setAppUrl(data.production_url);
+          } else {
+            setAppUrl(`${process.env.NEXT_PUBLIC_APP_URL || 'https://zeusxapps.com'}/a/${appSlug}`);
+          }
+        } else {
+          setAppUrl(`${process.env.NEXT_PUBLIC_APP_URL || 'https://zeusxapps.com'}/a/${appSlug}`);
+        }
+      } catch (error) {
+        console.error('Error fetching production URL:', error);
+        setAppUrl(`${process.env.NEXT_PUBLIC_APP_URL || 'https://zeusxapps.com'}/a/${appSlug}`);
+      } finally {
+        setLoadingUrl(false);
+      }
+    };
+    
+    fetchProductionUrl();
+  }, [appSlug]);
 
   // Recupera le credenziali se abbiamo lo slug
   useEffect(() => {
