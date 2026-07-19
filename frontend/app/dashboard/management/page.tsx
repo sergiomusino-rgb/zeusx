@@ -3,8 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@supabase/supabase-js';
-import { QRCodeSVG } from 'qrcode.react';
-import { Copy, Check, CreditCard, Loader2, AlertCircle, ExternalLink, Settings, Clock } from 'lucide-react';
+import { Copy, Check, CreditCard, AlertCircle, Settings } from 'lucide-react';
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '';
@@ -218,7 +217,7 @@ export default function ManagementConsolePage() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-screen">
+      <div className="flex items-center justify-center min-h-dvh">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600 mx-auto"></div>
           <p className="mt-4 text-gray-400">Caricamento...</p>
@@ -228,18 +227,18 @@ export default function ManagementConsolePage() {
   }
 
   return (
-    <div className="p-6">
-      <div className="mb-6">
-        <h1 className="text-2xl font-bold text-white">Management Console</h1>
-        <p className="text-gray-400 mt-1">Gestisci le app dei tuoi clienti e le quote ZEUSX</p>
+    <div className="p-4 sm:p-6">
+      <div className="mb-4 sm:mb-6">
+        <h1 className="text-xl sm:text-2xl font-bold text-white">Management Console</h1>
+        <p className="text-gray-400 mt-1 text-sm sm:text-base">Gestisci le app dei tuoi clienti e le quote ZEUSX</p>
       </div>
 
       {/* Box Configurazione Stripe Connect */}
-      <div className="bg-slate-900/40 border border-slate-800/80 backdrop-blur-md rounded-2xl p-6 mb-6">
-        <h2 className="text-lg font-semibold text-white mb-4">Configurazione Stripe Connect</h2>
+      <div className="bg-slate-900/40 border border-slate-800/80 backdrop-blur-md rounded-2xl p-4 sm:p-6 mb-4 sm:mb-6">
+        <h2 className="text-lg font-semibold text-white mb-3 sm:mb-4">Configurazione Stripe Connect</h2>
         
         {stripeConnectId ? (
-          <div className="flex items-center gap-3">
+          <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3">
             <span className="inline-flex px-3 py-1 text-sm font-semibold rounded-full bg-green-500/20 text-green-300">
               Configurazione completata
             </span>
@@ -249,13 +248,13 @@ export default function ManagementConsolePage() {
           </div>
         ) : (
           <div>
-            <p className="text-yellow-400 mb-4">
+            <p className="text-yellow-400 mb-3 sm:mb-4 text-sm">
               Configura il tuo account Stripe per iniziare a ricevere i pagamenti dei tuoi clienti
             </p>
             <button
               onClick={connectStripe}
               disabled={connectingStripe}
-              className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 disabled:opacity-50 flex items-center gap-2"
+              className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 disabled:opacity-50 flex items-center gap-2 text-sm"
             >
               <CreditCard size={16} />
               {connectingStripe ? 'Connessione...' : 'Collega Stripe'}
@@ -265,128 +264,172 @@ export default function ManagementConsolePage() {
       </div>
 
       {error && (
-        <div className="bg-red-500/20 text-red-300 p-4 rounded-lg mb-6 flex items-center gap-2">
-          <AlertCircle size={18} />
+        <div className="bg-red-500/20 text-red-300 p-3 sm:p-4 rounded-lg mb-4 sm:mb-6 flex items-center gap-2 text-sm">
+          <AlertCircle size={16} />
           {error}
         </div>
       )}
 
-      {/* Tabella App */}
+      {/* Tabella App - Responsive */}
       <div className="bg-slate-900/40 border border-slate-800/80 backdrop-blur-md rounded-2xl overflow-hidden">
-        <table className="min-w-full divide-y divide-slate-800">
-          <thead className="bg-slate-800/50">
-            <tr>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">
-                Nome App
-              </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">
-                URL
-              </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">
-                Accesso Cliente
-              </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">
-                Stato
-              </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">
-                Prezzo Cliente
-              </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">
-                Giorni Trial
-              </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">
-                Azioni
-              </th>
-            </tr>
-          </thead>
-          <tbody className="bg-slate-900/40 divide-y divide-slate-800">
-            {apps.map((app) => (
-              <tr key={app.id}>
-                <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-white">
-                  {app.name}
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-400">
-                  <a 
-                    href={`/a/${app.slug}`} 
-                    target="_blank" 
-                    rel="noopener noreferrer"
-                    className="text-indigo-400 hover:text-indigo-300"
-                  >
-                    /a/{app.slug}
-                  </a>
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap">
-                  <div className="flex flex-col items-center">
-                    <div className="bg-white p-2 rounded-lg">
-                      <QRCodeSVG 
-                        value={`${window.location.origin}/a/${app.slug}`}
-                        size={60}
-                        bgColor="#ffffff"
-                        fgColor="#000000"
-                        level="M"
+        {/* Desktop Table */}
+        <div className="hidden sm:block overflow-x-auto">
+          <table className="min-w-full divide-y divide-slate-800">
+            <thead className="bg-slate-800/50">
+              <tr>
+                <th className="px-4 sm:px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">
+                  Nome App
+                </th>
+                <th className="px-4 sm:px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">
+                  Stato
+                </th>
+                <th className="px-4 sm:px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">
+                  Prezzo Cliente
+                </th>
+                <th className="px-4 sm:px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">
+                  Giorni Trial
+                </th>
+                <th className="px-4 sm:px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">
+                  Azioni
+                </th>
+              </tr>
+            </thead>
+            <tbody className="bg-slate-900/40 divide-y divide-slate-800">
+              {apps.map((app) => (
+                <tr key={app.id}>
+                  <td className="px-4 sm:px-6 py-3 sm:py-4 whitespace-nowrap text-sm font-medium">
+                    <button
+                      onClick={() => router.push(`/dashboard/projects/${app.id}`)}
+                      className="text-purple-400 hover:text-purple-300 hover:underline transition-colors text-left"
+                    >
+                      {app.name}
+                    </button>
+                  </td>
+                  <td className="px-4 sm:px-6 py-3 sm:py-4 whitespace-nowrap">
+                    {getStatusBadge(app.status)}
+                  </td>
+                  <td className="px-4 sm:px-6 py-3 sm:py-4 whitespace-nowrap">
+                    <div className="flex items-center gap-2">
+                      <input
+                        type="number"
+                        step="0.01"
+                        min="0"
+                        value={priceInputs[app.id] || ''}
+                        onChange={(e) => setPriceInputs(prev => ({ ...prev, [app.id]: e.target.value }))}
+                        className="w-20 px-2 py-1 bg-slate-800 text-white rounded border border-slate-700 text-sm"
+                        placeholder="0.00"
                       />
+                      <span className="text-gray-400">€</span>
+                      {app.totalum_app_id && (
+                        <button
+                          onClick={() => updatePrice(app.id, app.totalum_app_id)}
+                          disabled={savingPrice[app.id]}
+                          className="px-2 py-1 bg-indigo-600 text-white rounded text-xs hover:bg-indigo-700 disabled:opacity-50"
+                        >
+                          {savingPrice[app.id] ? '...' : 'Salva'}
+                        </button>
+                      )}
                     </div>
-                    <span className="text-xs text-gray-500 mt-1 text-center">
-                      Scansiona per aprire l'app
-                    </span>
-                  </div>
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap">
-                  {getStatusBadge(app.status)}
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap">
-                  <div className="flex items-center gap-2">
-                    <input
-                      type="number"
-                      step="0.01"
-                      min="0"
-                      value={priceInputs[app.id] || ''}
-                      onChange={(e) => setPriceInputs(prev => ({ ...prev, [app.id]: e.target.value }))}
-                      className="w-20 px-2 py-1 bg-slate-800 text-white rounded border border-slate-700 text-sm"
-                      placeholder="0.00"
-                    />
-                    <span className="text-gray-400">€</span>
-                    {app.totalum_app_id && (
-                      <button
-                        onClick={() => updatePrice(app.id, app.totalum_app_id)}
-                        disabled={savingPrice[app.id]}
-                        className="px-2 py-1 bg-indigo-600 text-white rounded text-xs hover:bg-indigo-700 disabled:opacity-50"
-                      >
-                        {savingPrice[app.id] ? '...' : 'Salva'}
-                      </button>
-                    )}
-                  </div>
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-400">
-                  {getDaysRemaining(app.trial_ends_at)} giorni
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap">
-                  <div className="flex items-center gap-2">
-                    {app.totalum_app_id && (
-                      <button
-                        onClick={() => copyCheckoutLink(app.totalum_app_id)}
+                  </td>
+                  <td className="px-4 sm:px-6 py-3 sm:py-4 whitespace-nowrap text-sm text-gray-400">
+                    {getDaysRemaining(app.trial_ends_at)} giorni
+                  </td>
+                  <td className="px-4 sm:px-6 py-3 sm:py-4 whitespace-nowrap">
+                    <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2">
+                      {app.totalum_app_id && (
+                        <button
+                          onClick={() => copyCheckoutLink(app.totalum_app_id)}
+                          className="px-3 py-1 bg-slate-700 text-white rounded text-sm hover:bg-slate-600 flex items-center gap-1"
+                        >
+                          {copied ? <Check size={14} /> : <Copy size={14} />}
+                          Link Checkout
+                        </button>
+                      )}
+                      <a
+                        href={`/dashboard/projects/${app.id}`}
                         className="px-3 py-1 bg-slate-700 text-white rounded text-sm hover:bg-slate-600 flex items-center gap-1"
                       >
-                        {copied ? <Check size={14} /> : <Copy size={14} />}
-                        Link Checkout
-                      </button>
-                    )}
-                    <a
-                      href={`/dashboard/projects/${app.id}`}
-                      className="px-3 py-1 bg-slate-700 text-white rounded text-sm hover:bg-slate-600 flex items-center gap-1"
+                        <Settings size={14} />
+                        Dettagli
+                      </a>
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+
+        {/* Mobile Cards */}
+        <div className="sm:hidden divide-y divide-slate-800">
+          {apps.map((app) => (
+            <div key={app.id} className="p-4 space-y-3">
+              <div className="flex justify-between items-start">
+                <div>
+                  <button
+                    onClick={() => router.push(`/dashboard/projects/${app.id}`)}
+                    className="text-purple-400 hover:text-purple-300 hover:underline text-left font-medium text-sm"
+                  >
+                    {app.name}
+                  </button>
+                </div>
+                {getStatusBadge(app.status)}
+              </div>
+              
+              <div className="flex items-center justify-between">
+                <span className="text-gray-400 text-xs">Prezzo Cliente</span>
+                <div className="flex items-center gap-2">
+                  <input
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    value={priceInputs[app.id] || ''}
+                    onChange={(e) => setPriceInputs(prev => ({ ...prev, [app.id]: e.target.value }))}
+                    className="w-16 px-2 py-1 bg-slate-800 text-white rounded border border-slate-700 text-sm"
+                    placeholder="0.00"
+                  />
+                  <span className="text-gray-400 text-xs">€</span>
+                  {app.totalum_app_id && (
+                    <button
+                      onClick={() => updatePrice(app.id, app.totalum_app_id)}
+                      disabled={savingPrice[app.id]}
+                      className="px-2 py-1 bg-indigo-600 text-white rounded text-xs hover:bg-indigo-700 disabled:opacity-50"
                     >
-                      <Settings size={14} />
-                      Dettagli
-                    </a>
-                  </div>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+                      {savingPrice[app.id] ? '...' : 'Salva'}
+                    </button>
+                  )}
+                </div>
+              </div>
+              
+              <div className="flex justify-between items-center">
+                <span className="text-gray-400 text-xs">Giorni Trial</span>
+                <span className="text-gray-400 text-xs">{getDaysRemaining(app.trial_ends_at)} giorni</span>
+              </div>
+              
+              <div className="flex flex-col gap-2 pt-2">
+                {app.totalum_app_id && (
+                  <button
+                    onClick={() => copyCheckoutLink(app.totalum_app_id)}
+                    className="w-full px-3 py-2 bg-slate-700 text-white rounded text-sm hover:bg-slate-600 flex items-center justify-center gap-1"
+                  >
+                    {copied ? <Check size={14} /> : <Copy size={14} />}
+                    Link Checkout
+                  </button>
+                )}
+                <a
+                  href={`/dashboard/projects/${app.id}`}
+                  className="w-full px-3 py-2 bg-slate-700 text-white rounded text-sm hover:bg-slate-600 flex items-center justify-center gap-1"
+                >
+                  <Settings size={14} />
+                  Dettagli
+                </a>
+              </div>
+            </div>
+          ))}
+        </div>
 
         {apps.length === 0 && (
-          <div className="p-6 text-center text-gray-400">
+          <div className="p-4 sm:p-6 text-center text-gray-400 text-sm">
             Nessuna app trovata. Genera la tua prima app dal generator.
           </div>
         )}

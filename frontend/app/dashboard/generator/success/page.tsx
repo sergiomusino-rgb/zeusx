@@ -307,21 +307,23 @@ export default function SuccessPage() {
           )}
         </div>
 
-        {/* Action Buttons */}
-        <div className="flex gap-4">
-          <a
-            href="/dashboard/management"
-            className="flex-1 bg-violet-600 hover:bg-violet-500 text-white py-4 px-6 rounded-xl font-semibold transition-colors text-center"
-          >
-            {t('success_button_go_to_management')}
-          </a>
-          <a
-            href="/dashboard/generator"
-            className="flex-1 bg-slate-800 hover:bg-slate-700 text-white py-4 px-6 rounded-xl font-semibold transition-colors text-center"
-          >
-            {t('success_button_new_prompt')}
-          </a>
-        </div>
+         {/* Action Buttons */}
+         <div className="flex gap-4">
+           {appSlug && (
+             <a
+               href={`/dashboard/projects/${appSlug}`}
+               className="flex-1 bg-violet-600 hover:bg-violet-500 text-white py-4 px-6 rounded-xl font-semibold transition-colors text-center"
+             >
+               {t('success_button_go_to_app_details') || 'Vai ai dettagli dell\'app'}
+             </a>
+           )}
+           <a
+             href="/dashboard/generator"
+             className="flex-1 bg-slate-800 hover:bg-slate-700 text-white py-4 px-6 rounded-xl font-semibold transition-colors text-center"
+           >
+             {t('success_button_new_prompt')}
+           </a>
+         </div>
       </div>
     </div>
   );

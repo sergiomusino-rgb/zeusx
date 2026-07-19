@@ -104,3 +104,31 @@ body {
   background-color: #ffffff;
   color: #171717;
 }
+
+/* Mobile viewport height fix - use dvh for dynamic viewport height */
+@supports (height: 100dvh) {
+  html, body {
+    height: 100dvh;
+  }
+}
+
+/* Ensure proper mobile scrolling */
+@media (max-width: 768px) {
+  .mobile-scroll-container {
+    height: 100dvh;
+    min-height: 100dvh;
+  }
+}
+
+/* Mobile responsive table improvements */
+@media (max-width: 768px) {
+  .mobile-table-stack td {
+    white-space: normal !important;
+  }
+  
+  .mobile-qr-stack {
+    flex-direction: column !important;
+    align-items: center !important;
+    text-align: center !important;
+  }
+}
