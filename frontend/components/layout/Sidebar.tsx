@@ -125,6 +125,13 @@ export default function Sidebar({
         hideForAdmin: true,
       },
       {
+        label: t('nav_admin'),
+        href: '/admin',
+        icon: <Shield size={18} />,
+        isActive: isPathActive(pathname, '/admin'),
+        isAdmin: true,
+      },
+      {
         label: t('nav_management'),
         href: '/dashboard/management',
         icon: <BarChart3 size={18} />,
@@ -149,13 +156,6 @@ export default function Sidebar({
         href: '/dashboard/privacy',
         icon: <Shield size={18} />,
         isActive: isPathActive(pathname, '/dashboard/privacy'),
-      },
-{
-        label: t('nav_admin'),
-        href: '/admin',
-        icon: <Shield size={18} />,
-        isActive: isPathActive(pathname, '/admin'),
-        isAdmin: true,
       },
       {
         label: t('nav_settings'),

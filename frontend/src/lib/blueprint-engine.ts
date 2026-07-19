@@ -90,21 +90,29 @@ export class BlueprintEngine {
       (parsed as any).sector = normalized;
     }
 
-    return sanitizeBlueprint(parsed);
+    const result = sanitizeBlueprint(parsed);
+    if (!result) {
+      throw new Error('Blueprint non valido dopo sanitizzazione');
+    }
+    return result;
   }
 
   async findOrGenerate(options: GenerateOptions): Promise<{ blueprint: BlueprintJSON; isNew: boolean }> {
     const existing = await this.findBlueprint(options.sector);
 
     if (existing) {
+      const blueprint = sanitizeBlueprint({
+        appName: existing.display_name,
+        sector: existing.sector,
+        description: existing.description,
+        schema: existing.schema,
+        ui: existing.ui_config,
+      });
+      if (!blueprint) {
+        throw new Error('Blueprint non valido dal database');
+      }
       return {
-        blueprint: sanitizeBlueprint({
-          appName: existing.display_name,
-          sector: existing.sector,
-          description: existing.description,
-          schema: existing.schema,
-          ui: existing.ui_config,
-        }),
+        blueprint,
         isNew: false,
       };
     }

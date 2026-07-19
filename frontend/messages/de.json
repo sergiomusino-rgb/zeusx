@@ -80,10 +80,10 @@
     "vision": "Agenda",
     "chat": "KI-Chat",
     "pricing": "Pläne & Abonnement",
+    "nav_admin": "Admin",
     "nav_management": "Management Console",
     "nav_management_guide": "Management Guide",
-    "admin": "Admin",
-    "settings": "Einstellungen",
+    "nav_settings": "Einstellungen",
     "backToDashboard": "Zurück zum Dashboard",
     "dataTables": "Daten Tabellen",
     "noTables": "Keine Tabellen verfügbar. Erstellen Sie eine App vom KI-Generator."

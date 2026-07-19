@@ -40,14 +40,14 @@ export default function PricingPage() {
         .from('tenant_members')
         .select('tenant_id')
         .eq('user_id', userId)
-        .limit(1);
+        .limit(1) as any;
 
       if (memberships?.[0]?.tenant_id) {
         const { data: tenant } = await supabase
           .from('tenants')
           .select('plan, app_limit, total_apps_created')
           .eq('id', memberships[0].tenant_id)
-          .single();
+          .single() as any;
 
         if (tenant) {
           setCurrentPlan(tenant.plan || 'free');
@@ -130,11 +130,7 @@ export default function PricingPage() {
 
   const handleUpgrade = async (planId: string, quantity: number = 1) => {
     const { data: { session } } = await supabase.auth.getSession();
-    let token = session?.access_token;
-
-    if (!token) {
-      token = getAccessTokenFromStorage();
-    }
+    const token = session?.access_token || getAccessTokenFromStorage();
 
     if (!token || !session?.user) {
       window.location.href = '/login';

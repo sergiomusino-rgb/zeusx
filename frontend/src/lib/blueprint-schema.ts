@@ -43,8 +43,8 @@ const FieldOptionsSchema = z
   .union([
     z.array(z.string()),
     z.array(z.any()).transform((arr) => arr.map((o: any) => (typeof o === 'string' ? o : o?.label || o?.value || String(o))).filter(Boolean)),
-    z.record(z.string()).transform((rec) => Object.values(rec)),
-    z.record(z.any()).transform((rec) => Object.values(rec).map((v: any) => String(v))),
+    z.record(z.string(), z.string()).transform((rec) => Object.values(rec)),
+    z.record(z.string(), z.any()).transform((rec) => Object.values(rec).map((v: any) => String(v))),
     z.null(),
   ])
   .optional()
@@ -116,15 +116,15 @@ export const UIConfigSchema = z.object({
       z.string().default('#6366f1'),
     ])
     .default('#6366f1'),
-  sidebar: z.union([
+sidebar: z.union([
     z.array(SidebarItemSchema),
     z.boolean().transform(() => []),
-    z.record(z.any()).transform((obj) => Object.keys(obj)),
+    z.record(z.string(), z.any()).transform((obj) => Object.keys(obj)),
     z.any().transform(() => []),
   ]).default([]),
-  dashboardCards: z.union([
+dashboardCards: z.union([
     z.array(DashboardCardSchema),
-    z.record(z.unknown()).transform((obj) => Object.values(obj).map((v: unknown) => {
+    z.record(z.string(), z.unknown()).transform((obj) => Object.values(obj).map((v: unknown) => {
       if (typeof v === 'object' && v !== null) {
         const entry = v as Record<string, unknown>;
         return {

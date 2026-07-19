@@ -83,10 +83,10 @@
     "vision": "Agenda",
     "chat": "Chat AI",
     "pricing": "Piani e Abbonamento",
+    "nav_admin": "Admin",
     "nav_management": "Console Management",
     "nav_management_guide": "Guida Management",
-    "admin": "Admin",
-    "settings": "Impostazioni",
+    "nav_settings": "Impostazioni",
     "backToDashboard": "Torna alla Dashboard",
     "dataTables": "Tabelle Dati",
     "noTables": "Nessuna tabella disponibile. Crea un'app dal Generatore AI."

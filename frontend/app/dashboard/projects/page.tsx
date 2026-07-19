@@ -61,7 +61,8 @@ export default function ProjectsPage() {
 
       if (membershipError) {
         console.error('[Projects] membership error:', membershipError);
-        setError(t('projects_error_membership') + membershipError.message);
+        const errorMessage = membershipError.message || membershipError.details || JSON.stringify(membershipError);
+        setError(t('projects_error_membership') + errorMessage);
         setLoading(false);
         return;
       }

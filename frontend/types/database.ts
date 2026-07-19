@@ -6,6 +6,9 @@
 // App Status enum
 export type AppStatus = 'trial' | 'active' | 'past_due' | 'canceled';
 
+// Plan type
+export type Plan = 'starter' | 'pro' | 'business';
+
 // Tabella apps - con i nuovi campi per Stripe Managed Payments
 export interface App {
   id: string; // UUID
@@ -38,6 +41,7 @@ export interface Tenant {
   slug: string;
   plan: string;
   app_limit: number;
+  total_apps_created: number;
   created_at: string | null; // TIMESTAMPTZ
   updated_at: string | null; // TIMESTAMPTZ
 }
@@ -78,6 +82,18 @@ export interface AppRegistry {
   updated_at: string | null; // TIMESTAMPTZ
 }
 
+// Tabella blueprints
+export interface Blueprint {
+  id: string; // UUID
+  sector: string;
+  display_name: string;
+  description: string;
+  schema: Record<string, unknown>;
+  ui_config: Record<string, unknown>;
+  created_at: string | null; // TIMESTAMPTZ
+  updated_at: string | null; // TIMESTAMPTZ
+}
+
 // Input types per le operazioni di inserimento
 export interface NewApp {
   tenant_id: string;
@@ -108,4 +124,87 @@ export interface UpdateApp {
   trial_start?: string | null;
   trial_end?: string | null;
 }
-  
+
+// Database type for Supabase client
+export interface Database {
+  public: {
+    Tables: {
+      apps: {
+        Row: App;
+        Insert: NewApp;
+        Update: UpdateApp;
+      };
+      tenants: {
+        Row: Tenant;
+        Insert: Omit<Tenant, 'id' | 'created_at' | 'updated_at'> & { total_apps_created?: number };
+        Update: Partial<Omit<Tenant, 'id' | 'created_at' | 'updated_at'>>;
+      };
+      profiles: {
+        Row: Profile & { role?: string; subscription_plan?: string };
+        Insert: Omit<Profile, 'id' | 'created_at' | 'updated_at'> & { role?: string; subscription_plan?: string };
+        Update: Partial<Omit<Profile, 'id' | 'created_at' | 'updated_at'>> & { role?: string; subscription_plan?: string };
+      };
+      subscriptions: {
+        Row: Subscription;
+        Insert: Omit<Subscription, 'id' | 'created_at' | 'updated_at'>;
+        Update: Partial<Omit<Subscription, 'id' | 'created_at' | 'updated_at'>>;
+      };
+      app_registry: {
+        Row: AppRegistry;
+        Insert: Omit<AppRegistry, 'id' | 'created_at' | 'updated_at'>;
+        Update: Partial<Omit<AppRegistry, 'id' | 'created_at' | 'updated_at'>>;
+      };
+      tenant_members: {
+        Row: {
+          id: string;
+          tenant_id: string;
+          user_id: string;
+          role: string;
+          created_at: string | null;
+        };
+        Insert: {
+          tenant_id: string;
+          user_id: string;
+          role?: string;
+        };
+        Update: {
+          role?: string;
+        };
+      };
+      app_users: {
+        Row: {
+          id: string;
+          user_id: string;
+          app_id: string;
+          email: string;
+          full_name?: string;
+          role: 'admin' | 'agent' | 'viewer' | 'editor' | 'reseller';
+          is_active: boolean;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          user_id: string;
+          app_id: string;
+          email: string;
+          full_name?: string;
+          role?: 'admin' | 'agent' | 'viewer' | 'editor' | 'reseller';
+          is_active?: boolean;
+        };
+        Update: {
+          email?: string;
+          full_name?: string;
+          role?: 'admin' | 'agent' | 'viewer' | 'editor' | 'reseller';
+          is_active?: boolean;
+        };
+      };
+      blueprints: {
+        Row: Blueprint;
+        Insert: Omit<Blueprint, 'id' | 'created_at' | 'updated_at'>;
+        Update: Partial<Omit<Blueprint, 'id' | 'created_at' | 'updated_at'>>;
+      };
+    };
+    Views: {};
+    Functions: {};
+  };
+}

@@ -1,6 +1,7 @@
 import { createClient } from '@supabase/supabase-js';
 import { NextResponse } from 'next/server';
 import { sanitizeBlueprint, normalizeSector } from '@/src/lib/blueprint-schema';
+import type { Database } from '@/types/database';
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
 const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
@@ -8,7 +9,7 @@ const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
 const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || 'https://zeusx-backend.onrender.com';
 
 function getServiceSupabase() {
-  return createClient(supabaseUrl, serviceRoleKey);
+  return createClient<Database>(supabaseUrl, serviceRoleKey);
 }
 
 async function getUserFromRequest(req: Request) {
@@ -16,7 +17,7 @@ async function getUserFromRequest(req: Request) {
   const token = authHeader?.startsWith('Bearer ') ? authHeader.slice(7) : null;
   if (!token) return null;
 
-  const supabase = createClient(supabaseUrl, process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!, {
+  const supabase = createClient<Database>(supabaseUrl, process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!, {
     auth: { persistSession: false, autoRefreshToken: false },
   });
 
@@ -25,12 +26,12 @@ async function getUserFromRequest(req: Request) {
   return user;
 }
 
-async function getOrCreateTenant(supabase: ReturnType<typeof createClient>, user: { id: string; email?: string }) {
+async function getOrCreateTenant(supabase: any, user: { id: string; email?: string }) {
   const { data: memberships, error: membershipError } = await supabase
     .from('tenant_members')
     .select('tenant_id')
     .eq('user_id', user.id)
-    .limit(1);
+    .limit(1) as any;
 
   if (membershipError) {
     console.error('[getOrCreateTenant] membership error:', membershipError);
@@ -49,7 +50,7 @@ async function getOrCreateTenant(supabase: ReturnType<typeof createClient>, user
       total_apps_created: 0,
     })
     .select('id')
-    .single();
+    .single() as any;
 
   if (tenantError || !tenant) {
     throw new Error('Errore creazione tenant');
@@ -59,21 +60,21 @@ async function getOrCreateTenant(supabase: ReturnType<typeof createClient>, user
     tenant_id: tenant.id,
     user_id: user.id,
     role: 'owner',
-  });
+  } as any);
 
   return tenant.id;
 }
 
 const ADMIN_USER_ID = 'd3eda57f-692a-4904-ac5f-93bdaaec8ce5';
 
-async function canCreateApp(supabase: ReturnType<typeof createClient>, tenantId: string, userId?: string): Promise<{ allowed: boolean; reason?: string; slotsAvailable?: number; tenant?: any }> {
+async function canCreateApp(supabase: any, tenantId: string, userId?: string): Promise<{ allowed: boolean; reason?: string; slotsAvailable?: number; tenant?: any }> {
   // Admin: app illimitate
   if (userId === ADMIN_USER_ID) {
     const { data: tenant, error: tenantError } = await supabase
       .from('tenants')
       .select('plan, app_limit, total_apps_created')
       .eq('id', tenantId)
-      .single();
+      .single() as any;
     if (tenantError || !tenant) {
       // Crea tenant se non esiste
       const { data: newTenant } = await supabase
@@ -87,7 +88,7 @@ async function canCreateApp(supabase: ReturnType<typeof createClient>, tenantId:
           total_apps_created: 0,
         })
         .select('plan, app_limit, total_apps_created')
-        .single();
+        .single() as any;
       console.log('[canCreateApp] admin tenant created:', newTenant);
       return { allowed: true, slotsAvailable: Infinity, tenant: newTenant };
     }
@@ -101,7 +102,7 @@ async function canCreateApp(supabase: ReturnType<typeof createClient>, tenantId:
     .from('tenants')
     .select('plan, app_limit, total_apps_created')
     .eq('id', tenantId)
-    .single();
+    .single() as any;
 
   console.log('[canCreateApp] tenant:', tenant, 'error:', tenantError);
 
@@ -208,21 +209,21 @@ export async function POST(req: Request) {
       .from('blueprints')
       .select('id')
       .eq('sector', normalizedSector)
-      .single();
+      .single() as any;
 
     let blueprintId = existingBlueprint?.id;
-    if (!blueprintId) {
-      const { data: newBlueprint, error: blueprintError } = await supabase
-        .from('blueprints')
-        .insert({
-          sector: normalizedSector,
-          display_name: blueprint.appName,
-          description: blueprint.description || '',
-          schema: blueprint.schema,
-          ui_config: blueprint.ui,
-        })
-        .select('id')
-        .single();
+     if (!blueprintId) {
+       const { data: newBlueprint, error: blueprintError } = await supabase
+         .from('blueprints')
+         .insert({
+           sector: normalizedSector,
+           display_name: blueprint.appName,
+           description: blueprint.description || '',
+           schema: blueprint.schema,
+           ui_config: blueprint.ui,
+         } as any)
+         .select('id')
+         .single() as any;
 
       if (blueprintError || !newBlueprint) {
         console.error('[API /apps] blueprint insert error:', blueprintError);
@@ -259,9 +260,9 @@ export async function POST(req: Request) {
          expiry_warning_sent: false,
          is_active: true,
          status: 'trial', // Stato iniziale: trial
-       })
+       } as any)
        .select('id, name, trial_ends_at, expires_at, slug, client_password, client_email, status')
-       .single();
+       .single() as any;
 
     if (appError || !app) {
       console.error('[API /apps] app insert error:', appError);
@@ -279,20 +280,18 @@ export async function POST(req: Request) {
         status: 'active',
         monthly_fee: 0.00,
         zeusx_share: 0.00,
-      });
+      } as any);
 
     if (registryError) {
       console.error('[API /apps] app_registry insert error:', registryError);
       // Non bloccare la creazione app se fallisce l'aggiornamento registry
     }
 
-    // Incrementa il contatore permanente di app create (non si libera mai)
-    if (user.id !== ADMIN_USER_ID) {
-      await supabase
-        .from('tenants')
-        .update({ total_apps_created: (tenant?.total_apps_created || 0) + 1 })
-        .eq('id', tenantId);
-    }
+     // Incrementa il contatore permanente di app create (non si libera mai)
+     if (user.id !== ADMIN_USER_ID) {
+       const updateData: any = { total_apps_created: (tenant?.total_apps_created || 0) + 1 };
+       await (supabase.from('tenants') as any).update(updateData).eq('id', tenantId);
+     }
 
     // Incrementa fee mensile per la nuova app
     try {

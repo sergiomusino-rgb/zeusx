@@ -1,4 +1,5 @@
 import { createClient } from '@supabase/supabase-js';
+import type { Database } from '@/types/database';
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
@@ -13,9 +14,9 @@ if (!supabaseUrl || !supabaseAnonKey) {
 }
 
 // Singleton pattern per evitare istanze multiple di GoTrueClient
-const globalForSupabaseBrowser = globalThis as unknown as { supabaseBrowser: ReturnType<typeof createClient> };
+const globalForSupabaseBrowser = globalThis as unknown as { supabaseBrowser: ReturnType<typeof createClient<Database>> };
 
-export const supabaseBrowser = globalForSupabaseBrowser.supabaseBrowser || createClient(supabaseUrl, supabaseAnonKey, {
+export const supabaseBrowser = globalForSupabaseBrowser.supabaseBrowser || createClient<Database>(supabaseUrl, supabaseAnonKey, {
   auth: {
     persistSession: true,
     autoRefreshToken: true,

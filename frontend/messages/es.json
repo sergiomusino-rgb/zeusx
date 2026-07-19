@@ -80,10 +80,10 @@
     "vision": "Agenda",
     "chat": "Chat AI",
     "pricing": "Planes y Suscripción",
+    "nav_admin": "Admin",
     "nav_management": "Management Console",
     "nav_management_guide": "Guía Management",
-    "admin": "Admin",
-    "settings": "Configuración",
+    "nav_settings": "Configuración",
     "backToDashboard": "Volver al Panel",
     "dataTables": "Tablas de Datos",
     "noTables": "No hay tablas disponibles. Crea una app desde el Generador AI."

@@ -189,19 +189,35 @@ app.post('/api/webhooks/stripe', express.raw({ type: 'application/json' }), asyn
           }
           console.log(`[Stripe Webhook] app_limit aggiornato: ${tenant.app_limit} -> ${newAppLimit}`);
         } else {
-          // Regular plan upgrade
+          // Regular plan upgrade - resolve plan and update BOTH plan and app_limit atomically
           const plan = await resolvePlanFromSession(stripe, session);
           console.log(`[Stripe Webhook] piano risolto: ${plan}`);
           
+          // Map plan to app_limit
+          const planLimits = {
+            starter: 1,
+            pro: 5,
+            business: 100,
+            basic: 1,
+            vip: 100,
+          };
+          const appLimit = planLimits[plan] || 1;
+          
           const { error: updateTenantError } = await supabase
             .from('tenants')
-            .update({ plan, updated_at: new Date().toISOString() })
+            .update({ 
+              plan, 
+              app_limit: appLimit,
+              updated_at: new Date().toISOString() 
+            })
             .eq('id', tenantId);
 
           if (updateTenantError) {
             console.error(`[Stripe Webhook] errore aggiornamento tenant ${tenantId}`, updateTenantError);
             throw updateTenantError;
           }
+          
+          console.log(`[Stripe Webhook] tenant ${tenantId} aggiornato: plan=${plan}, app_limit=${appLimit}`);
         }
 
         const subscriptionId = session.subscription;
