@@ -79,6 +79,7 @@
   "Sidebar": {
     "dashboard": "Dashboard",
     "generator": "Generatore AI",
+    "creator": "Creator AI",
     "projects": "App Create",
     "vision": "Agenda",
     "chat": "Chat AI",
@@ -129,8 +130,10 @@
     "syncError": "Errore durante l'attivazione del piano."
   },
   "Generator": {
-    "title": "✨ Crea il tuo Gestionale",
-    "subtitle": "Seleziona il settore per il tuo gestionale",
+    "title": "Generatore AI",
+    "subtitle": "Crea app e tabelle gestionali tramite prompt o voce",
+    "placeholder": "Descrivi il tuo gestionale o dettalo a voce col microfono...",
+    "generate_button": "Genera con AI",
     "appName": "Nome dell'App *",
     "appNamePlaceholder": "Il mio {sector}",
     "customPrompt": "Descrivi il tuo gestionale *",
@@ -145,6 +148,12 @@
     "errorName": "Inserisci un nome per l'app",
     "errorGeneric": "Errore nella generazione",
     "errorUnknown": "Errore sconosciuto"
+  },
+  "Creator": {
+    "title": "Creator AI",
+    "subtitle": "Personalizza la struttura dell'applicazione",
+    "placeholder": "Inserisci le specifiche della nuova app...",
+    "generate_button": "Crea Applicazione"
   },
   "Admin": {
     "loading": "Caricamento...",
@@ -537,6 +546,21 @@
     "orders": "Ordini",
     "categories": "Categorie",
     "products": "Prodotti"
+  },
+  "Creator": {
+    "title": "Creator AI",
+    "subtitle": "Genera e modifica app con intelligenza artificiale",
+    "prompt_title": "Prompt di Generazione",
+    "prompt_placeholder": "Descrivi l'app che vuoi creare o modificare...",
+    "prompt_examples": "Esempi:",
+    "templates_title": "Template / Settori",
+    "preview_title": "Anteprima Schema",
+    "preview_empty": "Nessuno schema generato",
+    "preview_hint": "Compila il prompt e seleziona un template per generare lo schema",
+    "generating": "Generazione schema in corso...",
+    "generate_button": "Genera Schema",
+    "apply_theme_button": "Applica Tema",
+    "save_button": "Salva App"
   },
   "ZeusxGenerator": {
     "title": "🌐 Generatore AI integrato",

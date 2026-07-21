@@ -548,17 +548,34 @@ app.post('/api/generate-app', async (req, res) => {
     const { sector, tenantId } = req.body;
     if (!sector) return res.status(400).json({ error: 'Settore richiesto' });
 
+    // Carica design system per il settore
+    const { getDesignSystemForSector } = require('./utils/designSystemLoader');
+    const designSystem = getDesignSystemForSector(sector);
+    
     const provider = 'groq';
     const prompt = `Sei un architetto software. Genera un blueprint JSON per un gestionale SaaS per il settore "${sector}".
+
+${designSystem.designContent ? `## DESIGN SYSTEM DA APPLICARE\n${designSystem.designContent}\n` : ''}
+
 Il JSON deve contenere:
 - appName: nome dell'app
 - sector: settore normalizzato in kebab-case
 - description: descrizione breve
 - schema: { tables: [{ name, label, labelPlural, icon, fields: [{ id, type, label, required, options, target, targetLabel }] }] }
-- ui: { primaryColor, sidebar, dashboardCards: [{ type, table, label, field }] }
+- ui: { 
+  primaryColor: "${designSystem.designTokens?.colors?.primary || '#6366f1'}",
+  secondaryColor: "${designSystem.designTokens?.colors?.secondary || '#a855f7'}",
+  background: "${designSystem.designTokens?.colors?.background || '#ffffff'}",
+  surface: "${designSystem.designTokens?.colors?.surface || '#ffffff'}",
+  headlineFont: "${designSystem.designTokens?.typography?.headline || 'Inter'}",
+  bodyFont: "${designSystem.designTokens?.typography?.body || 'Inter'}",
+  sidebar: [], 
+  dashboardCards: [{ type, table, label, field }] 
+}
+
 Rispondi SOLO con il JSON valido, senza testo aggiuntivo.`;
 
-    console.log('[generate-app] provider:', provider);
+    console.log('[generate-app] provider:', provider, 'sector:', sector);
 
     let raw = '';
 
@@ -591,8 +608,20 @@ Rispondi SOLO con il JSON valido, senza testo aggiuntivo.`;
       sector: parsed.sector || sector.toLowerCase().replace(/\s+/g, '-'),
       description: parsed.description || '',
       schema: parsed.schema || { tables: [] },
-      ui: parsed.ui || { primaryColor: '#6366f1', sidebar: [], dashboardCards: [] },
+      ui: parsed.ui || { 
+        primaryColor: designSystem.designTokens?.colors?.primary || '#6366f1',
+        secondaryColor: designSystem.designTokens?.colors?.secondary || '#a855f7',
+        background: designSystem.designTokens?.colors?.background || '#ffffff',
+        surface: designSystem.designTokens?.colors?.surface || '#ffffff',
+        sidebarBg: designSystem.designTokens?.colors?.sidebarBg || '#1e293b',
+        headlineFont: designSystem.designTokens?.typography?.headline || 'Inter',
+        bodyFont: designSystem.designTokens?.typography?.body || 'Inter',
+        sidebar: [], 
+        dashboardCards: [] 
+      },
     };
+
+    console.log('[generate-app] Blueprint generato per settore:', sector, 'design:', designSystem.designContent ? 'loaded' : 'default');
 
     return res.json({ blueprint, tenantId });
   } catch (err) {

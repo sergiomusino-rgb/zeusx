@@ -5,6 +5,7 @@
 const express = require('express');
 const router = express.Router();
 const { createClient } = require('@supabase/supabase-js');
+const { getDesignSystemForSector } = require('../utils/designSystemLoader');
 
 // Configurazione Totalum
 const TOTALUM_API_URL = process.env.TOTALUM_API_URL || 'https://api-accounts.totalum.app';
@@ -193,10 +194,20 @@ router.post('/generate', async (req, res) => {
     const validProjectId = base.replace(/^[^a-z]/, 'z');
     const projectId = validProjectId.slice(0, 35).replace(/-$/, '');
 
-    // Costruisci il prompt completo
-    const fullPrompt = userPrompt
-      ? `${userPrompt}\n\nSettore: ${sectorValue}\n\nNome app: ${appNameValue}`
-      : `Genera un'interfaccia per: ${sectorValue}\n\nNome app: ${appNameValue}`;
+    // ─── CARICA DESIGN SYSTEM PER SETTORE ─────────────────────────────────────────
+    console.log(`[ZeusX] Caricamento design system per settore: ${sectorValue}`);
+    const designSystem = getDesignSystemForSector(sectorValue);
+    
+    console.log(`[ZeusX] Design system caricato:`, {
+      hasDesignContent: !!designSystem.designContent,
+      hasDesignTokens: !!designSystem.designTokens,
+      primaryColor: designSystem.designTokens?.colors?.primary,
+      headlineFont: designSystem.designTokens?.typography?.headline
+    });
+
+    // Costruisci il prompt completo con design system iniettato
+    const basePrompt = userPrompt || `Genera un'interfaccia per: ${sectorValue}`;
+    const fullPrompt = `${basePrompt}\n\nSettore: ${sectorValue}\n\nNome app: ${appNameValue}\n\n${designSystem.systemPrompt}`;
 
     // Step 1: Crea il progetto su Totalum
     console.log('[Totalum] Creazione progetto:', projectId);
@@ -254,6 +265,10 @@ router.post('/generate', async (req, res) => {
     console.log('[Totalum] API Key (primi 20 caratteri):', TOTALUM_API_KEY?.substring(0, 20) + '...');
     console.log('[Totalum] URL completo:', `${TOTALUM_API_URL}/api/v1/vcaas/projects/${projectId}/agent/start`);
 
+    // ─── AVVIO AGENTE TOTALUM CON PROMPT MIGLIORATO ───────────────────────────────
+    console.log('[ZeusX] Invio prompt a Totalum con design system iniettato');
+    console.log('[ZeusX] Lunghezza prompt:', fullPrompt.length, 'caratteri');
+    
     const startAgentResponse = await fetch(`${TOTALUM_API_URL}/api/v1/vcaas/projects/${projectId}/agent/start`, {
       method: 'POST',
       headers: {
@@ -261,7 +276,14 @@ router.post('/generate', async (req, res) => {
         'api-key': TOTALUM_API_KEY,
       },
       body: JSON.stringify({
-        prompt: fullPrompt
+        prompt: fullPrompt,
+        metadata: {
+          sector: sectorValue,
+          appName: appNameValue,
+          designSystem: designSystem.designContent ? 'loaded' : 'default',
+          primaryColor: designSystem.designTokens?.colors?.primary || '#6366f1',
+          headlineFont: designSystem.designTokens?.typography?.headline || 'Inter'
+        }
       }),
     });
 
@@ -349,7 +371,7 @@ router.post('/generate', async (req, res) => {
       }
     }
 
-    // Step 4: Restituisci URL di reindirizzamento
+    // Step 4: Restituisci URL di reindirizzamento con info design system
     const projectUrl = `https://www.totalum.app/projects/${projectId}`;
 
     return res.json({
@@ -357,7 +379,12 @@ router.post('/generate', async (req, res) => {
       data: {
         projectId: projectId,
         projectUrl: projectUrl,
-        message: 'Progetto creato con successo. L\'agente sta generando l\'interfaccia.'
+        message: 'Progetto creato con successo. L\'agente sta generando l\'interfaccia.',
+        designSystem: {
+          loaded: !!designSystem.designContent,
+          primaryColor: designSystem.designTokens?.colors?.primary || '#6366f1',
+          headlineFont: designSystem.designTokens?.typography?.headline || 'Inter'
+        }
       }
     });
 

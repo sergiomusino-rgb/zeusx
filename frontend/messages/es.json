@@ -76,6 +76,7 @@
   "Sidebar": {
     "dashboard": "Panel",
     "generator": "Generador AI",
+    "creator": "Creator AI",
     "projects": "Apps Creadas",
     "vision": "Agenda",
     "chat": "Chat AI",
@@ -126,8 +127,10 @@
     "syncError": "Error durante la activación del plan."
   },
   "Generator": {
-    "title": "✨ Crea tu Sistema de Gestión",
-    "subtitle": "Selecciona un sector para tu sistema de gestión",
+    "title": "Generador AI",
+    "subtitle": "Describe lo que quieres crear o dilo en voz alta",
+    "placeholder": "Ej. Crea la tabla Pacientes con nombre, apellido, visita y fecha... o usa el micrófono",
+    "generate_button": "Generar con AI",
     "appName": "Nombre de la App *",
     "appNamePlaceholder": "Mi {sector}",
     "customPrompt": "Describe tu sistema de gestión *",

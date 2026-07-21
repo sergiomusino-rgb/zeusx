@@ -62,9 +62,9 @@ const FIELD_TYPES = [
 export default function EditTableModal({
   table, onSave, onClose, saving, colors,
 }: EditTableModalProps) {
-  const [tableName, setTableName] = useState(table.name);
-  const [tableLabel, setTableLabel] = useState(table.label);
-  const [tableLabelPlural, setTableLabelPlural] = useState(table.labelPlural);
+  const [tableName, setTableName] = useState(table.name || '');
+  const [tableLabel, setTableLabel] = useState(table.label || '');
+  const [tableLabelPlural, setTableLabelPlural] = useState(table.labelPlural || '');
   const [fields, setFields] = useState<FieldDef[]>(() =>
     table.fields.map(f => ({ ...f }))
   );

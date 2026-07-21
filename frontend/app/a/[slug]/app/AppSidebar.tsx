@@ -38,6 +38,9 @@ interface AppSidebarProps {
   showTableNavigation?: boolean;
   onBackToDashboard?: () => void;
   onClose?: () => void;
+  sidebarBg?: string;
+  sidebarText?: string;
+  sidebarHoverBg?: string;
 }
 
 // ============================================================================
@@ -49,6 +52,9 @@ export default function AppSidebar({
   showTableNavigation = false,
   onBackToDashboard,
   onClose,
+  sidebarBg = '#1e293b',
+  sidebarText = '#e2e8f0',
+  sidebarHoverBg = '#334155',
 }: AppSidebarProps) {
   const pathname = usePathname();
   const { t } = useLanguage();
@@ -155,16 +161,39 @@ export default function AppSidebar({
         }
       `}</style>
       
-      <aside className="flex h-full w-64 flex-col border-r border-slate-800 bg-slate-900">
+      <aside 
+        className="flex h-full w-64 flex-col border-r"
+        style={{
+          backgroundColor: sidebarBg,
+          borderColor: sidebarBg === '#1e293b' ? '#334155' : `${sidebarBg}40`,
+          color: sidebarText,
+        }}
+      >
         {/* Mobile Close Button */}
         {onClose && (
-          <div className="flex items-center justify-between border-b border-slate-800/60 px-5 py-4 md:hidden">
-            <span className="bg-gradient-to-r from-blue-400 to-indigo-500 bg-clip-text text-lg font-black tracking-wider text-transparent">
+          <div 
+            className="flex items-center justify-between border-b px-5 py-4 md:hidden"
+            style={{ borderColor: `${sidebarText}20` }}
+          >
+            <span 
+              className="text-lg font-black tracking-wider"
+              style={{ 
+                background: `linear-gradient(to right, ${sidebarText}, ${sidebarText}99)`,
+                WebkitBackgroundClip: 'text',
+                WebkitTextFillColor: 'transparent',
+              }}
+            >
               ⚡ ZEUSX
             </span>
             <button
               onClick={onClose}
-              className="rounded-lg p-1.5 text-slate-400 transition-colors hover:bg-slate-800 hover:text-white"
+              className="rounded-lg p-1.5 transition-colors"
+              style={{ 
+                color: `${sidebarText}99`,
+                backgroundColor: 'transparent',
+              }}
+              onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = `${sidebarText}20`; }}
+              onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = 'transparent'; }}
               aria-label={t('sidebar_close_menu')}
             >
               <X size={22} />
@@ -173,10 +202,18 @@ export default function AppSidebar({
         )}
 
         {/* Logo (desktop) */}
-        <div className="hidden h-16 items-center gap-2 border-b border-slate-800/60 px-5 md:flex">
+        <div 
+          className="hidden h-16 items-center gap-2 border-b px-5 md:flex"
+          style={{ borderColor: `${sidebarText}20` }}
+        >
           <Link
             href={`/a/${slug}/app`}
-            className="bg-gradient-to-r from-blue-400 to-indigo-500 bg-clip-text text-xl font-black tracking-wider text-transparent"
+            className="text-xl font-black tracking-wider"
+            style={{ 
+              background: `linear-gradient(to right, ${sidebarText}, ${sidebarText}99)`,
+              WebkitBackgroundClip: 'text',
+              WebkitTextFillColor: 'transparent',
+            }}
           >
             ⚡ ZEUSX
           </Link>
@@ -188,7 +225,13 @@ export default function AppSidebar({
           {showTableNavigation && onBackToDashboard && (
             <button
               onClick={onBackToDashboard}
-              className="mb-3 flex w-full items-center gap-2 rounded-xl px-3 py-2.5 text-sm font-medium text-slate-400 transition-colors hover:bg-slate-800/50 hover:text-white"
+              className="mb-3 flex w-full items-center gap-2 rounded-xl px-3 py-2.5 text-sm font-medium transition-colors"
+              style={{ 
+                color: `${sidebarText}99`,
+                backgroundColor: 'transparent',
+              }}
+              onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = `${sidebarText}15`; }}
+              onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = 'transparent'; }}
             >
               <ArrowLeft size={16} />
               {t('sidebar_back_to_dashboard')}
@@ -200,8 +243,11 @@ export default function AppSidebar({
             <div className="space-y-4">
               {/* Divider */}
               <div className="flex items-center gap-2 px-3 pt-2">
-                <Database size={14} className="text-slate-500" />
-                <span className="text-[10px] font-semibold uppercase tracking-widest text-slate-500">
+                <Database size={14} style={{ color: `${sidebarText}60` }} />
+                <span 
+                  className="text-[10px] font-semibold uppercase tracking-widest"
+                  style={{ color: `${sidebarText}60` }}
+                >
                   {t('sidebar_tables')}
                 </span>
               </div>
@@ -217,18 +263,31 @@ export default function AppSidebar({
                     key={table.name}
                     href={tablePath}
                     onClick={onClose ? () => setTimeout(() => onClose(), 150) : undefined}
-                    className={`flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm transition-all ${
-                      isActive
-                        ? 'border-l-2 border-indigo-500 bg-indigo-500/10 text-indigo-400 font-medium'
-                        : 'border-l-2 border-transparent text-slate-400 hover:bg-slate-800/40 hover:text-slate-200'
-                    }`}
+                    className="flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm transition-all"
+                    style={{
+                      borderLeft: isActive ? `2px solid ${sidebarText}` : '2px solid transparent',
+                      backgroundColor: isActive ? `${sidebarText}15` : 'transparent',
+                      color: isActive ? sidebarText : `${sidebarText}99`,
+                      fontWeight: isActive ? 500 : 400,
+                    }}
+                    onMouseEnter={(e) => { 
+                      if (!isActive) e.currentTarget.style.backgroundColor = `${sidebarText}15`; 
+                    }}
+                    onMouseLeave={(e) => { 
+                      if (!isActive) e.currentTarget.style.backgroundColor = 'transparent'; 
+                    }}
                   >
                     <span className="flex-shrink-0 text-base">
                       {TABLE_ICONS[table.name] || <Database size={18} />}
                     </span>
                     <span className="truncate">{table.labelPlural}</span>
                     {readOnly && (
-                      <span className="ml-auto text-[10px] text-slate-500">(Sola Lettura)</span>
+                      <span 
+                        className="ml-auto text-[10px]"
+                        style={{ color: `${sidebarText}60` }}
+                      >
+                        (Sola Lettura)
+                      </span>
                     )}
                   </Link>
                 );
@@ -237,7 +296,7 @@ export default function AppSidebar({
               {/* Empty state */}
               {filteredTables.length === 0 && (
                 <div className="px-3 py-4 text-center">
-                  <p className="text-xs text-slate-500">
+                  <p className="text-xs" style={{ color: `${sidebarText}60` }}>
                     {t('sidebar_no_tables_access')}
                   </p>
                 </div>
@@ -248,19 +307,30 @@ export default function AppSidebar({
           {/* Admin Settings Link */}
           <div className="mt-4 space-y-1">
             <div className="flex items-center gap-2 px-3 pt-2">
-              <Settings size={14} className="text-slate-500" />
-              <span className="text-[10px] font-semibold uppercase tracking-widest text-slate-500">
+              <Settings size={14} style={{ color: `${sidebarText}60` }} />
+              <span 
+                className="text-[10px] font-semibold uppercase tracking-widest"
+                style={{ color: `${sidebarText}60` }}
+              >
                 Amministrazione
               </span>
             </div>
             <Link
               href={`/a/${slug}/admin`}
               onClick={onClose ? () => setTimeout(() => onClose(), 150) : undefined}
-              className={`flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm transition-all ${
-                pathname === `/a/${slug}/admin`
-                  ? 'border-l-2 border-indigo-500 bg-indigo-500/10 text-indigo-400 font-medium'
-                  : 'border-l-2 border-transparent text-slate-400 hover:bg-slate-800/40 hover:text-slate-200'
-              }`}
+              className="flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm transition-all"
+              style={{
+                borderLeft: pathname === `/a/${slug}/admin` ? `2px solid ${sidebarText}` : '2px solid transparent',
+                backgroundColor: pathname === `/a/${slug}/admin` ? `${sidebarText}15` : 'transparent',
+                color: pathname === `/a/${slug}/admin` ? sidebarText : `${sidebarText}99`,
+                fontWeight: pathname === `/a/${slug}/admin` ? 500 : 400,
+              }}
+              onMouseEnter={(e) => { 
+                if (pathname !== `/a/${slug}/admin`) e.currentTarget.style.backgroundColor = `${sidebarText}15`; 
+              }}
+              onMouseLeave={(e) => { 
+                if (pathname !== `/a/${slug}/admin`) e.currentTarget.style.backgroundColor = 'transparent'; 
+              }}
             >
               <Settings size={18} />
               <span>Configurazione Aziendale</span>

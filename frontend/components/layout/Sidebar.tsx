@@ -100,6 +100,12 @@ export default function Sidebar({
         isActive: isPathActive(pathname, '/dashboard/generator'),
       },
       {
+        label: t('nav_creator'),
+        href: '/dashboard/creator',
+        icon: <Sparkles size={18} />,
+        isActive: isPathActive(pathname, '/dashboard/creator'),
+      },
+      {
         label: t('nav_projects'),
         href: '/dashboard/projects',
         icon: <FolderKanban size={18} />,

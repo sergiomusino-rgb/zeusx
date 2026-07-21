@@ -21,6 +21,7 @@ interface App {
   client_email?: string;
   client_active?: boolean;
   expires_at?: string;
+  initial_password?: string;
 }
 
 interface Membership {
@@ -52,7 +53,7 @@ export default function AppDetailPage() {
       // Prima prova a cercare per ID (UUID)
       const { data, error } = await supabase
         .from('apps')
-        .select('id, name, config, trial_ends_at, is_active, created_at, blueprint_id, tenant_id, slug, client_password, client_email, client_active, expires_at')
+        .select('id, name, config, trial_ends_at, is_active, created_at, blueprint_id, tenant_id, slug, client_password, client_email, client_active, expires_at, initial_password')
         .eq('id', idOrSlug)
         .single();
 
@@ -60,7 +61,7 @@ export default function AppDetailPage() {
       if (error || !data) {
         const { data: slugData, error: slugError } = await supabase
           .from('apps')
-          .select('id, name, config, trial_ends_at, is_active, created_at, blueprint_id, tenant_id, slug, client_password, client_email, client_active, expires_at')
+          .select('id, name, config, trial_ends_at, is_active, created_at, blueprint_id, tenant_id, slug, client_password, client_email, client_active, expires_at, initial_password')
           .eq('slug', idOrSlug)
           .single();
         
@@ -163,7 +164,7 @@ export default function AppDetailPage() {
       if (action === 'toggle') {
         setApp(prev => prev ? { ...prev, client_active: data.client_active } : prev);
       } else if (action === 'regenerate-password') {
-        setApp(prev => prev ? { ...prev, client_password: data.new_password } : prev);
+        setApp(prev => prev ? { ...prev, client_password: data.new_password, initial_password: data.new_password } : prev);
         alert(`Nuova password generata: ${data.new_password}\nConsegnala al cliente.`);
       } else if (action === 'extend-expiry') {
         setApp(prev => prev ? { ...prev, expires_at: data.new_expires_at, client_active: true } : prev);
@@ -312,13 +313,13 @@ export default function AppDetailPage() {
                       <p className="text-xs text-slate-500">{table.fields?.length || 0} campi</p>
                     </div>
                   </div>
-                  <div className="space-y-1">
-                    {(table.fields || []).slice(0, 4).map((field: any) => (
-                      <div key={field.id} className="text-xs text-slate-400 flex justify-between">
-                        <span>{field.label || field.id}</span>
-                        <span className="text-slate-600 uppercase">{field.type}</span>
-                      </div>
-                    ))}
+                    <div className="space-y-1">
+                      {(table.fields || []).slice(0, 4).map((field: any, index: number) => (
+                        <div key={field.name || field.id || index} className="text-xs text-slate-400 flex justify-between">
+                          <span>{field.label || field.name || field.id}</span>
+                          <span className="text-slate-600 uppercase">{field.type}</span>
+                        </div>
+                      ))}
                     {(table.fields || []).length > 4 && (
                       <p className="text-xs text-slate-500 mt-2">+ altri campi...</p>
                     )}

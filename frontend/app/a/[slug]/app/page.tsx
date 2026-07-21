@@ -9,18 +9,15 @@ import EditTableModal from './EditTableModal';
 import CustomTableRenderer from './CustomTableRenderer';
 import CustomRecordModal from './CustomRecordModal';
 import {
-  LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
-  PieChart, Pie, Cell, Legend,
-} from 'recharts';
-import {
   LayoutDashboard, Settings, LogOut, Search, Plus, Pencil, Trash2,
   X, ChevronDown, Users, ShoppingCart, Package, DollarSign, TrendingUp,
   AlertTriangle, Calendar, CheckCircle, Clock, XCircle, Menu,
   Download, Upload, Download as InstallIcon, MessageSquare, Mail, MessageCircle,
-  Settings2, FileText, FileSpreadsheet, File as FileIcon,
+  Settings2, FileText, FileSpreadsheet, File as FileIcon, Database,
 } from 'lucide-react';
   import { QRCodeCanvas } from 'qrcode.react';
   import { useLanguage } from '@/src/lib/LanguageContext';
+  import { applyDesignTokens, getDesignTokensByKey, cssVar } from '@/lib/designTokens';
 
 // ─── Interfaces ───────────────────────────────────────────────────────────────
 
@@ -84,6 +81,7 @@ interface AppSession {
 
 interface AppRecord {
   id: string;
+  data?: Record<string, unknown>;
   [key: string]: unknown;
 }
 
@@ -118,33 +116,6 @@ const SIDEBAR_WIDTHS = {
   modern: '256px',
   compact: '224px',
 };
-
-const CHART_COLORS = ['#6366f1', '#22c55e', '#f59e0b', '#ef4444', '#06b6d4', '#8b5cf6'];
-
-// ─── Mock Data ────────────────────────────────────────────────────────────────
-
-const MONTHLY_REVENUE = [
-  { month: 'Gen', revenue: 12400 }, { month: 'Feb', revenue: 15800 },
-  { month: 'Mar', revenue: 14200 }, { month: 'Apr', revenue: 18900 },
-  { month: 'Mag', revenue: 21300 }, { month: 'Giu', revenue: 19700 },
-  { month: 'Lug', revenue: 23100 }, { month: 'Ago', revenue: 20500 },
-  { month: 'Set', revenue: 25800 }, { month: 'Ott', revenue: 28400 },
-  { month: 'Nov', revenue: 26200 }, { month: 'Dic', revenue: 31500 },
-];
-
-const ORDERS_BY_STATUS = [
-  { name: 'Completati', value: 145, color: '#22c55e' },
-  { name: 'In corso', value: 67, color: '#f59e0b' },
-  { name: 'In attesa', value: 23, color: '#ef4444' },
-];
-
-const UPCOMING_DEADLINES = [
-  { id: '1', date: '2026-07-05', client: 'Rossi Srl', amount: 2450.00 },
-  { id: '2', date: '2026-07-08', client: 'Bianchi SpA', amount: 1890.50 },
-  { id: '3', date: '2026-07-12', client: 'Verdi & Co', amount: 3200.00 },
-  { id: '4', date: '2026-07-15', client: 'Neri Group', amount: 980.75 },
-  { id: '5', date: '2026-07-20', client: 'Gialli Ltd', amount: 4100.00 },
-];
 
 // ─── Theme Helpers ────────────────────────────────────────────────────────────
 
@@ -231,14 +202,66 @@ interface DashboardProps {
   radius: string;
   shadow: string;
   companyName: string;
+  tables: TableDef[];
 }
 
-function Dashboard({ colors, radius, shadow, companyName }: DashboardProps) {
+function Dashboard({ colors, radius, shadow, companyName, tables }: DashboardProps) {
   const { t } = useLanguage();
+  const [totalRecords, setTotalRecords] = useState(0);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    // Count total records across all tables
+    async function loadDashboardData() {
+      try {
+        const appEl = document.querySelector('[data-app-id]');
+        if (!appEl) { setLoading(false); return; }
+        const appId = appEl.getAttribute('data-app-id');
+        const password = appEl.getAttribute('data-password');
+        if (!appId || !password) { setLoading(false); return; }
+
+        let total = 0;
+        for (const table of tables) {
+          try {
+            const res = await fetch(`/api/client/apps/${appId}/records?table=${table.name}`, {
+              headers: { Authorization: `Bearer ${password}` },
+            });
+            if (res.ok) {
+              const data = await res.json();
+              const recs: any[] = Array.isArray(data) ? data : data.records || data.data || [];
+              total += recs.length;
+            }
+          } catch { /* skip table */ }
+        }
+        setTotalRecords(total);
+      } catch { /* ignore */ }
+      setLoading(false);
+    }
+    loadDashboardData();
+  }, [tables]);
+
+  if (loading) {
+    return (
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
+        <div>
+          <h1 style={{ fontFamily: "'Plus Jakarta Sans', sans-serif", color: '#18181B', fontSize: '28px', fontWeight: 700, margin: 0 }}>
+            {t('nav_dashboard')}
+          </h1>
+          <p style={{ color: colors.textSecondary, fontSize: '14px', marginTop: '4px' }}>
+            {t('dashboard_overview')} {companyName}
+          </p>
+        </div>
+        <div style={{ color: colors.textSecondary, textAlign: 'center', padding: '60px' }}>
+          Caricamento...
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
       <div>
-        <h1 style={{ color: colors.text, fontSize: '28px', fontWeight: 700, margin: 0 }}>
+          <h1 style={{ fontFamily: "'Plus Jakarta Sans', sans-serif", color: '#18181B', fontSize: '28px', fontWeight: 700, margin: 0 }}>
           {t('nav_dashboard')}
         </h1>
         <p style={{ color: colors.textSecondary, fontSize: '14px', marginTop: '4px' }}>
@@ -246,196 +269,81 @@ function Dashboard({ colors, radius, shadow, companyName }: DashboardProps) {
         </p>
       </div>
 
-      {/* KPI Cards */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '20px' }}>
-        <KpiCard
-          title={t('dashboard_revenue_today')}
-          value="EUR 4.280"
-          icon={<DollarSign size={22} />}
-          trend="+12.5%"
-          trendUp={true}
-          colors={colors}
-          radius={radius}
-        />
-        <KpiCard
-          title={t('dashboard_new_customers')}
-          value="23"
-          icon={<Users size={22} />}
-          trend="+8.1%"
-          trendUp={true}
-          colors={colors}
-          radius={radius}
-        />
-        <KpiCard
-          title={t('dashboard_open_orders')}
-          value="67"
-          icon={<ShoppingCart size={22} />}
-          trend="-3.2%"
-          trendUp={false}
-          colors={colors}
-          radius={radius}
-        />
-        <KpiCard
-          title={t('dashboard_critical_stock')}
-          value="5"
-          icon={<AlertTriangle size={22} />}
-          trend="+2"
-          trendUp={false}
-          colors={colors}
-          radius={radius}
-        />
-      </div>
-
-      {/* Charts Row */}
-      <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '20px' }}>
-        {/* Line Chart - Monthly Revenue */}
+      {tables.length === 0 ? (
         <div
-          className={`${radius} ${shadow}`}
-          style={{ background: colors.cardBg, border: `1px solid ${colors.border}`, padding: '24px' }}
+          style={{
+            background: '#FFFFFF',
+            border: '1px solid #F4F4F5',
+            borderRadius: '8px',
+            padding: '60px 40px',
+            textAlign: 'center',
+          }}
         >
-          <h3 style={{ color: colors.text, fontSize: '16px', fontWeight: 600, margin: '0 0 16px 0' }}>
-            {t('dashboard_monthly_revenue')}
-          </h3>
-          <ResponsiveContainer width="100%" height={280}>
-            <LineChart data={MONTHLY_REVENUE}>
-              <CartesianGrid strokeDasharray="3 3" stroke={colors.border} />
-              <XAxis dataKey="month" stroke={colors.textSecondary} fontSize={12} />
-              <YAxis stroke={colors.textSecondary} fontSize={12} tickFormatter={(v) => `${(v / 1000).toFixed(0)}k`} />
-              <Tooltip
-                contentStyle={{
-                  background: colors.cardBg,
-                  border: `1px solid ${colors.border}`,
-                  borderRadius: '8px',
-                  color: colors.text,
-                }}
-                formatter={(value: number) => [`EUR ${value.toLocaleString()}`, 'Fatturato']}
-              />
-              <Line
-                type="monotone"
-                dataKey="revenue"
-                stroke={colors.primary}
-                strokeWidth={3}
-                dot={{ fill: colors.primary, r: 4 }}
-                activeDot={{ r: 6 }}
-              />
-            </LineChart>
-          </ResponsiveContainer>
+          <LayoutDashboard size={48} style={{ color: colors.primary, marginBottom: '16px' }} />
+          <h2 style={{ fontFamily: "'Plus Jakarta Sans', sans-serif", color: '#18181B', fontSize: '22px', fontWeight: 700, margin: '0 0 12px 0' }}>
+            Benvenuto in {companyName}!
+          </h2>
+          <p style={{ color: colors.textSecondary, fontSize: '14px', lineHeight: 1.6, maxWidth: '500px', margin: '0 auto' }}>
+            La tua app è pronta per essere utilizzata. Crea tabelle e record per iniziare a gestire i tuoi dati.
+          </p>
         </div>
+      ) : (
+        <>
+          {/* Dynamic KPI Cards based on real data */}
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '20px' }}>
+            <KpiCard
+              title="Tabelle"
+              value={String(tables.length)}
+              icon={<LayoutDashboard size={22} />}
+              colors={colors}
+              radius={radius}
+            />
+            <KpiCard
+              title="Record Totali"
+              value={String(totalRecords)}
+              icon={<Database size={22} />}
+              colors={colors}
+              radius={radius}
+            />
+          </div>
 
-        {/* Pie Chart - Orders by Status */}
-        <div
-          className={`${radius} ${shadow}`}
-          style={{ background: colors.cardBg, border: `1px solid ${colors.border}`, padding: '24px' }}
-        >
-          <h3 style={{ color: colors.text, fontSize: '16px', fontWeight: 600, margin: '0 0 16px 0' }}>
-            Ordini per Stato
-          </h3>
-          <ResponsiveContainer width="100%" height={280}>
-            <PieChart>
-              <Pie
-                data={ORDERS_BY_STATUS}
-                cx="50%"
-                cy="45%"
-                innerRadius={55}
-                outerRadius={85}
-                paddingAngle={4}
-                dataKey="value"
-              >
-                {ORDERS_BY_STATUS.map((entry, index) => (
-                  <Cell key={`cell-${index}`} fill={entry.color} />
-                ))}
-              </Pie>
-              <Tooltip
-                contentStyle={{
-                  background: colors.cardBg,
-                  border: `1px solid ${colors.border}`,
-                  borderRadius: '8px',
-                  color: colors.text,
-                }}
-              />
-              <Legend
-                verticalAlign="bottom"
-                formatter={(value) => <span style={{ color: colors.textSecondary, fontSize: '12px' }}>{value}</span>}
-              />
-            </PieChart>
-          </ResponsiveContainer>
-        </div>
-      </div>
-
-      {/* Upcoming Deadlines Table */}
-      <div
-        className={`${radius} ${shadow}`}
-        style={{ background: colors.cardBg, border: `1px solid ${colors.border}`, padding: '24px' }}
-      >
-        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '16px' }}>
-          <Calendar size={18} style={{ color: colors.primary }} />
-          <h3 style={{ color: colors.text, fontSize: '16px', fontWeight: 600, margin: 0 }}>
-            Agenda
-          </h3>
-        </div>
-        <div style={{ overflowX: 'auto' }}>
-          <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-            <thead>
-              <tr>
-                {['Data', 'Cliente', 'Importo', 'Stato'].map((h) => (
-                  <th
-                    key={h}
-                    style={{
-                      textAlign: 'left',
-                      padding: '10px 12px',
-                      borderBottom: `2px solid ${colors.border}`,
-                      color: colors.textSecondary,
-                      fontSize: '12px',
-                      fontWeight: 600,
-                      textTransform: 'uppercase',
-                      letterSpacing: '0.05em',
-                    }}
-                  >
-                    {h}
-                  </th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {UPCOMING_DEADLINES.map((d) => {
-                const daysUntil = Math.ceil((new Date(d.date).getTime() - Date.now()) / (1000 * 60 * 60 * 24));
-                const statusColor = daysUntil <= 5 ? colors.danger : daysUntil <= 10 ? colors.warning : colors.success;
-                const statusLabel = daysUntil <= 5 ? 'Urgente' : daysUntil <= 10 ? 'Prossima' : 'Pianificata';
-                return (
-                  <tr key={d.id} style={{ borderBottom: `1px solid ${colors.border}` }}>
-                    <td style={{ padding: '12px', color: colors.text, fontSize: '14px' }}>
-                      {new Date(d.date).toLocaleDateString('it-IT')}
-                    </td>
-                    <td style={{ padding: '12px', color: colors.text, fontSize: '14px', fontWeight: 500 }}>
-                      {d.client}
-                    </td>
-                    <td style={{ padding: '12px', color: colors.text, fontSize: '14px' }}>
-                      EUR {d.amount.toLocaleString('it-IT', { minimumFractionDigits: 2 })}
-                    </td>
-                    <td style={{ padding: '12px' }}>
-                      <span
-                        style={{
-                          display: 'inline-flex',
-                          alignItems: 'center',
-                          gap: '4px',
-                          padding: '4px 10px',
-                          borderRadius: '9999px',
-                          fontSize: '12px',
-                          fontWeight: 600,
-                          background: statusColor + '20',
-                          color: statusColor,
-                        }}
-                      >
-                        {statusLabel}
-                      </span>
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        </div>
-      </div>
+          {/* Tables overview */}
+          <div
+            style={{
+              background: '#FFFFFF',
+              border: '1px solid #F4F4F5',
+              borderRadius: '8px',
+              padding: '24px',
+            }}
+          >
+            <h3 style={{ fontFamily: "'Plus Jakarta Sans', sans-serif", color: '#18181B', fontSize: '16px', fontWeight: 600, margin: '0 0 16px 0' }}>
+              Le tue Tabelle
+            </h3>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+              {tables.map((table) => (
+                <div
+                  key={table.name}
+                  style={{
+                    display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                    padding: '12px 16px', borderRadius: '8px',
+                    background: '#FFFFFF', border: '1px solid #F4F4F5',
+                  }}
+                >
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                    {resolveIcon(table.icon || '')}
+                    <span style={{ fontFamily: "'Plus Jakarta Sans', sans-serif", color: '#18181B', fontSize: '14px', fontWeight: 500 }}>
+                      {table.labelPlural || table.label}
+                    </span>
+                  </div>
+                  <span style={{ color: colors.textSecondary, fontSize: '13px' }}>
+                    {table.fields?.length || 0} campi
+                  </span>
+                </div>
+              ))}
+            </div>
+          </div>
+        </>
+      )}
     </div>
   );
 }
@@ -937,7 +845,7 @@ interface ColorPickerProps {
   onChange: (color: string) => void;
 }
 
-function ColorPicker({ value, onChange, colors }: ColorPickerProps & { colors?: ReturnType<typeof getThemeVars> }) {
+function ColorPicker({ value, onChange, colors = getThemeVars('dark', '#6366f1') }: ColorPickerProps & { colors?: ReturnType<typeof getThemeVars> }) {
   const [hue, setHue] = useState(0);
   const [saturation, setSaturation] = useState(100);
   const [lightness, setLightness] = useState(50);
@@ -2197,6 +2105,32 @@ export default function ViewerProFinal() {
     }
   }, [modalRecord, handleCreateRecord, handleUpdateRecord]);
 
+  // ─── Apply Design System Tokens ─────────────────────────────────────────
+
+  useEffect(() => {
+    if (!session) return;
+    const root = document.getElementById('app-root-container');
+    if (!root) return;
+
+    // Determine design key from app config branding or fallback
+    const configBranding = (config?.branding || appInfo?.branding || {}) as Record<string, unknown>;
+    const sectorFromConfig = (configBranding['design_key'] as string) || (configBranding['sector'] as string) || '';
+    
+    // Map known sectors to design tokens
+    const sectorDesignMap: Record<string, string> = {
+      docs: 'docuforge',
+      documentation: 'docuforge',
+      api: 'docuforge',
+    };
+
+    const designKey = sectorDesignMap[sectorFromConfig] || sectorFromConfig || 'docuforge';
+    const tokens = getDesignTokensByKey(designKey);
+    applyDesignTokens(root, tokens);
+    
+    // Also set font-family on body for the design system fonts
+    document.body.style.fontFamily = cssVar('font-body');
+  }, [session, config, appInfo]);
+
   // ─── Loading state ──────────────────────────────────────────────────────
 
   if (loading) {
@@ -2226,8 +2160,9 @@ export default function ViewerProFinal() {
 
   // ─── Main layout ────────────────────────────────────────────────────────
 
-  return (
-    <div style={{ display: 'flex', minHeight: '100vh', background: colors.bg, transition: 'background 0.3s' }}>
+    return (
+    <>
+      <div id="app-root-container" style={{ display: 'flex', minHeight: '100vh', background: '#FAFAFA', transition: 'background 0.3s', fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
       {/* Mobile overlay */}
       {isMobile && sidebarOpen && (
         <div
@@ -2242,10 +2177,12 @@ export default function ViewerProFinal() {
       {/* Sidebar */}
       {(!isMobile || sidebarOpen) && (
         <aside
-          className={`${layoutCfg.sidebarWidth}`}
+          className="w-[280px]"
           style={{
-            background: colors.primary,
-            borderRight: `1px solid ${colors.border}`,
+            background: '#FFFFFF',
+            borderRight: '1px solid #F4F4F5',
+            fontFamily: "'Plus Jakarta Sans', sans-serif",
+            color: '#18181B',
             display: 'flex',
             flexDirection: 'column',
             transition: 'width 0.3s, transform 0.3s',
@@ -2578,6 +2515,7 @@ export default function ViewerProFinal() {
                 radius={layoutCfg.radius}
                 shadow={layoutCfg.shadow}
                 companyName={companyName}
+                tables={tables}
               />
             ) : activeTable ? (
               <DynamicDataTable
@@ -2689,6 +2627,7 @@ export default function ViewerProFinal() {
         />
       )}
     </div>
+    </>
   );
 }
 
@@ -2931,13 +2870,13 @@ function SidebarItem({ icon, label, active, onClick, colors, primaryColor }: Sid
       onMouseLeave={() => setHovered(false)}
       style={{
         display: 'flex', alignItems: 'center', gap: '10px',
-        padding: '10px 14px', borderRadius: '10px', border: 'none',
+        padding: '10px 14px', borderRadius: '8px', border: 'none',
         background: active
-          ? primaryColor + '25'
+          ? '#EFF6FF'
           : hovered
-            ? colors.sidebarHover
+            ? '#F4F4F5'
             : 'transparent',
-        color: active ? primaryColor : colors.sidebarText,
+        color: active ? '#2563EB' : '#18181B',
         fontSize: '14px', fontWeight: active ? 600 : 500,
         cursor: 'pointer', width: '100%', textAlign: 'left',
         transition: 'all 0.15s',
@@ -2947,8 +2886,8 @@ function SidebarItem({ icon, label, active, onClick, colors, primaryColor }: Sid
       {active && (
         <div style={{
           position: 'absolute', left: 0, top: '50%', transform: 'translateY(-50%)',
-          width: '3px', height: '20px', borderRadius: '0 3px 3px 0',
-          background: primaryColor,
+          width: '2px', height: '20px', borderRadius: '0 2px 2px 0',
+          background: '#2563EB',
         }} />
       )}
       <span style={{ display: 'flex', alignItems: 'center', flexShrink: 0 }}>{icon}</span>

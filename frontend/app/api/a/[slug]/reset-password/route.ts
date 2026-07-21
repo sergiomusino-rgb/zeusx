@@ -47,10 +47,13 @@ export async function POST(req: Request, { params }: { params: { slug: string } 
     // Genera nuova password
     const newPassword = generatePassword();
 
-    // Aggiorna password nel DB
+    // Aggiorna password nel DB (sia client_password che initial_password)
     const { error: updateError } = await supabase
       .from('apps')
-      .update({ client_password: newPassword })
+      .update({ 
+        client_password: newPassword,
+        initial_password: newPassword,
+      })
       .eq('id', app.id);
 
     if (updateError) {

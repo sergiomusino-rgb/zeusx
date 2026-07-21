@@ -61,30 +61,32 @@ export default function ClientLoginPage() {
     setSubmitting(true);
 
     try {
-      // Verifica password direttamente da Supabase (policy RLS permette lettura pubblica)
-      const { data: appData, error: appError } = await supabase
-        .from('apps')
-        .select('id, slug, name, client_password, client_active, expires_at, config')
-        .eq('slug', slug)
-        .single();
+    // Verifica password direttamente da Supabase (policy RLS permette lettura pubblica)
+    const { data: appData, error: appError } = await supabase
+      .from('apps')
+      .select('id, slug, name, client_password, initial_password, client_active, expires_at, config')
+      .eq('slug', slug)
+      .single();
 
-      if (appError || !appData) {
-        setError(t('login_error_not_found'));
-        setSubmitting(false);
-        return;
-      }
+    if (appError || !appData) {
+      setError(t('login_error_not_found'));
+      setSubmitting(false);
+      return;
+    }
 
-      if (!appData.client_active) {
-        setError(t('login_error_blocked'));
-        setSubmitting(false);
-        return;
-      }
+    if (!appData.client_active) {
+      setError(t('login_error_blocked'));
+      setSubmitting(false);
+      return;
+    }
 
-      if (appData.client_password !== password) {
-        setError(t('login_error_wrong_password'));
-        setSubmitting(false);
-        return;
-      }
+    // Usa initial_password come fallback se client_password non è impostato
+    const validPassword = appData.client_password || appData.initial_password;
+    if (validPassword !== password) {
+      setError(t('login_error_wrong_password'));
+      setSubmitting(false);
+      return;
+    }
 
       // Se primo accesso, salva email
       if (!app?.client_email && email.trim()) {

@@ -1,10 +1,18 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { useLanguage } from '@/src/lib/LanguageContext';
 import { supabaseBrowser } from '@/src/lib/supabase-browser';
-import { MessageSquare, Send, Loader2, AlertTriangle, CreditCard } from 'lucide-react';
+import { MessageSquare, Send, Mic, MicOff, Loader2, AlertTriangle, CreditCard } from 'lucide-react';
+
+// Type declarations for SpeechRecognition
+declare global {
+  interface Window {
+    SpeechRecognition: any;
+    webkitSpeechRecognition: any;
+  }
+}
 
 // Pattern per riconoscere richieste di creazione app
 const CREATE_APP_PATTERNS = [
@@ -40,6 +48,61 @@ export default function GeneratorPage() {
   const [loadingMessageIndex, setLoadingMessageIndex] = useState(0);
   const [userId, setUserId] = useState<string | null>(null);
   const [isAdmin, setIsAdmin] = useState(false);
+  const [isListening, setIsListening] = useState(false);
+  const recognitionRef = useRef<any>(null);
+
+  // Initialize SpeechRecognition
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+      if (SpeechRecognition) {
+        recognitionRef.current = new SpeechRecognition();
+        recognitionRef.current.lang = locale === 'it' ? 'it-IT' : 
+                                   locale === 'es' ? 'es-ES' : 
+                                   locale === 'de' ? 'de-DE' : 
+                                   locale === 'fr' ? 'fr-FR' : 'en-US';
+        recognitionRef.current.interimResults = true;
+        recognitionRef.current.continuous = false;
+
+        recognitionRef.current.onresult = (event: any) => {
+          const transcript = Array.from(event.results)
+            .map((result: any) => result[0])
+            .map((result) => result.transcript)
+            .join('');
+          setInput(transcript);
+        };
+
+        recognitionRef.current.onend = () => {
+          setIsListening(false);
+        };
+
+        recognitionRef.current.onerror = () => {
+          setIsListening(false);
+        };
+      }
+    }
+  }, [locale]);
+
+  const toggleListening = () => {
+    if (!recognitionRef.current) return;
+    
+    if (isListening) {
+      recognitionRef.current.stop();
+      setIsListening(false);
+    } else {
+      recognitionRef.current.start();
+      setIsListening(true);
+    }
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      if (input.trim() && !isProcessing) {
+        handleSendMessage();
+      }
+    }
+  };
 
   // Ottieni l'utente corrente
   useEffect(() => {
@@ -203,80 +266,49 @@ export default function GeneratorPage() {
 
   return (
     <div className="p-8">
-      <div className="max-w-4xl mx-auto">
+      <div className="max-w-2xl mx-auto">
         {/* Header */}
         <div className="mb-8">
-          <h1 className="text-4xl font-bold mb-4">{t('zeusx_generator_title')}</h1>
-          <p className="text-gray-400 text-lg">{t('zeusx_generator_subtitle')}</p>
+          <h1 className="text-4xl font-bold mb-4">{t('generator_title')}</h1>
+          <p className="text-gray-400 text-lg">{t('generator_subtitle')}</p>
         </div>
 
-        {/* Chat Interface */}
-        <div className="bg-gray-900 border border-gray-800 rounded-2xl p-6">
-          <div className="flex items-center gap-3 mb-4">
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center">
-              <MessageSquare className="w-5 h-5 text-white" />
-            </div>
-            <h2 className="text-xl font-bold">{t('zeusx_generator_chat_title')}</h2>
-          </div>
-
-          {/* Chat Messages */}
-          <div className="h-96 overflow-y-auto mb-4 p-4 bg-gray-800/50 rounded-xl">
-            {messages.length === 0 && (
-              <div className="text-center text-gray-500 mt-16">
-                <p className="mb-2">{t('zeusx_generator_chat_empty')}</p>
-                <p className="text-sm">{t('zeusx_generator_chat_examples')}</p>
-                <ul className="text-xs mt-2 space-y-1">
-                  <li>• "Crea un'app per il mio ristorante"</li>
-                  <li>• "Genera un gestionale per la mia attività di ecommerce"</li>
-                  <li>• "Fai un'app per la palestra"</li>
-                </ul>
-              </div>
-            )}
-            {messages.map((m, i) => (
-              <div key={i} className={`mb-3 ${m.role === 'user' ? 'text-right' : 'text-left'}`}>
-                <span className={`inline-block px-4 py-2 rounded-xl max-w-[80%] ${
-                  m.role === 'user' 
-                    ? 'bg-indigo-600 text-white' 
-                    : 'bg-gray-700 text-gray-100'
-                }`}>
-                  {m.isAppLink ? (
-                    <div>
-                      <p className="mb-2">{m.text}</p>
-                      <a 
-                        href={m.appUrl} 
-                        target="_blank" 
-                        rel="noopener noreferrer"
-                        className="text-indigo-400 hover:text-indigo-300 underline text-sm break-all"
-                      >
-                        {m.appUrl}
-                      </a>
-                    </div>
-                  ) : (
-                    m.text
-                  )}
-                </span>
-              </div>
-            ))}
-          </div>
-
-          {/* Input */}
-          <div className="flex gap-2">
-            <input 
-              className="flex-1 p-3 bg-gray-800 text-white rounded-lg border border-gray-700 focus:outline-none focus:border-violet-500"
+        {/* Main Box */}
+        <div className="bg-gray-900 border border-gray-800 rounded-2xl p-6 mb-6">
+          {/* Prompt Area */}
+          <div className="mb-6 relative">
+            <textarea
               value={input}
               onChange={(e) => setInput(e.target.value)}
-              onKeyDown={(e) => e.key === 'Enter' && handleSendMessage()}
-              placeholder={t('zeusx_generator_chat_placeholder')}
-              disabled={isProcessing}
+              onKeyDown={handleKeyDown}
+              placeholder={t('generator_placeholder')}
+              className="w-full h-32 bg-gray-800 text-white rounded-lg border border-gray-700 focus:border-amber-500 resize-none p-4 pr-12"
             />
-            <button 
-              onClick={() => handleSendMessage()} 
-              disabled={isProcessing || !input.trim()}
-              className="bg-violet-600 hover:bg-violet-500 disabled:bg-gray-600 text-white px-6 py-3 rounded-lg font-semibold transition flex items-center justify-center"
+            {/* Microphone Button */}
+            <button
+              type="button"
+              onClick={toggleListening}
+              disabled={isProcessing}
+              className={`absolute right-3 top-3 p-2 rounded-lg transition-colors ${
+                isListening 
+                  ? 'bg-red-500/20 text-red-400 animate-pulse' 
+                  : 'bg-gray-700 text-gray-400 hover:bg-gray-600 hover:text-white'
+              }`}
+              title={isListening ? 'Stop listening' : 'Speak to enter text'}
             >
-              <Send className="w-4 h-4" />
+              {isListening ? <MicOff className="w-5 h-5" /> : <Mic className="w-5 h-5" />}
             </button>
           </div>
+
+          {/* Generate Button */}
+          <button
+            onClick={() => handleSendMessage()}
+            disabled={!input.trim() || isProcessing}
+            className="w-full bg-amber-600 hover:bg-amber-500 disabled:bg-gray-600 text-white py-3 rounded-lg font-semibold transition flex items-center justify-center gap-2"
+          >
+            <Send className="w-4 h-4" />
+          {t('generator_generate_button')}
+          </button>
         </div>
       </div>
 

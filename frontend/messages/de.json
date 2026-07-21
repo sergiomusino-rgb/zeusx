@@ -76,6 +76,7 @@
   "Sidebar": {
     "dashboard": "Dashboard",
     "generator": "KI-Generator",
+    "creator": "Creator AI",
     "projects": "Erstellte Apps",
     "vision": "Agenda",
     "chat": "KI-Chat",
@@ -126,8 +127,10 @@
     "syncError": "Fehler bei der Planaktivierung."
   },
   "Generator": {
-    "title": "✨ Erstellen Sie Ihr Management-System",
-    "subtitle": "Wählen Sie einen Sektor für Ihr Management-System",
+    "title": "KI-Generator",
+    "subtitle": "Beschreiben Sie, was Sie erstellen möchten, oder sagen Sie es laut aus",
+    "placeholder": "Z.B. Erstellen Sie die Tabelle Patienten mit Name, Nachname, Besuch und Datum... oder nutzen Sie das Mikrofon",
+    "generate_button": "Mit KI generieren",
     "appName": "App Name *",
     "appNamePlaceholder": "Mein {sector}",
     "customPrompt": "Beschreiben Sie Ihr Management-System *",

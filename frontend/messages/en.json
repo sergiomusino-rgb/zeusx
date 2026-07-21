@@ -79,6 +79,7 @@
   "Sidebar": {
     "dashboard": "Dashboard",
     "generator": "AI Generator",
+    "creator": "Creator AI",
     "projects": "Created Apps",
     "vision": "Agenda",
     "chat": "AI Chat",
@@ -129,8 +130,10 @@
     "syncError": "Error during plan activation."
   },
   "Generator": {
-    "title": "✨ Create your Management System",
-    "subtitle": "Select a sector for your management system",
+    "title": "AI Generator",
+    "subtitle": "Describe what you want to create or speak it out loud",
+    "placeholder": "E.g. Create the Patients table with name, surname, visit and date... or use the microphone",
+    "generate_button": "Generate with AI",
     "appName": "App Name *",
     "appNamePlaceholder": "My {sector}",
     "customPrompt": "Describe your management system *",
@@ -529,6 +532,21 @@
       "connectionError": "Connection error to server.",
       "slotNotAvailable": "Extra slots not available at the moment. Please try again later."
     }
+  },
+  "Creator": {
+    "title": "Creator AI",
+    "subtitle": "Generate and modify apps with AI",
+    "prompt_title": "Generation Prompt",
+    "prompt_placeholder": "Describe the app you want to create or modify...",
+    "prompt_examples": "Examples:",
+    "templates_title": "Templates / Sectors",
+    "preview_title": "Schema Preview",
+    "preview_empty": "No schema generated",
+    "preview_hint": "Fill in the prompt and select a template to generate the schema",
+    "generating": "Generating schema...",
+    "generate_button": "Generate Schema",
+    "apply_theme_button": "Apply Theme",
+    "save_button": "Save App"
   },
   "FoodBeverage": {
     "welcome": "Welcome",
