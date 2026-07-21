@@ -1,3 +1,4 @@
+require('dotenv').config({ path: require('path').join(__dirname, '..', '.env') });
 const { Pool } = require('pg');
 
 const sql = `
@@ -32,13 +33,17 @@ CREATE INDEX IF NOT EXISTS idx_righe_fattura_fattura_id ON righe_fattura(fattura
 `;
 
 async function run() {
+  if (!process.env.SUPABASE_SERVICE_ROLE_KEY) {
+    throw new Error('SUPABASE_SERVICE_ROLE_KEY deve essere impostata in backend/.env');
+  }
+
   // Use the Supabase transaction pooler with service_role as password
   const pool = new Pool({
     host: 'aws-0-eu-west-1.pooler.supabase.com',
     port: 6543,
     database: 'postgres',
     user: 'postgres.ujdyqnzofclzztmppxea',
-    password: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVqZHlxbnpvZmNsenp0bXBweGVhIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc4MTY4NzUyMywiZXhwIjoyMDk3MjYzNTIzfQ.3QbM-zGVpzKD7WlAXYpR7kbRdNVa5vFFC05cFeumwpY',
+    password: process.env.SUPABASE_SERVICE_ROLE_KEY,
     ssl: { rejectUnauthorized: false },
     connectionTimeoutMillis: 15000,
   });

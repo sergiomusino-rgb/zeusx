@@ -1,16 +1,23 @@
+require('dotenv').config({ path: require('path').join(__dirname, '..', '.env') });
 const { Pool } = require('pg');
 const fs = require('fs');
 
 const sql = fs.readFileSync('c:/Users/sermu/zeusx/supabase_migrations/20260704_create_fatture_tables.sql', 'utf8');
 
 async function run() {
-  // Use direct DB connection parameters (NOT connection string which has encoding issues)
+  if (!process.env.SUPABASE_SERVICE_ROLE_KEY) {
+    throw new Error('SUPABASE_SERVICE_ROLE_KEY deve essere impostata in backend/.env');
+  }
+
+  // URL-encode the password for safe connection string
+  const password = encodeURIComponent(process.env.SUPABASE_SERVICE_ROLE_KEY);
+  
+  const connectionString = `postgresql://postgres.ujdyqnzofclzztmppxea:${password}@aws-0-eu-west-1.pooler.supabase.com:6543/postgres`;
+  
+  console.log('Connecting with URL-encoded password...');
+  
   const pool = new Pool({
-    host: 'aws-0-eu-west-1.pooler.supabase.com',
-    port: 6543,
-    database: 'postgres',
-    user: 'postgres.ujdyqnzofclzztmppxea',
-    password: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVqZHlxbnpvZmNsenp0bXBweGVhIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc4MTY4NzUyMywiZXhwIjoyMDk3MjYzNTIzfQ.3QbM-zGVpzKD7WlAXYpR7kbRdNVa5vFFC05cFeumwpY',
+    connectionString,
     ssl: { rejectUnauthorized: false },
     connectionTimeoutMillis: 10000,
   });

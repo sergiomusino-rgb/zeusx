@@ -1,7 +1,6 @@
 'use client';
 
 import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
-import { useRouter } from 'next/navigation';
 import { SYSTEM_TABLES, getTableByName, createEmptyRecord } from './table-definitions';
 import DynamicDataTable from './DynamicDataTable';
 import DynamicRecordModal from './DynamicRecordModal';
@@ -22,7 +21,6 @@ import {
 } from 'lucide-react';
   import { QRCodeCanvas } from 'qrcode.react';
   import { useLanguage } from '@/src/lib/LanguageContext';
-  import TrialBanner from './TrialBanner';
 
 // ─── Interfaces ───────────────────────────────────────────────────────────────
 
@@ -1352,6 +1350,77 @@ function SettingsModal({ prefs, onPrefsChange, onClose, onLogout, onChangePasswo
           />
         </div>
 
+        {/* Brand Section */}
+        <div style={sectionBox}>
+          <div style={sectionTitle}>Brand</div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+            <div>
+              <label style={{ display: 'block', marginBottom: '6px', fontSize: '13px', fontWeight: 600, color: colors.textSecondary }}>
+                Nome Azienda
+              </label>
+              <input
+                type="text"
+                value={prefs.companyName}
+                onChange={(e) => updatePref('companyName', e.target.value)}
+                style={inputStyle}
+              />
+            </div>
+            <div>
+              <label style={{ display: 'block', marginBottom: '6px', fontSize: '13px', fontWeight: 600, color: colors.textSecondary }}>
+                Logo Azienda
+              </label>
+              {prefs.logoUrl && (
+                <div style={{ marginBottom: '8px' }}>
+                  <img
+                    src={prefs.logoUrl}
+                    alt="Logo preview"
+                    style={{ height: '48px', maxWidth: '160px', objectFit: 'contain', borderRadius: '8px', border: `1px solid ${colors.border}` }}
+                  />
+                </div>
+              )}
+              <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                <label
+                  style={{
+                    padding: '8px 16px', borderRadius: '8px', border: `1px solid ${colors.border}`,
+                    background: colors.cardBg, color: colors.text, fontSize: '13px', fontWeight: 500,
+                    cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px',
+                  }}
+                >
+                  📁 Sfoglia...
+                  <input
+                    type="file"
+                    accept="image/*"
+                    onChange={(e) => {
+                      const file = e.target.files?.[0];
+                      if (file) {
+                        const reader = new FileReader();
+                        reader.onload = (ev) => {
+                          updatePref('logoUrl', ev.target?.result as string);
+                        };
+                        reader.readAsDataURL(file);
+                      }
+                    }}
+                    style={{ display: 'none' }}
+                  />
+                </label>
+                {prefs.logoUrl && (
+                  <button
+                    type="button"
+                    onClick={() => updatePref('logoUrl', '')}
+                    style={{
+                      padding: '8px 12px', borderRadius: '8px', border: 'none',
+                      background: colors.danger + '15', color: colors.danger,
+                      fontSize: '12px', fontWeight: 600, cursor: 'pointer',
+                    }}
+                  >
+                    Rimuovi
+                  </button>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+
         {/* Password Section */}
         <div style={sectionBox}>
           <div style={sectionTitle}>Cambia Password</div>
@@ -1447,8 +1516,9 @@ function SettingsModal({ prefs, onPrefsChange, onClose, onLogout, onChangePasswo
           </div>
         </div>
 
-        {/* Disdici Abbonamento */}
+        {/* Logout */}
         <button
+          onClick={onLogout}
           style={{
             width: '100%', padding: '14px', borderRadius: '12px', border: 'none',
             background: colors.danger + '15', color: colors.danger,
@@ -1459,7 +1529,7 @@ function SettingsModal({ prefs, onPrefsChange, onClose, onLogout, onChangePasswo
           onMouseEnter={(e) => { e.currentTarget.style.background = colors.danger + '30'; }}
           onMouseLeave={(e) => { e.currentTarget.style.background = colors.danger + '15'; }}
         >
-          <LogOut size={18} /> Disdici Abbonamento
+          <LogOut size={18} /> Logout
         </button>
       </div>
     </div>
@@ -1563,7 +1633,6 @@ function LoginScreen({ slug, appName, logoUrl, primaryColor, onLogin }: LoginScr
 // ─── Main App Component ───────────────────────────────────────────────────────
 
 export default function ViewerProFinal() {
-  const router = useRouter();
   const slug = useMemo(() => {
     if (typeof window !== 'undefined') {
       const path = window.location.pathname;
@@ -1700,10 +1769,6 @@ export default function ViewerProFinal() {
   useEffect(() => {
     try {
       localStorage.setItem(prefsKey, JSON.stringify(prefs));
-      // Dispatch custom event per notificare le altre pagine del cambiamento tema
-      if (typeof window !== 'undefined') {
-        window.dispatchEvent(new CustomEvent('theme-change'));
-      }
     } catch { /* ignore */ }
   }, [prefs, prefsKey]);
 
@@ -2446,30 +2511,10 @@ export default function ViewerProFinal() {
               </div>
             )}
           </div>
-
-          {/* Fatture - Link esterno */}
-          <div style={{ marginTop: '8px', paddingTop: '8px', borderTop: `1px solid rgba(255,255,255,0.2)` }}>
-            <SidebarItem
-              icon={<DollarSign size={18} />}
-              label="Fatture"
-              active={false}
-              onClick={() => router.push(`/a/${slug}/fatture`)}
-              colors={colors}
-              primaryColor={primaryColor}
-            />
-          </div>
         </nav>
 
         {/* Bottom actions */}
         <div style={{ padding: '12px 10px', borderTop: `1px solid rgba(255,255,255,0.2)`, display: 'flex', flexDirection: 'column', gap: '4px' }}>
-          <SidebarItem
-            icon={<Settings size={18} />}
-            label="Configurazione Aziendale"
-            active={false}
-            onClick={() => router.push(`/a/${slug}/admin`)}
-            colors={colors}
-            primaryColor={primaryColor}
-          />
           <SidebarItem
             icon={<Settings size={18} />}
             label="Impostazioni"
@@ -2499,9 +2544,6 @@ export default function ViewerProFinal() {
 
       {/* Main Content */}
       <main style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
-        {/* Trial Banner - mostra stato trial/pagamento */}
-        <TrialBanner />
-        
         {/* Top bar (mobile toggle) */}
         <header style={{
           padding: '16px 24px', borderBottom: `2px solid ${colors.primary}`,

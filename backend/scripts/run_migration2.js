@@ -1,11 +1,21 @@
+require('dotenv').config({ path: require('path').join(__dirname, '..', '.env') });
 const { Pool } = require('pg');
 const fs = require('fs');
 
 const sql = fs.readFileSync('c:/Users/sermu/zeusx/supabase_migrations/20260704_create_fatture_tables.sql', 'utf8');
 
 async function run() {
+  if (!process.env.SUPABASE_SERVICE_ROLE_KEY) {
+    throw new Error('SUPABASE_SERVICE_ROLE_KEY deve essere impostata in backend/.env');
+  }
+
+  // Use direct DB connection parameters (NOT connection string which has encoding issues)
   const pool = new Pool({
-    connectionString: 'postgresql://postgres.ujdyqnzofclzztmppxea:eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVqZHlxbnpvZmNsenp0bXBweGVhIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc4MTY4NzUyMywiZXhwIjoyMDk3MjYzNTIzfQ.3QbM-zGVpzKD7WlAXYpR7kbRdNVa5vFFC05cFeumwpY@aws-0-eu-west-1.pooler.supabase.com:6543/postgres',
+    host: 'aws-0-eu-west-1.pooler.supabase.com',
+    port: 6543,
+    database: 'postgres',
+    user: 'postgres.ujdyqnzofclzztmppxea',
+    password: process.env.SUPABASE_SERVICE_ROLE_KEY,
     ssl: { rejectUnauthorized: false },
     connectionTimeoutMillis: 10000,
   });

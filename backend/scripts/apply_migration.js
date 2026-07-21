@@ -1,4 +1,13 @@
 // Execute SQL migration via Supabase REST API
+require('dotenv').config({ path: require('path').join(__dirname, '..', '.env') });
+
+const SUPABASE_URL = process.env.SUPABASE_URL;
+const SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
+
+if (!SUPABASE_URL || !SERVICE_ROLE_KEY) {
+  throw new Error('SUPABASE_URL e SUPABASE_SERVICE_ROLE_KEY devono essere impostate in backend/.env');
+}
+
 const sql = `
 CREATE TABLE IF NOT EXISTS fatture (
   id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
@@ -82,9 +91,6 @@ CREATE POLICY "Tenant can delete righe of own fatture" ON righe_fattura
 `;
 
 async function main() {
-  const SUPABASE_URL = 'https://ujdyqnzofclzztmppxea.supabase.co';
-  const SERVICE_ROLE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVqZHlxbnpvZmNsenp0bXBweGVhIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc4MTY4NzUyMywiZXhwIjoyMDk3MjYzNTIzfQ.3QbM-zGVpzKD7WlAXYpR7kbRdNVa5vFFC05cFeumwpY';
-
   // Use the Supabase SQL endpoint (pg SQL via REST)
   const url = `${SUPABASE_URL}/rest/v1/`;
   
@@ -114,9 +120,6 @@ async function main() {
 }
 
 async function tryAlternative() {
-  const SUPABASE_URL = 'https://ujdyqnzofclzztmppxea.supabase.co';
-  const SERVICE_ROLE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVqZHlxbnpvZmNsenp0bXBweGVhIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc4MTY4NzUyMywiZXhwIjoyMDk3MjYzNTIzfQ.3QbM-zGVpzKD7WlAXYpR7kbRdNVa5vFFC05cFeumwpY';
-
   // First create the pg_sql function using direct pg connection
   const createFuncSql = `
     CREATE OR REPLACE FUNCTION pg_sql(query text)
