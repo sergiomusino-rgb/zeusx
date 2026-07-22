@@ -3,8 +3,11 @@
 import { useEffect, useState } from 'react';
 import { useParams } from 'next/navigation';
 import { createClient } from '@supabase/supabase-js';
-import { Eye, EyeOff } from 'lucide-react';
+import { Eye, EyeOff, LogIn } from 'lucide-react';
 import { useLanguage } from '@/src/lib/LanguageContext';
+import { useAppInfo } from './AppInfoContext';
+import { getDesignTokens, getLayoutTypeForSector } from '@/lib/designTokens';
+import { resolveIcon } from './app/iconResolver';
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
@@ -15,7 +18,114 @@ if (!supabaseUrl || !supabaseAnonKey) {
 
 const supabase = createClient(supabaseUrl, supabaseAnonKey);
 
-export default function ClientLoginPage() {
+// ─── Entry point della route /a/[slug] ─────────────────────────────────────
+// App legacy: gate a password storico (LegacyLoginGate, invariato).
+// App nuove (auth_mode='supabase'): landing pubblica di settore.
+export default function AppRootPage() {
+  const { authMode } = useAppInfo();
+  return authMode === 'supabase' ? <LandingPublic /> : <LegacyLoginGate />;
+}
+
+// ─── Landing pubblica (nuove app) ───────────────────────────────────────────
+function LandingPublic() {
+  const { slug, appName, config } = useAppInfo();
+  const sector = (config?.sector as string) || '';
+  const description = (config?.description as string) || '';
+  const tables = ((config?.schema as any)?.tables as Array<{ name: string; label: string; labelPlural?: string; icon?: string }>) || [];
+  const designTokens = getDesignTokens(sector);
+  const layoutType = getLayoutTypeForSector(sector);
+
+  return (
+    <div style={{ minHeight: '100vh', background: designTokens.colors.bg, fontFamily: designTokens.fonts.body }}>
+      {/* Header */}
+      <header
+        style={{
+          display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+          padding: '20px 32px', borderBottom: `1px solid ${designTokens.colors.border}`,
+          background: designTokens.colors.surface,
+        }}
+      >
+        <span style={{ fontFamily: designTokens.fonts.headline, fontSize: '20px', fontWeight: 700, color: designTokens.colors.text }}>
+          {appName}
+        </span>
+        <a
+          href={`/a/${slug}/login`}
+          style={{
+            display: 'flex', alignItems: 'center', gap: '8px',
+            background: designTokens.colors.primary, color: '#fff',
+            padding: '10px 20px', borderRadius: designTokens.radii.md,
+            fontWeight: 600, fontSize: '14px', textDecoration: 'none',
+          }}
+        >
+          <LogIn size={16} /> Accedi / Area Riservata
+        </a>
+      </header>
+
+      {/* Hero */}
+      <section
+        style={{
+          padding: '80px 32px', textAlign: 'center',
+          background: `linear-gradient(135deg, ${designTokens.colors.primary}, ${designTokens.colors.secondary || designTokens.colors.primary})`,
+          color: '#fff',
+        }}
+      >
+        <h1 style={{ fontFamily: designTokens.fonts.headline, fontSize: '42px', fontWeight: 800, margin: '0 0 16px 0' }}>
+          {appName}
+        </h1>
+        <p style={{ fontSize: '18px', opacity: 0.9, maxWidth: '640px', margin: '0 auto' }}>
+          {description || 'Gestisci la tua attività in un unico posto.'}
+        </p>
+      </section>
+
+      {/* Griglia sezioni (placeholder da schema, nessun dato reale) */}
+      <section style={{ padding: '48px 32px', maxWidth: '1100px', margin: '0 auto' }}>
+        <h2 style={{ fontFamily: designTokens.fonts.headline, fontSize: '24px', fontWeight: 700, color: designTokens.colors.text, marginBottom: '24px', textAlign: 'center' }}>
+          Cosa puoi gestire
+        </h2>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '20px' }}>
+          {tables.map((table) => (
+            <div
+              key={table.name}
+              style={{
+                background: designTokens.colors['card-bg'] || designTokens.colors.surface,
+                border: `1px solid ${designTokens.colors.border}`,
+                borderRadius: designTokens.radii.lg,
+                padding: '24px',
+                boxShadow: '0 1px 2px rgba(16,24,40,0.04), 0 4px 12px rgba(16,24,40,0.06)',
+              }}
+            >
+              <div style={{
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                width: '44px', height: '44px', borderRadius: designTokens.radii.md,
+                background: `${designTokens.colors.primary}1A`, color: designTokens.colors.primary,
+                marginBottom: '16px',
+              }}>
+                {resolveIcon(table.icon || layoutType)}
+              </div>
+              <h3 style={{ fontFamily: designTokens.fonts.headline, fontSize: '16px', fontWeight: 600, color: designTokens.colors.text, margin: '0 0 6px 0' }}>
+                {table.labelPlural || table.label}
+              </h3>
+              <p style={{ fontSize: '13px', color: designTokens.colors['text-secondary'], margin: 0 }}>
+                Gestisci i tuoi {(table.labelPlural || table.label).toLowerCase()} in tempo reale.
+              </p>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      {/* Footer */}
+      <footer style={{ padding: '32px', textAlign: 'center', borderTop: `1px solid ${designTokens.colors.border}`, color: designTokens.colors['text-secondary'], fontSize: '13px' }}>
+        <p style={{ margin: '0 0 8px 0' }}>{appName}</p>
+        <a href={`/a/${slug}/register`} style={{ color: designTokens.colors.primary, fontWeight: 600, textDecoration: 'none' }}>
+          Registrati per accedere all&apos;area riservata
+        </a>
+      </footer>
+    </div>
+  );
+}
+
+// ─── Gate a password legacy (app esistenti, invariato) ─────────────────────
+function LegacyLoginGate() {
   const params = useParams();
   const slug = params.slug as string;
   const { t } = useLanguage();

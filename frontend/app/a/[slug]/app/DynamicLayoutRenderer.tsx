@@ -12,6 +12,7 @@ import {
 import { TableDef, fieldName } from './table-definitions';
 import { DesignLayout, DesignComponent } from './DesignParser';
 import { getDesignTokens, type DesignTokens } from '@/lib/designTokens';
+import { resolveIcon } from './iconResolver';
 
 // ─── Props Interface ───────────────────────────────────────────────────────
 
@@ -65,32 +66,6 @@ function getThemeVars(theme: 'dark' | 'light', primaryColor: string) {
     success: '#22c55e',
     warning: '#f59e0b',
   };
-}
-
-// ─── Icon Resolver (module-level: usato anche dai *LayoutContent sotto) ─────
-
-function resolveIcon(iconName: string) {
-  const ICON_MAP: Record<string, React.ReactNode> = {
-    users: <Users size={18} />,
-    orders: <ShoppingCart size={18} />,
-    products: <Package size={18} />,
-    invoices: <FileText size={18} />,
-    dashboard: <LayoutDashboard size={18} />,
-    default: <LayoutDashboard size={18} />,
-    docs: <BookOpen size={18} />,
-    api: <Code size={18} />,
-    method: <Tag size={18} />,
-    endpoint: <Globe size={18} />,
-    product: <Package size={18} />,
-    cart: <ShoppingCart size={18} />,
-    recipe: <Heart size={18} />,
-    ingredient: <List size={18} />,
-    step: <CheckCircle size={18} />,
-    restaurant: <Utensils size={18} />,
-    menu: <Menu size={18} />,
-    dish: <Utensils size={18} />,
-  };
-  return ICON_MAP[iconName?.toLowerCase() || 'default'] || ICON_MAP.default;
 }
 
 // ─── Main Component ─────────────────────────────────────────────────────────

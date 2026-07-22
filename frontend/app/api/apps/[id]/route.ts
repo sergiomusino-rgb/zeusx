@@ -46,7 +46,7 @@ export async function GET(
 
     const { data: app, error: appError } = await adminClient
       .from('apps')
-      .select('id, name, slug, tenant_id, status, trial_ends_at, client_email, client_password, config')
+      .select('id, name, slug, tenant_id, status, trial_ends_at, client_email, client_password, auth_mode, config')
       .eq('id', id)
       .single();
 

@@ -19,6 +19,10 @@ import {
   import { useLanguage } from '@/src/lib/LanguageContext';
   import { applyDesignTokens, getDesignTokens, getLayoutTypeForSector, cssVar } from '@/lib/designTokens';
   import DynamicLayoutRenderer from './DynamicLayoutRenderer';
+  import { getAuthToken } from './session-helpers';
+  import { supabaseBrowser } from '@/src/lib/supabase-browser';
+  import { useAppInfo } from '../AppInfoContext';
+  import { useRouter, usePathname } from 'next/navigation';
 
 // ─── Interfaces ───────────────────────────────────────────────────────────────
 
@@ -77,8 +81,15 @@ interface AppConfig {
 
 interface AppSession {
   slug: string;
+  // Legacy: password condivisa in chiaro. Supabase: stringa vuota, non usata
+  // (l'autenticazione vera passa da accessToken, vedi getAuthToken).
   password: string;
   appInfo: AppConfig;
+  // Assente/'legacy' per le app esistenti (comportamento invariato).
+  // 'supabase' per le nuove app: la sessione arriva da dashboard/page.tsx
+  // con un vero access token Supabase Auth.
+  mode?: 'legacy' | 'supabase';
+  accessToken?: string;
 }
 
 interface AppRecord {
@@ -205,9 +216,11 @@ interface DashboardProps {
   shadow: string;
   companyName: string;
   tables: TableDef[];
+  appId?: string;
+  authToken?: string;
 }
 
-function Dashboard({ colors, radius, shadow, companyName, tables }: DashboardProps) {
+function Dashboard({ colors, radius, shadow, companyName, tables, appId, authToken }: DashboardProps) {
   const { t } = useLanguage();
   const [totalRecords, setTotalRecords] = useState(0);
   const [loading, setLoading] = useState(true);
@@ -216,10 +229,7 @@ function Dashboard({ colors, radius, shadow, companyName, tables }: DashboardPro
     // Count total records across all tables
     async function loadDashboardData() {
       try {
-        const appEl = document.querySelector('[data-app-id]');
-        if (!appEl) { setLoading(false); return; }
-        const appId = appEl.getAttribute('data-app-id');
-        const password = appEl.getAttribute('data-password');
+        const password = authToken;
         if (!appId || !password) { setLoading(false); return; }
 
         let total = 0;
@@ -240,7 +250,7 @@ function Dashboard({ colors, radius, shadow, companyName, tables }: DashboardPro
       setLoading(false);
     }
     loadDashboardData();
-  }, [tables]);
+  }, [tables, appId, authToken]);
 
   if (loading) {
     return (
@@ -1552,6 +1562,21 @@ export default function ViewerProFinal() {
     return '';
   }, []);
 
+  // Questo componente è condiviso da /a/[slug]/app (legacy) e
+  // /a/[slug]/dashboard (nuove app, vedi dashboard/page.tsx). Chi arriva su
+  // /app con un'app auth_mode='supabase' viene rimandato a /dashboard.
+  const appInfoCtx = useAppInfo();
+  const { authMode } = appInfoCtx;
+  const router = useRouter();
+  const pathname = usePathname() || '';
+  useEffect(() => {
+    if (authMode === 'supabase' && pathname === `/a/${slug}/app`) {
+      router.replace(`/a/${slug}/dashboard`);
+    } else if (authMode === 'legacy' && pathname === `/a/${slug}/dashboard`) {
+      router.replace(`/a/${slug}/app`);
+    }
+  }, [authMode, slug, router, pathname]);
+
   const sessionKey = `app_session_${slug}`;
   const prefsKey = `${sessionKey}_prefs`;
 
@@ -1578,6 +1603,21 @@ export default function ViewerProFinal() {
   const refreshSession = useCallback(async () => {
     if (!session) return;
     try {
+      if (session.mode === 'supabase') {
+        // Nessuna password da rimandare: rilegge la config pubblica via RLS
+        // (apps_select_public_active), niente localStorage (sessione non persistita).
+        const { data } = await supabaseBrowser
+          .from('apps')
+          .select('id, slug, name, config')
+          .eq('id', session.appInfo.id)
+          .single();
+        if (data) {
+          const fresh = data as unknown as { id: string; slug: string; name: string; config: AppConfig['config'] };
+          setSession({ ...session, appInfo: { ...session.appInfo, ...fresh } });
+        }
+        return;
+      }
+
       const res = await fetch(`/api/a/${slug}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -1725,6 +1765,34 @@ export default function ViewerProFinal() {
   // ─── Check session on mount ──────────────────────────────────────────────
 
   useEffect(() => {
+    // App auth_mode='supabase': niente localStorage, la sessione viene dalla
+    // vera sessione Supabase Auth (già garantita da layout.tsx prima di
+    // montare questa pagina) + dal contesto app condiviso.
+    if (authMode === 'supabase') {
+      (async () => {
+        const { data: { session: supaSession } } = await supabaseBrowser.auth.getSession();
+        if (!supaSession) {
+          router.replace(`/a/${slug}/login`);
+          return;
+        }
+        setSession({
+          slug,
+          password: '',
+          mode: 'supabase',
+          accessToken: supaSession.access_token,
+          appInfo: {
+            id: appInfoCtx.appId,
+            slug,
+            name: appInfoCtx.appName,
+            config: (appInfoCtx.config || {}) as AppConfig['config'],
+          },
+        });
+        setShowLogin(false);
+        setLoading(false);
+      })();
+      return;
+    }
+
     const checkSession = () => {
       try {
         const raw = localStorage.getItem(sessionKey);
@@ -1754,7 +1822,7 @@ export default function ViewerProFinal() {
     };
 
     checkSession();
-  }, [sessionKey, slug]);
+  }, [sessionKey, slug, authMode, appInfoCtx, router]);
 
   // ─── Load records when table changes ─────────────────────────────────────
 
@@ -1786,7 +1854,7 @@ export default function ViewerProFinal() {
 
   useEffect(() => {
     if (activeTable && session) {
-      loadRecords(activeTable.name, session.password, session.appInfo.id);
+      loadRecords(activeTable.name, getAuthToken(session), session.appInfo.id);
     } else {
       setRecords([]);
     }
@@ -1800,7 +1868,7 @@ export default function ViewerProFinal() {
     setCustomTablesLoading(true);
     try {
       const res = await fetch(`/api/client/apps/${session.appInfo.id}/custom-tables`, {
-        headers: { Authorization: `Bearer ${session.password}` },
+        headers: { Authorization: `Bearer ${getAuthToken(session)}` },
       });
       if (!res.ok) throw new Error('Failed to load custom tables');
       const data = await res.json();
@@ -1833,7 +1901,7 @@ export default function ViewerProFinal() {
     setCustomRecordsLoading(true);
     try {
       const res = await fetch(`/api/client/apps/${session.appInfo.id}/custom-records/${tableName}`, {
-        headers: { Authorization: `Bearer ${session.password}` },
+        headers: { Authorization: `Bearer ${getAuthToken(session)}` },
       });
       if (!res.ok) throw new Error('Failed to load custom records');
       const data = await res.json();
@@ -1865,7 +1933,7 @@ export default function ViewerProFinal() {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          Authorization: `Bearer ${session.password}`,
+          Authorization: `Bearer ${getAuthToken(session)}`,
         },
         body: JSON.stringify(tableData),
       });
@@ -1890,7 +1958,7 @@ export default function ViewerProFinal() {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          Authorization: `Bearer ${session.password}`,
+          Authorization: `Bearer ${getAuthToken(session)}`,
         },
         body: JSON.stringify({ data: formData }),
       });
@@ -1912,7 +1980,7 @@ export default function ViewerProFinal() {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
-          Authorization: `Bearer ${session.password}`,
+          Authorization: `Bearer ${getAuthToken(session)}`,
         },
         body: JSON.stringify({ data: formData }),
       });
@@ -1932,7 +2000,7 @@ export default function ViewerProFinal() {
     try {
       const res = await fetch(`/api/client/apps/${session.appInfo.id}/custom-records/${activeCustomTable.name}/${recordId}`, {
         method: 'DELETE',
-        headers: { Authorization: `Bearer ${session.password}` },
+        headers: { Authorization: `Bearer ${getAuthToken(session)}` },
       });
       if (!res.ok) throw new Error('Errore nella eliminazione');
       await loadCustomRecords(activeCustomTable.name);
@@ -1992,14 +2060,14 @@ export default function ViewerProFinal() {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          Authorization: `Bearer ${session.password}`,
+          Authorization: `Bearer ${getAuthToken(session)}`,
         },
         body: JSON.stringify({ table: activeTable.name, data: formData }),
       });
       const responseData = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(responseData.error || `Errore server: ${res.status}`);
       setModalRecord(null);
-      await loadRecords(activeTable.name, session.password, session.appInfo.id);
+      await loadRecords(activeTable.name, getAuthToken(session), session.appInfo.id);
     } catch (err) {
       console.error('[CreateRecord] Error:', err);
       alert(err instanceof Error ? err.message : 'Errore durante il salvataggio');
@@ -2016,14 +2084,14 @@ export default function ViewerProFinal() {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
-          Authorization: `Bearer ${session.password}`,
+          Authorization: `Bearer ${getAuthToken(session)}`,
         },
         body: JSON.stringify({ data: formData }),
       });
       const responseData = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(responseData.error || `Errore server: ${res.status}`);
       setModalRecord(null);
-      await loadRecords(activeTable.name, session.password, session.appInfo.id);
+      await loadRecords(activeTable.name, getAuthToken(session), session.appInfo.id);
     } catch (err) {
       console.error('[UpdateRecord] Error:', err);
       alert(err instanceof Error ? err.message : 'Errore durante la modifica');
@@ -2038,11 +2106,11 @@ export default function ViewerProFinal() {
     try {
       const res = await fetch(`/api/client/apps/${session.appInfo.id}/records/${recordId}`, {
         method: 'DELETE',
-        headers: { Authorization: `Bearer ${session.password}` },
+        headers: { Authorization: `Bearer ${getAuthToken(session)}` },
       });
       const responseData = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(responseData.error || `Errore server: ${res.status}`);
-      await loadRecords(activeTable.name, session.password, session.appInfo.id);
+      await loadRecords(activeTable.name, getAuthToken(session), session.appInfo.id);
     } catch (err) {
       console.error('[DeleteRecord] Error:', err);
       alert(err instanceof Error ? err.message : 'Errore durante l\'eliminazione');
@@ -2077,7 +2145,7 @@ export default function ViewerProFinal() {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
-          Authorization: `Bearer ${session.password}`,
+          Authorization: `Bearer ${getAuthToken(session)}`,
         },
         body: JSON.stringify(data),
       });
@@ -2099,14 +2167,20 @@ export default function ViewerProFinal() {
     }
   }, [session, editTable, activeView, refreshSession]);
 
-  const handleLogout = useCallback(() => {
+  const handleLogout = useCallback(async () => {
+    if (session?.mode === 'supabase') {
+      await supabaseBrowser.auth.signOut();
+      setSession(null);
+      router.push(`/a/${slug}/login`);
+      return;
+    }
     localStorage.removeItem(sessionKey);
     localStorage.removeItem(prefsKey);
     setSession(null);
     setShowLogin(true);
     setActiveView('dashboard');
     setRecords([]);
-  }, [sessionKey, prefsKey]);
+  }, [sessionKey, prefsKey, session, router, slug]);
 
   // ─── Record modal save dispatcher ───────────────────────────────────────
 
@@ -2191,7 +2265,7 @@ export default function ViewerProFinal() {
           onEdit={isCustomTableActive ? (r) => setCustomModalRecord(r) : (r) => setModalRecord(r)}
           onDelete={isCustomTableActive ? handleDeleteCustomRecord : handleDeleteRecord}
           onAddNew={isCustomTableActive ? () => setCustomModalRecord('new') : () => setModalRecord('new')}
-          loadRecords={(t) => loadRecords(t, session.password, session.appInfo.id)}
+          loadRecords={(t) => loadRecords(t, getAuthToken(session), session.appInfo.id)}
           onEditTable={(table) => setEditTable(table)}
         />
 
@@ -2614,6 +2688,8 @@ export default function ViewerProFinal() {
                 shadow={layoutCfg.shadow}
                 companyName={companyName}
                 tables={tables}
+                appId={session?.appInfo?.id}
+                authToken={session ? getAuthToken(session) : undefined}
               />
             ) : activeTable ? (
               <DynamicDataTable
@@ -2629,7 +2705,7 @@ export default function ViewerProFinal() {
                 radius={layoutCfg.radius}
                 shadow={layoutCfg.shadow}
                 appId={session?.appInfo?.id}
-                password={session?.password}
+                password={session ? getAuthToken(session) : undefined}
               />
             ) : activeCustomTable ? (
               <CustomTableRenderer
@@ -2652,7 +2728,7 @@ export default function ViewerProFinal() {
                 radius={layoutCfg.radius}
                 shadow={layoutCfg.shadow}
                 appId={session?.appInfo?.id}
-                password={session?.password}
+                password={session ? getAuthToken(session) : undefined}
               />
             ) : (
               <div style={{ color: colors.textSecondary, textAlign: 'center', padding: '60px' }}>

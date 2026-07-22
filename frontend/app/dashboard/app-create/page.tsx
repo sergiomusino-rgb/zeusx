@@ -19,6 +19,7 @@ interface AppDetails {
   trial_ends_at?: string;
   client_email?: string;
   client_password?: string;
+  auth_mode?: 'legacy' | 'supabase';
   config?: { schema?: { tables?: AppTable[] } };
 }
 
@@ -135,9 +136,9 @@ export default function AppCreatePage() {
                   </a>
                 </div>
 
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2">
+                {app.auth_mode === 'supabase' ? (
                   <div>
-                    <p className="text-sm text-gray-500 mb-1">Email cliente</p>
+                    <p className="text-sm text-gray-500 mb-1">Email cliente designata</p>
                     <div className="flex items-center gap-2">
                       <p className="font-mono text-sm text-gray-200">{app.client_email || '—'}</p>
                       {app.client_email && (
@@ -150,23 +151,44 @@ export default function AppCreatePage() {
                         </button>
                       )}
                     </div>
+                    <p className="text-xs text-gray-500 mt-2">
+                      Invia il link dell&apos;app a questo indirizzo: il cliente dovrà cliccare &quot;Registrati&quot; e impostare da solo la propria password.
+                    </p>
                   </div>
-                  <div>
-                    <p className="text-sm text-gray-500 mb-1">Password iniziale</p>
-                    <div className="flex items-center gap-2">
-                      <p className="font-mono text-sm text-gray-200">{app.client_password || '—'}</p>
-                      {app.client_password && (
-                        <button
-                          onClick={() => copyToClipboard(app.client_password!, 'password')}
-                          className="text-gray-500 hover:text-white"
-                          title="Copia"
-                        >
-                          {copied === 'password' ? <Check className="w-4 h-4 text-green-500" /> : <Copy className="w-4 h-4" />}
-                        </button>
-                      )}
+                ) : (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2">
+                    <div>
+                      <p className="text-sm text-gray-500 mb-1">Email cliente</p>
+                      <div className="flex items-center gap-2">
+                        <p className="font-mono text-sm text-gray-200">{app.client_email || '—'}</p>
+                        {app.client_email && (
+                          <button
+                            onClick={() => copyToClipboard(app.client_email!, 'email')}
+                            className="text-gray-500 hover:text-white"
+                            title="Copia"
+                          >
+                            {copied === 'email' ? <Check className="w-4 h-4 text-green-500" /> : <Copy className="w-4 h-4" />}
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                    <div>
+                      <p className="text-sm text-gray-500 mb-1">Password iniziale</p>
+                      <div className="flex items-center gap-2">
+                        <p className="font-mono text-sm text-gray-200">{app.client_password || '—'}</p>
+                        {app.client_password && (
+                          <button
+                            onClick={() => copyToClipboard(app.client_password!, 'password')}
+                            className="text-gray-500 hover:text-white"
+                            title="Copia"
+                          >
+                            {copied === 'password' ? <Check className="w-4 h-4 text-green-500" /> : <Copy className="w-4 h-4" />}
+                          </button>
+                        )}
+                      </div>
                     </div>
                   </div>
-                </div>
+                )}
               </div>
             </div>
 

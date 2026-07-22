@@ -186,16 +186,6 @@ function generateSlug(name: string, sector: string): string {
   return `${base}-${suffix}`;
 }
 
-// ─── Helper: Generate random password (10 alphanumeric characters) ─────────────────
-function generateRandomPassword(): string {
-  const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789';
-  let password = '';
-  for (let i = 0; i < 10; i++) {
-    password += chars.charAt(Math.floor(Math.random() * chars.length));
-  }
-  return password;
-}
-
 // ─── POST /api/creator/generate ───────────────────────────────────────────────────
 export async function POST(request: NextRequest) {
   try {
@@ -290,18 +280,20 @@ export async function POST(request: NextRequest) {
 
     // Genera slug univoco
     const slug = generateSlug(schema.appName || 'app-creator', safeSector);
-    
-    // Genera password iniziale casuale (10 caratteri alfanumerici)
-    const initialPassword = generateRandomPassword();
-    
+
     // Usa l'email dell'utente loggato come email cliente iniziale
     const tenantEmail = user.email || `tenant-${user.id.slice(0, 8)}@zeusx.app`;
-    
+
     // Calcola trial 30 giorni
     const trialEndsAt = new Date();
     trialEndsAt.setDate(trialEndsAt.getDate() + 30);
-    
+
     // Salva nella tabella apps (stessa di /api/apps)
+    // auth_mode:'supabase' -> nuovo flusso Landing/Login/Register/Dashboard con
+    // Supabase Auth reale (vedi /a/[slug]/register): niente password in chiaro,
+    // il cliente sceglie lui la propria password al primo accesso, vincolato
+    // a client_email. Le app esistenti restano su auth_mode='legacy' (default
+    // di colonna), non toccate da questo generatore.
     const { data: app, error: appError } = await supabase
       .from('apps')
       .insert({
@@ -314,10 +306,9 @@ export async function POST(request: NextRequest) {
         trial_ends_at: trialEndsAt.toISOString(),
         client_active: true,
         client_email: tenantEmail,
-        client_password: initialPassword,
-        initial_password: initialPassword,
+        auth_mode: 'supabase',
       })
-      .select('id, name, slug, status, trial_ends_at, client_email, client_password, initial_password')
+      .select('id, name, slug, status, trial_ends_at, client_email, auth_mode')
       .single();
     
     if (appError) {
