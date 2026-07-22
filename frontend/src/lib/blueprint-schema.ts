@@ -39,6 +39,27 @@ function normalizeFieldType(type: string): string {
   return mapping[type] || 'text';
 }
 
+// L'AI a volte etichetta un campo prezzo come "text" nonostante il prompt
+// richieda esplicitamente "number" — questo fa sì che renderCellValue non lo
+// formatti mai come valuta. Forziamo qui il tipo in base al nome/label, invece
+// di fidarci ciecamente dell'output del modello.
+const PRICE_FIELD_KEYWORDS = [
+  'prezzo', 'totale', 'importo', 'costo', 'subtotale', 'imponibile',
+  'tariffa', 'canone', 'price', 'amount', 'cost', 'total', 'fee',
+];
+
+function looksLikePriceField(id: string, label: string): boolean {
+  const haystack = `${id} ${label}`.toLowerCase();
+  return PRICE_FIELD_KEYWORDS.some((k) => haystack.includes(k));
+}
+
+function withPriceFieldOverride<T extends { id: string; label: string; type: string }>(field: T): T {
+  if (field.type === 'text' && looksLikePriceField(field.id, field.label)) {
+    return { ...field, type: 'number' };
+  }
+  return field;
+}
+
 const FieldOptionsSchema = z
   .union([
     z.array(z.string()),
@@ -67,7 +88,7 @@ export const FieldSchema = z.object({
     .union([z.string(), z.null(), z.undefined()])
     .optional()
     .transform((v) => v || undefined),
-});
+}).transform(withPriceFieldOverride);
 
 export const TableSchema = z.object({
   name: z
@@ -173,7 +194,7 @@ function safeNormalizeFieldType(type: unknown): string {
 }
 
 function normalizeField(raw: any): Field {
-  return {
+  return withPriceFieldOverride({
     id: safeNormalizeId(raw?.id ?? raw?.name ?? raw?.key, 'campo'),
     type: safeNormalizeFieldType(raw?.type),
     label: safeString(raw?.label ?? raw?.title ?? raw?.name, 'Campo'),
@@ -181,7 +202,7 @@ function normalizeField(raw: any): Field {
     options: normalizeOptions(raw?.options),
     target: raw?.target || undefined,
     targetLabel: raw?.targetLabel || undefined,
-  };
+  });
 }
 
 function normalizeOptions(v: unknown): string[] {
