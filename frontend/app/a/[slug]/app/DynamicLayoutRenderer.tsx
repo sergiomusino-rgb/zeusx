@@ -11,6 +11,7 @@ import {
 } from 'lucide-react';
 import { TableDef, fieldName } from './table-definitions';
 import { DesignLayout, DesignComponent } from './DesignParser';
+import { getDesignTokens, type DesignTokens } from '@/lib/designTokens';
 
 // ─── Props Interface ───────────────────────────────────────────────────────
 
@@ -18,6 +19,7 @@ interface DynamicLayoutRendererProps {
   layoutType: 'docs' | 'ecommerce' | 'saas' | 'recipe' | 'restaurant' | 'custom';
   primaryColor: string;
   colors: ReturnType<typeof getThemeVars>;
+  designTokens?: DesignTokens;
   companyName: string;
   logoUrl: string;
   tables: TableDef[];
@@ -38,6 +40,7 @@ interface DynamicLayoutRendererProps {
   onAddNew: () => void;
   loadRecords?: (tableName: string) => void;
   designComponents?: DesignComponent[];
+  onEditTable?: (table: TableDef) => void;
 }
 
 // ─── Theme Helpers ───────────────────────────────────────────────────────────
@@ -64,12 +67,39 @@ function getThemeVars(theme: 'dark' | 'light', primaryColor: string) {
   };
 }
 
+// ─── Icon Resolver (module-level: usato anche dai *LayoutContent sotto) ─────
+
+function resolveIcon(iconName: string) {
+  const ICON_MAP: Record<string, React.ReactNode> = {
+    users: <Users size={18} />,
+    orders: <ShoppingCart size={18} />,
+    products: <Package size={18} />,
+    invoices: <FileText size={18} />,
+    dashboard: <LayoutDashboard size={18} />,
+    default: <LayoutDashboard size={18} />,
+    docs: <BookOpen size={18} />,
+    api: <Code size={18} />,
+    method: <Tag size={18} />,
+    endpoint: <Globe size={18} />,
+    product: <Package size={18} />,
+    cart: <ShoppingCart size={18} />,
+    recipe: <Heart size={18} />,
+    ingredient: <List size={18} />,
+    step: <CheckCircle size={18} />,
+    restaurant: <Utensils size={18} />,
+    menu: <Menu size={18} />,
+    dish: <Utensils size={18} />,
+  };
+  return ICON_MAP[iconName?.toLowerCase() || 'default'] || ICON_MAP.default;
+}
+
 // ─── Main Component ─────────────────────────────────────────────────────────
 
 export default function DynamicLayoutRenderer({
   layoutType,
   primaryColor,
   colors,
+  designTokens = getDesignTokens(),
   companyName,
   logoUrl,
   tables,
@@ -90,6 +120,7 @@ export default function DynamicLayoutRenderer({
   onAddNew,
   loadRecords,
   designComponents = [],
+  onEditTable,
 }: DynamicLayoutRendererProps) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
@@ -127,29 +158,6 @@ export default function DynamicLayoutRenderer({
     return labels[view] || view;
   };
 
-  const resolveIcon = (iconName: string) => {
-    const ICON_MAP: Record<string, React.ReactNode> = {
-      users: <Users size={18} />,
-      orders: <ShoppingCart size={18} />,
-      products: <Package size={18} />,
-      invoices: <FileText size={18} />,
-      dashboard: <LayoutDashboard size={18} />,
-      default: <LayoutDashboard size={18} />,
-      docs: <BookOpen size={18} />,
-      api: <Code size={18} />,
-      method: <Tag size={18} />,
-      endpoint: <Globe size={18} />,
-      product: <Package size={18} />,
-      cart: <ShoppingCart size={18} />,
-      recipe: <Heart size={18} />,
-      ingredient: <List size={18} />,
-      step: <CheckCircle size={18} />,
-      restaurant: <Utensils size={18} />,
-      menu: <Menu size={18} />,
-      dish: <Utensils size={18} />,
-    };
-    return ICON_MAP[iconName?.toLowerCase() || 'default'] || ICON_MAP.default;
-  };
 
   const handleTableClick = (tableName: string) => {
     setActiveView(tableName);
@@ -167,12 +175,14 @@ export default function DynamicLayoutRenderer({
             companyName={companyName}
             tables={tables}
             colors={colors}
+            designTokens={designTokens}
             primaryColor={primaryColor}
             activeView={activeView}
+            setActiveView={setActiveView}
             activeTable={activeTable}
             activeCustomTableData={activeCustomTableData}
             records={records}
-            recordsLoading={recordsLoading}
+            loading={recordsLoading}
             searchQuery={searchQuery}
             setSearchQuery={setSearchQuery}
             onEdit={onEdit}
@@ -187,12 +197,14 @@ export default function DynamicLayoutRenderer({
             companyName={companyName}
             tables={tables}
             colors={colors}
+            designTokens={designTokens}
             primaryColor={primaryColor}
             activeView={activeView}
+            setActiveView={setActiveView}
             activeTable={activeTable}
             activeCustomTableData={activeCustomTableData}
             records={records}
-            recordsLoading={recordsLoading}
+            loading={recordsLoading}
             searchQuery={searchQuery}
             setSearchQuery={setSearchQuery}
             onEdit={onEdit}
@@ -206,11 +218,12 @@ export default function DynamicLayoutRenderer({
             companyName={companyName}
             tables={tables}
             colors={colors}
+            designTokens={designTokens}
             primaryColor={primaryColor}
             activeView={activeView}
             activeTable={activeTable}
             records={records}
-            recordsLoading={recordsLoading}
+            loading={recordsLoading}
             searchQuery={searchQuery}
             setSearchQuery={setSearchQuery}
             onEdit={onEdit}
@@ -224,11 +237,12 @@ export default function DynamicLayoutRenderer({
             companyName={companyName}
             tables={tables}
             colors={colors}
+            designTokens={designTokens}
             primaryColor={primaryColor}
             activeView={activeView}
             activeTable={activeTable}
             records={records}
-            recordsLoading={recordsLoading}
+            loading={recordsLoading}
             searchQuery={searchQuery}
             setSearchQuery={setSearchQuery}
             onEdit={onEdit}
@@ -242,12 +256,14 @@ export default function DynamicLayoutRenderer({
             companyName={companyName}
             tables={tables}
             colors={colors}
+            designTokens={designTokens}
             primaryColor={primaryColor}
             activeView={activeView}
+            setActiveView={setActiveView}
             activeTable={activeTable}
             activeCustomTableData={activeCustomTableData}
             records={records}
-            recordsLoading={recordsLoading}
+            loading={recordsLoading}
             searchQuery={searchQuery}
             setSearchQuery={setSearchQuery}
             onEdit={onEdit}
@@ -341,7 +357,7 @@ export default function DynamicLayoutRenderer({
                 <button
                   onClick={(e) => {
                     e.stopPropagation();
-                    // Edit table logic would go here
+                    onEditTable?.(table);
                   }}
                   title="Modifica tabella"
                   style={{
@@ -600,8 +616,10 @@ interface DocsLayoutContentProps {
   companyName: string;
   tables: TableDef[];
   colors: ReturnType<typeof getThemeVars>;
+  designTokens?: DesignTokens;
   primaryColor: string;
   activeView: string;
+  setActiveView: (view: string) => void;
   activeTable: TableDef | null;
   activeCustomTableData: any;
   records: any[];
@@ -615,8 +633,8 @@ interface DocsLayoutContentProps {
 }
 
 function DocsLayoutContent({
-  companyName, tables, colors, primaryColor,
-  activeView, activeTable, activeCustomTableData,
+  companyName, tables, colors, designTokens = getDesignTokens(), primaryColor,
+  activeView, setActiveView, activeTable, activeCustomTableData,
   records, loading, searchQuery, setSearchQuery,
   onEdit, onDelete, onAddNew, designComponents
 }: DocsLayoutContentProps) {
@@ -685,48 +703,63 @@ function DocsLayoutContent({
             {/* KPI Cards */}
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '20px' }}>
               <KpiCard
-                title="Tabelle"
+                title="Sezioni attive"
                 value={String(tables.length)}
                 icon={<LayoutDashboard size={22} />}
                 colors={colors}
+                designTokens={designTokens}
               />
               <KpiCard
                 title="Record Totali"
                 value={String(totalRecords)}
                 icon={<Database size={22} />}
                 colors={colors}
+                designTokens={designTokens}
               />
             </div>
 
-            {/* Tables overview */}
+            {/* Panoramica sezioni: nomi reali delle entità, mai la parola generica "Tabelle" */}
             <div
               style={{
-                background: '#FFFFFF',
-                border: '1px solid #F4F4F5',
-                borderRadius: '8px',
+                background: designTokens.colors['card-bg'] || '#FFFFFF',
+                border: `1px solid ${designTokens.colors['border'] || '#F4F4F5'}`,
+                borderRadius: designTokens.radii['lg'] || '12px',
                 padding: '24px',
+                boxShadow: '0 1px 2px rgba(16,24,40,0.04), 0 4px 12px rgba(16,24,40,0.06)',
               }}
             >
-              <h3 style={{ fontFamily: "'Plus Jakarta Sans', sans-serif", color: '#18181B', fontSize: '16px', fontWeight: 600, margin: '0 0 16px 0' }}>
-                Le tue Tabelle
+              <h3 style={{ fontFamily: designTokens.fonts.headline, color: designTokens.colors['text'] || '#18181B', fontSize: '16px', fontWeight: 600, margin: '0 0 16px 0' }}>
+                Le tue sezioni
               </h3>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                 {tables.map((table) => (
                   <div
                     key={table.name}
+                    onClick={() => setActiveView(table.name)}
                     style={{
                       display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-                      padding: '12px 16px', borderRadius: '8px',
-                      background: '#FFFFFF', border: '1px solid #F4F4F5',
+                      padding: '14px 16px', borderRadius: designTokens.radii['md'] || '8px',
+                      background: designTokens.colors['card-bg-alt'] || '#FAFAFA',
+                      border: `1px solid ${designTokens.colors['border-light'] || '#F4F4F5'}`,
+                      cursor: 'pointer', transition: 'box-shadow 0.15s, transform 0.15s',
                     }}
+                    onMouseEnter={(e) => { e.currentTarget.style.boxShadow = '0 2px 8px rgba(16,24,40,0.08)'; e.currentTarget.style.transform = 'translateY(-1px)'; }}
+                    onMouseLeave={(e) => { e.currentTarget.style.boxShadow = 'none'; e.currentTarget.style.transform = 'translateY(0)'; }}
                   >
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                      {resolveIcon(table.icon || '')}
-                      <span style={{ fontFamily: "'Plus Jakarta Sans', sans-serif", color: '#18181B', fontSize: '14px', fontWeight: 500 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                      <div style={{
+                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                        width: '36px', height: '36px', borderRadius: designTokens.radii['md'] || '8px',
+                        background: `${designTokens.colors['primary'] || primaryColor}1A`,
+                        color: designTokens.colors['primary'] || primaryColor,
+                      }}>
+                        {resolveIcon(table.icon || '')}
+                      </div>
+                      <span style={{ fontFamily: designTokens.fonts.headline, color: designTokens.colors['text'] || '#18181B', fontSize: '14px', fontWeight: 600 }}>
                         {table.labelPlural || table.label}
                       </span>
                     </div>
-                    <span style={{ color: colors.textSecondary, fontSize: '13px' }}>
+                    <span style={{ color: designTokens.colors['text-secondary'] || colors.textSecondary, fontFamily: designTokens.fonts.body, fontSize: '13px' }}>
                       {table.fields?.length || 0} campi
                     </span>
                   </div>
@@ -776,7 +809,9 @@ function DocsLayoutContent({
           <div
             style={{
               flex: 1, display: 'flex', alignItems: 'center', gap: '8px',
-              background: colors.cardBg, border: `1px solid ${colors.border}`,
+              background: designTokens.colors['card-bg'] || colors.cardBg,
+              border: `1px solid ${designTokens.colors['border'] || colors.border}`,
+              borderRadius: designTokens.radii['md'] || '10px',
               padding: '10px 16px',
             }}
           >
@@ -805,7 +840,10 @@ function DocsLayoutContent({
         {/* Table */}
         <div
           style={{
-            background: colors.cardBg, border: `1px solid ${colors.border}`,
+            background: designTokens.colors['card-bg'] || colors.cardBg,
+            border: `1px solid ${designTokens.colors['border'] || colors.border}`,
+            borderRadius: designTokens.radii['lg'] || '12px',
+            boxShadow: '0 1px 2px rgba(16,24,40,0.04), 0 4px 12px rgba(16,24,40,0.06)',
             overflow: 'hidden',
           }}
         >
@@ -847,7 +885,7 @@ function DocsLayoutContent({
                 {loading ? (
                   <tr>
                     <td
-                      colSpan={activeTable.fields.length + 1}
+                      colSpan={(activeTable.fields?.length || 0) + 1}
                       style={{ padding: '40px', textAlign: 'center', color: colors.textSecondary }}
                     >
                       Caricamento records...
@@ -856,7 +894,7 @@ function DocsLayoutContent({
                 ) : records.length === 0 ? (
                   <tr>
                     <td
-                      colSpan={activeTable.fields.length + 1}
+                      colSpan={(activeTable.fields?.length || 0) + 1}
                       style={{ padding: '40px', textAlign: 'center', color: colors.textSecondary }}
                     >
                       {searchQuery ? 'Nessun risultato per la ricerca' : 'Nessun record presente'}
@@ -956,29 +994,37 @@ interface KpiCardProps {
   value: string;
   icon: React.ReactNode;
   colors: ReturnType<typeof getThemeVars>;
+  designTokens?: DesignTokens;
 }
 
-function KpiCard({ title, value, icon, colors }: KpiCardProps) {
+function KpiCard({ title, value, icon, colors, designTokens = getDesignTokens() }: KpiCardProps) {
   return (
     <div
       style={{
-        background: colors.cardBg,
-        border: `1px solid ${colors.border}`,
-        borderRadius: '12px',
+        background: designTokens.colors['card-bg'] || colors.cardBg,
+        border: `1px solid ${designTokens.colors['border'] || colors.border}`,
+        borderRadius: designTokens.radii['lg'] || '12px',
         padding: '24px',
         display: 'flex',
         flexDirection: 'column',
         gap: '12px',
+        boxShadow: '0 1px 2px rgba(16,24,40,0.04), 0 4px 12px rgba(16,24,40,0.06)',
         transition: 'transform 0.2s, box-shadow 0.2s',
       }}
-      onMouseEnter={(e) => { e.currentTarget.style.transform = 'translateY(-2px)'; }}
-      onMouseLeave={(e) => { e.currentTarget.style.transform = 'translateY(0)'; }}
+      onMouseEnter={(e) => {
+        e.currentTarget.style.transform = 'translateY(-2px)';
+        e.currentTarget.style.boxShadow = '0 4px 8px rgba(16,24,40,0.06), 0 8px 20px rgba(16,24,40,0.10)';
+      }}
+      onMouseLeave={(e) => {
+        e.currentTarget.style.transform = 'translateY(0)';
+        e.currentTarget.style.boxShadow = '0 1px 2px rgba(16,24,40,0.04), 0 4px 12px rgba(16,24,40,0.06)';
+      }}
     >
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <span style={{ color: colors.textSecondary, fontSize: '14px', fontWeight: 500 }}>{title}</span>
-        <div style={{ color: colors.primary, opacity: 0.8 }}>{icon}</div>
+        <span style={{ color: designTokens.colors['text-secondary'] || colors.textSecondary, fontFamily: designTokens.fonts.body, fontSize: '14px', fontWeight: 500 }}>{title}</span>
+        <div style={{ color: designTokens.colors['primary'] || colors.primary, opacity: 0.85 }}>{icon}</div>
       </div>
-      <span style={{ color: colors.text, fontSize: '28px', fontWeight: 700 }}>{value}</span>
+      <span style={{ color: designTokens.colors['text'] || colors.text, fontFamily: designTokens.fonts.headline, fontSize: '28px', fontWeight: 700 }}>{value}</span>
     </div>
   );
 }
@@ -989,8 +1035,10 @@ interface EcommerceLayoutContentProps {
   companyName: string;
   tables: TableDef[];
   colors: ReturnType<typeof getThemeVars>;
+  designTokens?: DesignTokens;
   primaryColor: string;
   activeView: string;
+  setActiveView: (view: string) => void;
   activeTable: TableDef | null;
   activeCustomTableData: any;
   records: any[];
@@ -1003,8 +1051,8 @@ interface EcommerceLayoutContentProps {
 }
 
 function EcommerceLayoutContent({
-  companyName, tables, colors, primaryColor,
-  activeView, activeTable, activeCustomTableData,
+  companyName, tables, colors, designTokens = getDesignTokens(), primaryColor,
+  activeView, setActiveView, activeTable, activeCustomTableData,
   records, loading, searchQuery, setSearchQuery,
   onEdit, onDelete, onAddNew
 }: EcommerceLayoutContentProps) {
@@ -1129,8 +1177,10 @@ interface SaaSLayoutContentProps {
   companyName: string;
   tables: TableDef[];
   colors: ReturnType<typeof getThemeVars>;
+  designTokens?: DesignTokens;
   primaryColor: string;
   activeView: string;
+  setActiveView: (view: string) => void;
   activeTable: TableDef | null;
   activeCustomTableData: any;
   records: any[];
@@ -1143,8 +1193,8 @@ interface SaaSLayoutContentProps {
 }
 
 function SaaSLayoutContent({
-  companyName, tables, colors, primaryColor,
-  activeView, activeTable, activeCustomTableData,
+  companyName, tables, colors, designTokens = getDesignTokens(), primaryColor,
+  activeView, setActiveView, activeTable, activeCustomTableData,
   records, loading, searchQuery, setSearchQuery,
   onEdit, onDelete, onAddNew
 }: SaaSLayoutContentProps) {
@@ -1213,48 +1263,63 @@ function SaaSLayoutContent({
             {/* KPI Cards */}
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '20px' }}>
               <KpiCard
-                title="Tabelle"
+                title="Sezioni attive"
                 value={String(tables.length)}
                 icon={<LayoutDashboard size={22} />}
                 colors={colors}
+                designTokens={designTokens}
               />
               <KpiCard
                 title="Record Totali"
                 value={String(totalRecords)}
                 icon={<Database size={22} />}
                 colors={colors}
+                designTokens={designTokens}
               />
             </div>
 
-            {/* Tables overview */}
+            {/* Panoramica sezioni: nomi reali delle entità, mai la parola generica "Tabelle" */}
             <div
               style={{
-                background: '#FFFFFF',
-                border: '1px solid #F4F4F5',
-                borderRadius: '8px',
+                background: designTokens.colors['card-bg'] || '#FFFFFF',
+                border: `1px solid ${designTokens.colors['border'] || '#F4F4F5'}`,
+                borderRadius: designTokens.radii['lg'] || '12px',
                 padding: '24px',
+                boxShadow: '0 1px 2px rgba(16,24,40,0.04), 0 4px 12px rgba(16,24,40,0.06)',
               }}
             >
-              <h3 style={{ fontFamily: "'Plus Jakarta Sans', sans-serif", color: '#18181B', fontSize: '16px', fontWeight: 600, margin: '0 0 16px 0' }}>
-                Le tue Tabelle
+              <h3 style={{ fontFamily: designTokens.fonts.headline, color: designTokens.colors['text'] || '#18181B', fontSize: '16px', fontWeight: 600, margin: '0 0 16px 0' }}>
+                Le tue sezioni
               </h3>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                 {tables.map((table) => (
                   <div
                     key={table.name}
+                    onClick={() => setActiveView(table.name)}
                     style={{
                       display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-                      padding: '12px 16px', borderRadius: '8px',
-                      background: '#FFFFFF', border: '1px solid #F4F4F5',
+                      padding: '14px 16px', borderRadius: designTokens.radii['md'] || '8px',
+                      background: designTokens.colors['card-bg-alt'] || '#FAFAFA',
+                      border: `1px solid ${designTokens.colors['border-light'] || '#F4F4F5'}`,
+                      cursor: 'pointer', transition: 'box-shadow 0.15s, transform 0.15s',
                     }}
+                    onMouseEnter={(e) => { e.currentTarget.style.boxShadow = '0 2px 8px rgba(16,24,40,0.08)'; e.currentTarget.style.transform = 'translateY(-1px)'; }}
+                    onMouseLeave={(e) => { e.currentTarget.style.boxShadow = 'none'; e.currentTarget.style.transform = 'translateY(0)'; }}
                   >
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                      {resolveIcon(table.icon || '')}
-                      <span style={{ fontFamily: "'Plus Jakarta Sans', sans-serif", color: '#18181B', fontSize: '14px', fontWeight: 500 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                      <div style={{
+                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                        width: '36px', height: '36px', borderRadius: designTokens.radii['md'] || '8px',
+                        background: `${designTokens.colors['primary'] || primaryColor}1A`,
+                        color: designTokens.colors['primary'] || primaryColor,
+                      }}>
+                        {resolveIcon(table.icon || '')}
+                      </div>
+                      <span style={{ fontFamily: designTokens.fonts.headline, color: designTokens.colors['text'] || '#18181B', fontSize: '14px', fontWeight: 600 }}>
                         {table.labelPlural || table.label}
                       </span>
                     </div>
-                    <span style={{ color: colors.textSecondary, fontSize: '13px' }}>
+                    <span style={{ color: designTokens.colors['text-secondary'] || colors.textSecondary, fontFamily: designTokens.fonts.body, fontSize: '13px' }}>
                       {table.fields?.length || 0} campi
                     </span>
                   </div>
@@ -1364,13 +1429,13 @@ function SaaSLayoutContent({
             <tbody>
               {loading ? (
                 <tr>
-                  <td colSpan={activeTable?.fields.length + 1 || 1} style={{ padding: '40px', textAlign: 'center', color: colors.textSecondary }}>
+                  <td colSpan={(activeTable?.fields?.length || 0) + 1} style={{ padding: '40px', textAlign: 'center', color: colors.textSecondary }}>
                     Caricamento records...
                   </td>
                 </tr>
               ) : records.length === 0 ? (
                 <tr>
-                  <td colSpan={activeTable?.fields.length + 1 || 1} style={{ padding: '40px', textAlign: 'center', color: colors.textSecondary }}>
+                  <td colSpan={(activeTable?.fields?.length || 0) + 1} style={{ padding: '40px', textAlign: 'center', color: colors.textSecondary }}>
                     {searchQuery ? 'Nessun risultato per la ricerca' : 'Nessun record presente'}
                   </td>
                 </tr>
@@ -1459,6 +1524,7 @@ interface RecipeLayoutContentProps {
   companyName: string;
   tables: TableDef[];
   colors: ReturnType<typeof getThemeVars>;
+  designTokens?: DesignTokens;
   primaryColor: string;
   activeView: string;
   activeTable: TableDef | null;
@@ -1472,7 +1538,7 @@ interface RecipeLayoutContentProps {
 }
 
 function RecipeLayoutContent({
-  companyName, tables, colors, primaryColor,
+  companyName, tables, colors, designTokens = getDesignTokens(), primaryColor,
   activeView, activeTable,
   records, loading, searchQuery, setSearchQuery,
   onEdit, onDelete, onAddNew
@@ -1560,6 +1626,7 @@ interface RestaurantLayoutContentProps {
   companyName: string;
   tables: TableDef[];
   colors: ReturnType<typeof getThemeVars>;
+  designTokens?: DesignTokens;
   primaryColor: string;
   activeView: string;
   activeTable: TableDef | null;
@@ -1573,7 +1640,7 @@ interface RestaurantLayoutContentProps {
 }
 
 function RestaurantLayoutContent({
-  companyName, tables, colors, primaryColor,
+  companyName, tables, colors, designTokens = getDesignTokens(), primaryColor,
   activeView, activeTable,
   records, loading, searchQuery, setSearchQuery,
   onEdit, onDelete, onAddNew
@@ -1658,14 +1725,50 @@ function RestaurantLayoutContent({
 
 // ─── Helper Functions ───────────────────────────────────────────────────────
 
+// ─── Status Badge (per campi "select" tipo stato ordine/prenotazione) ───────
+const STATUS_STYLES: { keywords: string[]; bg: string; color: string }[] = [
+  { keywords: ['consegnat', 'complet', 'pagat', 'confermat', 'pronto', 'attivo', 'disponibile', 'evaso', 'delivered', 'completed', 'paid', 'confirmed', 'ready', 'done', 'active'], bg: '#DCFCE7', color: '#166534' },
+  { keywords: ['preparazione', 'corso', 'attesa', 'lavorazione', 'sospes', 'pending', 'processing', 'progress', 'in attesa'], bg: '#FEF3C7', color: '#92400E' },
+  { keywords: ['annullat', 'rifiutat', 'scadut', 'bloccat', 'cancellat', 'cancelled', 'canceled', 'rejected', 'expired', 'blocked'], bg: '#FEE2E2', color: '#991B1B' },
+];
+
+function getStatusBadgeStyle(value: string): { bg: string; color: string } {
+  const v = value.toLowerCase();
+  for (const s of STATUS_STYLES) {
+    if (s.keywords.some((k) => v.includes(k))) return { bg: s.bg, color: s.color };
+  }
+  return { bg: '#E0E7FF', color: '#3730A3' }; // neutro/informativo di default
+}
+
+function StatusBadge({ value }: { value: string }) {
+  const { bg, color } = getStatusBadgeStyle(value);
+  return (
+    <span style={{
+      display: 'inline-block', padding: '3px 10px', borderRadius: '999px',
+      background: bg, color, fontSize: '12px', fontWeight: 600,
+      whiteSpace: 'nowrap',
+    }}>
+      {value}
+    </span>
+  );
+}
+
 function renderCellValue(record: Record<string, unknown>, fieldName: string, type: string): React.ReactNode {
   const val = record[fieldName];
   if (type === 'checkbox') {
     return val ? 'Si' : 'No';
   }
+  if (type === 'select' && val) {
+    return <StatusBadge value={String(val)} />;
+  }
+  if (type === 'currency') {
+    const n = Number(val);
+    return isNaN(n) ? String(val ?? '') : `€ ${n.toFixed(2)}`;
+  }
   if (type === 'number') {
     const n = Number(val);
-    if (!isNaN(n) && fieldName.toLowerCase().includes('prezzo') || fieldName.toLowerCase().includes('totale')) {
+    const looksLikePrice = fieldName.toLowerCase().includes('prezzo') || fieldName.toLowerCase().includes('totale') || fieldName.toLowerCase().includes('importo');
+    if (!isNaN(n) && looksLikePrice) {
       return `€ ${n.toFixed(2)}`;
     }
     return String(val ?? '');

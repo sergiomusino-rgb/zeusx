@@ -5,6 +5,69 @@ const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
 const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
 const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
 
+export async function GET(
+  req: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  try {
+    const authHeader = req.headers.get('authorization');
+    if (!authHeader?.startsWith('Bearer ')) {
+      return NextResponse.json({ error: 'Non autorizzato' }, { status: 401 });
+    }
+
+    const token = authHeader.slice(7);
+
+    const authClient = createClient(supabaseUrl, anonKey, {
+      auth: { persistSession: false, autoRefreshToken: false },
+      global: { headers: { Authorization: `Bearer ${token}` } },
+    });
+
+    const { data: { user }, error: authError } = await authClient.auth.getUser();
+    if (authError || !user) {
+      return NextResponse.json({ error: 'Utente non autenticato' }, { status: 401 });
+    }
+
+    const { id } = await params;
+
+    const adminClient = createClient(supabaseUrl, serviceRoleKey, {
+      auth: { persistSession: false, autoRefreshToken: false },
+    });
+
+    const { data: memberships } = await adminClient
+      .from('tenant_members')
+      .select('tenant_id')
+      .eq('user_id', user.id)
+      .limit(1);
+
+    const tenantId = memberships?.[0]?.tenant_id;
+    if (!tenantId) {
+      return NextResponse.json({ error: 'Tenant non trovato' }, { status: 404 });
+    }
+
+    const { data: app, error: appError } = await adminClient
+      .from('apps')
+      .select('id, name, slug, tenant_id, status, trial_ends_at, client_email, client_password, config')
+      .eq('id', id)
+      .single();
+
+    if (appError || !app) {
+      return NextResponse.json({ error: 'App non trovata' }, { status: 404 });
+    }
+
+    if (app.tenant_id !== tenantId) {
+      return NextResponse.json({ error: 'Non autorizzato' }, { status: 403 });
+    }
+
+    return NextResponse.json({ app });
+  } catch (error) {
+    console.error('[GET /api/apps/:id] error:', error);
+    return NextResponse.json(
+      { error: error instanceof Error ? error.message : 'Errore interno' },
+      { status: 500 }
+    );
+  }
+}
+
 export async function DELETE(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> }

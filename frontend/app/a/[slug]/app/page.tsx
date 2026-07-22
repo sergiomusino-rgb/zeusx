@@ -17,7 +17,8 @@ import {
 } from 'lucide-react';
   import { QRCodeCanvas } from 'qrcode.react';
   import { useLanguage } from '@/src/lib/LanguageContext';
-  import { applyDesignTokens, getDesignTokensByKey, cssVar } from '@/lib/designTokens';
+  import { applyDesignTokens, getDesignTokens, getLayoutTypeForSector, cssVar } from '@/lib/designTokens';
+  import DynamicLayoutRenderer from './DynamicLayoutRenderer';
 
 // ─── Interfaces ───────────────────────────────────────────────────────────────
 
@@ -48,6 +49,7 @@ interface AppConfig {
         tables: TableDef[];
       };
       tables?: TableDef[];
+      sector?: string;
     };
     tables?: TableDef[];
     branding?: {
@@ -68,7 +70,7 @@ interface AppConfig {
     primary_color?: string;
     theme?: 'dark' | 'light';
   };
-  blueprint?: { schema?: { tables: TableDef[] }; tables?: TableDef[] };
+  blueprint?: { schema?: { tables: TableDef[] }; tables?: TableDef[]; sector?: string };
   tables?: TableDef[];
   [key: string]: unknown;
 }
@@ -1660,6 +1662,17 @@ export default function ViewerProFinal() {
   const colors = useMemo(() => getThemeVars(theme, primaryColor), [theme, primaryColor]);
   const layoutCfg = LAYOUT_CONFIG[prefs.layout];
 
+  // Settore salvato nello schema (blueprint.sector per la pipeline Totalum,
+  // sector diretto per la pipeline Creator) — guida sia i colori (getDesignTokens)
+  // sia il layout renderizzato (getLayoutTypeForSector).
+  const sectorFromConfig = innerConfig?.blueprint?.sector
+    || (innerConfig?.sector as string | undefined)
+    || config?.blueprint?.sector
+    || (config?.sector as string | undefined)
+    || '';
+  const richLayoutType = getLayoutTypeForSector(sectorFromConfig);
+  const designTokens = useMemo(() => getDesignTokens(sectorFromConfig), [sectorFromConfig]);
+
   // ─── Load preferences from localStorage ──────────────────────────────────
 
   useEffect(() => {
@@ -2112,24 +2125,12 @@ export default function ViewerProFinal() {
     const root = document.getElementById('app-root-container');
     if (!root) return;
 
-    // Determine design key from app config branding or fallback
-    const configBranding = (config?.branding || appInfo?.branding || {}) as Record<string, unknown>;
-    const sectorFromConfig = (configBranding['design_key'] as string) || (configBranding['sector'] as string) || '';
-    
-    // Map known sectors to design tokens
-    const sectorDesignMap: Record<string, string> = {
-      docs: 'docuforge',
-      documentation: 'docuforge',
-      api: 'docuforge',
-    };
-
-    const designKey = sectorDesignMap[sectorFromConfig] || sectorFromConfig || 'docuforge';
-    const tokens = getDesignTokensByKey(designKey);
+    const tokens = getDesignTokens(sectorFromConfig);
     applyDesignTokens(root, tokens);
     
     // Also set font-family on body for the design system fonts
     document.body.style.fontFamily = cssVar('font-body');
-  }, [session, config, appInfo]);
+  }, [session, sectorFromConfig]);
 
   // ─── Loading state ──────────────────────────────────────────────────────
 
@@ -2155,6 +2156,103 @@ export default function ViewerProFinal() {
         primaryColor={primaryColor}
         onLogin={handleLogin}
       />
+    );
+  }
+
+  // ─── Layout ricco per settore (ristorante/ecommerce/recipe/docs) ─────────
+  // Per i settori con un layoutType dedicato, delega il rendering a
+  // DynamicLayoutRenderer invece della dashboard generica sottostante.
+  // Fallback sicuro: sector assente/sconosciuto → 'saas' → dashboard generica
+  // invariata, quindi le app già esistenti continuano a funzionare com'erano.
+  if (richLayoutType !== 'saas' && session) {
+    const isCustomTableActive = !!activeCustomTable;
+    return (
+      <>
+        <DynamicLayoutRenderer
+          layoutType={richLayoutType}
+          primaryColor={primaryColor}
+          colors={colors}
+          designTokens={designTokens}
+          companyName={companyName}
+          logoUrl={logoUrl}
+          tables={tables}
+          activeView={activeView}
+          setActiveView={setActiveView}
+          onLogout={handleLogout}
+          showSettings={showSettings}
+          setShowSettings={setShowSettings}
+          session={session}
+          customTables={customTables}
+          activeCustomTable={activeCustomTable}
+          records={isCustomTableActive ? customRecords : records}
+          recordsLoading={isCustomTableActive ? customRecordsLoading : recordsLoading}
+          searchQuery={searchQuery}
+          setSearchQuery={setSearchQuery}
+          onEdit={isCustomTableActive ? (r) => setCustomModalRecord(r) : (r) => setModalRecord(r)}
+          onDelete={isCustomTableActive ? handleDeleteCustomRecord : handleDeleteRecord}
+          onAddNew={isCustomTableActive ? () => setCustomModalRecord('new') : () => setModalRecord('new')}
+          loadRecords={(t) => loadRecords(t, session.password, session.appInfo.id)}
+          onEditTable={(table) => setEditTable(table)}
+        />
+
+        {/* Stessi modali della dashboard generica, invariati */}
+        {modalRecord !== null && activeTable && (
+          <DynamicRecordModal
+            table={activeTable}
+            record={modalRecord === 'new' ? null : modalRecord}
+            onSave={handleModalSave}
+            onClose={() => setModalRecord(null)}
+            saving={saving}
+            colors={colors}
+            clientiRecords={clientiRecords}
+            prodottiRecords={prodottiRecords}
+            ordiniRecords={ordiniRecords}
+          />
+        )}
+
+        {showSettings && (
+          <SettingsModal
+            prefs={prefs}
+            onPrefsChange={setPrefs}
+            onClose={() => setShowSettings(false)}
+            onLogout={handleLogout}
+            onChangePassword={handleChangePassword}
+            colors={colors}
+            slug={slug}
+          />
+        )}
+
+        {showCreateCustomTable && (
+          <CreateCustomTableModal
+            onSave={handleCreateCustomTable}
+            onClose={() => setShowCreateCustomTable(false)}
+            saving={creatingCustomTable}
+            colors={colors}
+          />
+        )}
+
+        {customModalRecord !== null && activeCustomTable && (
+          <CustomRecordModal
+            columns={activeCustomTable.columns}
+            record={customModalRecord === 'new' ? null : customModalRecord}
+            onSave={handleCustomModalSave}
+            onClose={() => setCustomModalRecord(null)}
+            saving={customSaving}
+            colors={colors}
+            tableLabel={activeCustomTable.label}
+          />
+        )}
+
+        {editTable !== null && (
+          <EditTableModal
+            table={editTable}
+            onSave={handleEditTableSave}
+            onClose={() => setEditTable(null)}
+            saving={editTableSaving}
+            colors={colors}
+          />
+        )}
+      </>
     );
   }
 

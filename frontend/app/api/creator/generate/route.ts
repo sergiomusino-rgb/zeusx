@@ -5,6 +5,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { getDesignSystemForSector } from '@/lib/designSystemLoader';
+import { sanitizeBlueprint, normalizeSector, type Table } from '@/src/lib/blueprint-schema';
 
 // Configurazione Supabase
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
@@ -71,14 +72,14 @@ Rispondi SOLO con un JSON valido con la seguente struttura:
   "description": "Descrizione breve",
   "sector": "${sector}",
   "ui": {
-    "primaryColor": "${designSystem.designTokens?.colors?.primary || '#6366f1'}",
-    "template": "${getTemplateForSector(sector)}"
+    "primaryColor": "${designSystem.designTokens?.colors?.primary || '#6366f1'}"
   },
   "schema": {
     "tables": [
       {
         "name": "nome_tabella",
-        "label": "Etichetta",
+        "label": "Etichetta singolare (es. Pizza, Ordine, Prenotazione)",
+        "labelPlural": "Etichetta plurale REALE (es. Pizze, Ordini, Prenotazioni) - MAI la parola generica 'Tabelle'",
         "icon": "📄",
         "fields": [
           {"name": "id", "type": "id", "label": "ID"},
@@ -90,6 +91,9 @@ Rispondi SOLO con un JSON valido con la seguente struttura:
 }
 
 Crea tabelle e campi SPECIFICI per il settore richiesto. Non usare nomi generici come "nome_tabella" o "nome_campo".
+"labelPlural" è OBBLIGATORIO per ogni tabella e deve essere il plurale reale e specifico dell'entità (es. "Ordini", "Prenotazioni", "Menu Pizze", "Clienti") — non usare mai letteralmente la parola "Tabelle" o "Tabella".
+Se una tabella rappresenta ordini/prenotazioni/richieste, includi sempre un campo "stato"/"status" di tipo "select" con opzioni di stato realistiche per il settore (es. "In preparazione", "Pronto", "Consegnato" per un ordine di cibo).
+Se una tabella rappresenta prodotti/piatti/servizi in vendita, includi sempre un campo prezzo di tipo "number" con nome contenente "prezzo" o "totale".
 Non aggiungere testo prima o dopo il JSON.`;
 
   const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
@@ -134,9 +138,8 @@ Non aggiungere testo prima o dopo il JSON.`;
       const parsed = JSON.parse(jsonMatch[0]);
       // Assicura che ui esista
       if (!parsed.ui) {
-        parsed.ui = { 
-          primaryColor: designSystem.designTokens?.colors?.primary || '#6366f1',
-          template: getTemplateForSector(sector)
+        parsed.ui = {
+          primaryColor: designSystem.designTokens?.colors?.primary || '#6366f1'
         };
       }
       return parsed;
@@ -150,25 +153,26 @@ Non aggiungere testo prima o dopo il JSON.`;
   throw new Error('Nessun JSON valido nella risposta');
 }
 
-// ─── Helper: Get template for sector ───────────────────────────────────────────────
-function getTemplateForSector(sector: string): string {
-  const sectorLower = (sector || 'wandermap').toLowerCase();
-  if (['food', 'ristorante', 'ristorazione', 'bar', 'caffetteria', 'pizzeria', 'trattoria', 'osteria', 'menu', 'recipe', 'recipes', 'cooking', 'foodblog'].includes(sectorLower)) {
-    return 'warm-editorial';
-  }
-  if (['retail', 'ecommerce', 'e-commerce', 'negozio', 'shop', 'store', 'marketplace', 'artigianato', 'handmade', 'prodotti'].includes(sectorLower)) {
-    return 'clean-tech';
-  }
-  if (['crypto', 'finance', 'banking', 'investimento', 'trading', 'wallet'].includes(sectorLower)) {
-    return 'clean-tech';
-  }
-  if (['realestate', 'property', 'immobiliare', 'casa', 'affitto', 'affittare', 'interior', 'design'].includes(sectorLower)) {
-    return 'warm-editorial';
-  }
-  if (['volunteer', 'volontariato', 'nonprofit', 'charity', 'fondazione', 'ngo', 'cause'].includes(sectorLower)) {
-    return 'warm-editorial';
-  }
-  return 'clean-tech';
+// ─── Helper: Adatta lo shape Zod (blueprint-schema) a quello atteso dal viewer
+// (table-definitions.ts / EditTableModal.tsx usano `field.name`, non `field.id`) ────
+function toViewerTables(tables: Table[]) {
+  return tables.map((t) => ({
+    name: t.name,
+    label: t.label,
+    labelPlural: t.labelPlural,
+    icon: t.icon,
+    fields: t.fields.map((f) => ({
+      id: f.id,
+      name: f.id,
+      label: f.label,
+      type: f.type,
+      required: f.required,
+      options: f.options,
+      fixed: false,
+      targetTable: f.target,
+      targetLabel: f.targetLabel,
+    })),
+  }));
 }
 
 // ─── Helper: Generate slug ─────────────────────────────────────────────────────────
@@ -230,11 +234,60 @@ export async function POST(request: NextRequest) {
     }
     
     // Genera schema con Groq (con design system iniettato)
-    const schema = await callGroq(userPrompt || `Genera un'app per ${safeSector}`, safeSector, lang);
-    
+    const rawSchema = await callGroq(userPrompt || `Genera un'app per ${safeSector}`, safeSector, lang);
+
+    // Il settore scelto dall'utente è la fonte di verità (non quello, spesso
+    // impreciso o assente, restituito da Groq) — determina layout e colori a runtime.
+    rawSchema.sector = normalizeSector(safeSector);
+
+    // FieldSchema (blueprint-schema.ts) valida solo `field.id`, ma Groq genera
+    // campi con `name` (formato storico atteso dal viewer). Senza questo step,
+    // ogni campo privo di `id` collasserebbe sul default 'campo' di Zod,
+    // producendo id duplicati tra i campi di una stessa tabella.
+    if (Array.isArray(rawSchema?.schema?.tables)) {
+      for (const t of rawSchema.schema.tables) {
+        if (!t || typeof t !== 'object') continue;
+
+        // Se Groq non fornisce labelPlural, TableSchema (blueprint-schema.ts)
+        // lo forza sul default letterale 'Tabelle' — la stessa entità reale
+        // (es. "Pizza") finirebbe con l'etichetta plurale generica invece di
+        // qualcosa come "Pizze". Deriviamo un fallback dal label reale.
+        if (!t.labelPlural && t.label) {
+          const label = String(t.label).trim();
+          // Pluralizzazione italiana approssimata (fallback: Groq dovrebbe già
+          // fornire labelPlural esplicito, vedi prompt sopra).
+          if (/a$/i.test(label)) t.labelPlural = `${label.slice(0, -1)}e`;
+          else if (/[oe]$/i.test(label)) t.labelPlural = `${label.slice(0, -1)}i`;
+          else t.labelPlural = label;
+        }
+
+        if (!Array.isArray(t?.fields)) continue;
+        t.fields.forEach((f: any, index: number) => {
+          if (!f || typeof f !== 'object' || f.id) return;
+          const slug = String(f.label || '').toLowerCase().trim().replace(/[^a-z0-9]+/g, '_').replace(/^_|_$/g, '');
+          f.id = f.name || f.key || (slug ? slug : `campo_${index + 1}`);
+        });
+      }
+    }
+
+    // Valida/normalizza l'output dell'AI prima di salvarlo: rifiuta schemi
+    // malformati invece di scriverli così come sono in produzione.
+    const blueprint = sanitizeBlueprint(rawSchema);
+    if (!blueprint) {
+      return NextResponse.json({
+        success: false,
+        error: 'Lo schema generato non è valido, riprova con un prompt più specifico',
+        code: 'INVALID_SCHEMA'
+      }, { status: 500 });
+    }
+    const schema = {
+      ...blueprint,
+      schema: { tables: toViewerTables(blueprint.schema.tables) },
+    };
+
     // Get or create tenant
     const tenantId = await getOrCreateTenant(supabase, user);
-    
+
     // Genera slug univoco
     const slug = generateSlug(schema.appName || 'app-creator', safeSector);
     

@@ -2,6 +2,8 @@
 // Defines CSS custom properties for each design system variant
 // Used by the app viewer to style components dynamically
 
+import type { DesignLayout } from '@/app/a/[slug]/app/DesignParser';
+
 export interface DesignTokens {
   colors: Record<string, string>;
   fonts: Record<string, string>;
@@ -783,3 +785,31 @@ export function cssVar(name: string): string {
 
 // ─── Available Design Keys ────────────────────────────────────────────────
 export const AVAILABLE_DESIGNS = Object.keys(DESIGN_TOKEN_MAP);
+
+// ─── Design Key → Layout Type Mapping ─────────────────────────────────────
+// Collega la tassonomia colori (SECTOR_TO_DESIGN_KEY sopra) al tipo di
+// layout che DynamicLayoutRenderer deve renderizzare per quel settore.
+export type DesignLayoutType = DesignLayout['type'];
+
+const DESIGN_KEY_TO_LAYOUT: Record<string, DesignLayoutType> = {
+  docuforge: 'docs',
+  bistromenu: 'restaurant',
+  recipebook: 'recipe',
+  marketnest: 'ecommerce',
+  coinpulse: 'saas',
+  urbanloft: 'saas',
+  volunteerhub: 'saas',
+  wandermap: 'saas',
+  glassmorphism: 'saas',
+  'clean-tech': 'saas',
+  'warm-editorial': 'saas',
+  'industrial-dark': 'saas',
+};
+
+// ─── Get Layout Type by Sector ────────────────────────────────────────────
+export function getLayoutTypeForSector(sector?: string): DesignLayoutType {
+  if (!sector) return 'saas';
+  const normalized = sector.toLowerCase().trim();
+  const designKey = SECTOR_TO_DESIGN_KEY[normalized];
+  return (designKey && DESIGN_KEY_TO_LAYOUT[designKey]) || 'saas';
+}
