@@ -7,7 +7,11 @@ const { stringify } = require('csv-stringify/sync');
 const stream = require('stream');
 const XLSX = require('xlsx');
 
-const upload = multer({ storage: multer.memoryStorage() });
+// Nessun limite di dimensione prima permetteva a un tenant autenticato di
+// caricare un file arbitrariamente grande (tenuto interamente in memoria,
+// poi decompresso da XLSX.read) per esaurire l'heap del processo Node e
+// mandare in DoS il backend per tutti i tenant.
+const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 10 * 1024 * 1024 } });
 
 function getSupabase() {
   return createClient(
@@ -446,7 +450,20 @@ router.get('/apps/:appId/export', authMiddleware, tenantMiddleware, async (req, 
       return res.status(404).json({ error: 'Nessun record da esportare' });
     }
 
-    const flatData = data.map(row => row.data);
+    // Un valore di record che inizia con =/+/-/@ verrebbe interpretato come
+    // formula da Excel/Sheets all'apertura del CSV esportato (CSV/formula
+    // injection): lo si neutralizza anteponendo un apice, che lo forza a testo.
+    const sanitizeCsvValue = (value) => {
+      if (typeof value !== 'string') return value;
+      return /^[=+\-@\t\r]/.test(value) ? `'${value}` : value;
+    };
+    const flatData = data.map(row => {
+      const sanitized = {};
+      for (const [key, value] of Object.entries(row.data || {})) {
+        sanitized[key] = sanitizeCsvValue(value);
+      }
+      return sanitized;
+    });
     const csvOutput = stringify(flatData, { header: true });
 
     res.setHeader('Content-Type', 'text/csv');

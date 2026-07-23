@@ -18,6 +18,17 @@ function getStripe() {
   });
 }
 
+// Rango dei piani: gli eventi Stripe (webhook, /sync-plan, banner dashboard)
+// non arrivano garantiti in ordine cronologico. Se un tenant compra business
+// e poi (per un evento in ritardo) arriva l'evento del vecchio acquisto
+// starter, un update incondizionato di tenants.plan lo farebbe retrocedere.
+// Confrontando il rango si applica solo un piano pari o superiore a quello
+// già salvato.
+const PLAN_RANK = { free: 0, starter: 1, basic: 1, pro: 2, business: 3, vip: 3 };
+function planRank(plan) {
+  return PLAN_RANK[plan] ?? 0;
+}
+
 async function getUser(req) {
   const authHeader = req.headers.authorization;
   const serviceToken = process.env.BACKEND_SERVICE_TOKEN;
@@ -54,7 +65,7 @@ async function getOrCreateTenant(supabase, user) {
       name: user.email ? `Tenant di ${user.email}` : 'Tenant personale',
       slug: `tenant-${user.id.slice(0, 8)}`,
       plan: 'free',
-      app_limit: 1,
+      app_limit: 0,
     })
     .select('id')
     .single();
@@ -66,14 +77,30 @@ async function getOrCreateTenant(supabase, user) {
   return tenant.id;
 }
 
+// Setup (one-time) price ID per piano. Non fidarsi mai del priceId passato
+// dal client: planId decide quanti slot vengono concessi dal webhook, quindi
+// il prezzo addebitato deve essere derivato server-side dallo stesso planId
+// (stessa vulnerabilità già corretta in frontend/app/api/create-checkout-session/route.ts).
+function getSetupPriceId(planId) {
+  const setupPrices = {
+    starter: process.env.STRIPE_SETUP_PRICE_STARTER || 'price_1TwTvdRZR2YaFu2sUdqjbupl',
+    pro: process.env.STRIPE_SETUP_PRICE_PRO || 'price_1Tmd1tRZR2YaFu2sgHgxzcTC',
+    business: process.env.STRIPE_SETUP_PRICE_BUSINESS || 'price_1Tmd4GRZR2YaFu2s0FZ4Btym',
+  };
+  return setupPrices[planId] || null;
+}
+
+const EXTRA_SLOT_PRICE_ID = process.env.EXTRA_SLOT_PRICE_ID || process.env.NEXT_PUBLIC_EXTRA_SLOT_PRICE_ID || 'price_extra_slot_15';
+
 // POST /api/create-checkout-session
 router.post('/create-checkout-session', async (req, res) => {
   const user = await getUser(req);
   if (!user) return res.status(401).json({ error: 'Non autorizzato' });
 
   try {
-    const { priceId, planId, quantity = 1 } = req.body;
-    if (!priceId) return res.status(400).json({ error: 'priceId mancante' });
+    const { planId, quantity = 1 } = req.body;
+    const priceId = planId === 'extra_slot' ? EXTRA_SLOT_PRICE_ID : getSetupPriceId(planId);
+    if (!priceId) return res.status(400).json({ error: 'Piano non riconosciuto' });
 
     const supabase = getSupabase();
     const tenantId = await getOrCreateTenant(supabase, user);
@@ -187,13 +214,24 @@ router.post('/update-app-fee', async (req, res) => {
       return res.status(400).json({ error: 'Line item fee non trovato' });
     }
 
-    // Calcola nuova quantity
-    let newQuantity = feeLineItem.quantity;
-    if (action === 'increment') {
-      newQuantity += 1;
-    } else if (action === 'decrement') {
-      newQuantity = Math.max(0, newQuantity - 1);
+    // La quantity non viene mai calcolata da un +1/-1 fornito dal client:
+    // 'action' arriva da qualunque membro del tenant senza controllo di ruolo,
+    // quindi un +1/-1 incondizionato permetterebbe di azzerare il canone
+    // mensile chiamando 'decrement' più volte, indipendentemente dal numero
+    // reale di app attive. Si ricalcola sempre la quantity dal conteggio
+    // reale delle app del tenant (fonte di verità), rendendo l'endpoint
+    // idempotente e non manipolabile: 'action' resta solo per log/compatibilità.
+    const { count: appCount, error: countError } = await supabase
+      .from('apps')
+      .select('id', { count: 'exact', head: true })
+      .eq('tenant_id', tenantId);
+
+    if (countError) {
+      console.error('[update-app-fee] errore conteggio app:', countError);
+      return res.status(500).json({ error: 'Errore conteggio app tenant' });
     }
+
+    const newQuantity = appCount ?? 0;
 
     // Aggiorna subscription
     await stripe.subscriptions.update(subscription.id, {
@@ -240,14 +278,8 @@ router.post('/sync-plan', async (req, res) => {
     if (!membership) return res.status(403).json({ error: 'Tenant non autorizzato' });
 
     if (session.payment_status !== 'paid') {
-      return res.json({ paid: false, plan: 'free', appLimit: 1 });
+      return res.json({ paid: false, plan: 'free', appLimit: 0 });
     }
-
-    const lineItems = await stripe.checkout.sessions.listLineItems(sessionId, { limit: 10 });
-    const priceId = lineItems.data[0]?.price?.id;
-    
-    let plan = 'starter';
-    let appLimit = 1;
 
     const planConfig = {
       starter: { appLimit: 1 },
@@ -255,42 +287,101 @@ router.post('/sync-plan', async (req, res) => {
       business: { appLimit: 100 }
     };
 
-    if (priceId) {
-      const price = await stripe.prices.retrieve(priceId);
-      const productId = typeof price.product === 'string' ? price.product : price.product?.id;
-      
-      if (productId) {
-        const product = await stripe.products.retrieve(productId);
-        const name = (product.name || '').toLowerCase();
-        
-        if (name.includes('business')) {
-          plan = 'business';
-          appLimit = planConfig.business.appLimit;
-        } else if (name.includes('pro')) {
-          plan = 'pro';
-          appLimit = planConfig.pro.appLimit;
-        } else if (name.includes('starter')) {
-          plan = 'starter';
-          appLimit = planConfig.starter.appLimit;
+    // Il piano scelto è già salvato correttamente in metadata.plan_id al
+    // momento della creazione della sessione — stessa fonte usata dal
+    // webhook Stripe. Prima si re-indovinava dal nome del prodotto Stripe
+    // (business/pro/starter come sottostringa): se il nome conteneva "pro"
+    // per qualunque motivo, QUALSIASI piano diverso da "business" veniva
+    // salvato come "pro", sovrascrivendo il valore corretto già scritto dal
+    // webhook. Il match sul nome resta solo come fallback per sessioni
+    // vecchie prive di questo metadata.
+    const metadataPlan = session.metadata?.plan_id;
+    let plan = planConfig[metadataPlan] ? metadataPlan : 'starter';
+    let appLimit = planConfig[plan]?.appLimit ?? 1;
+
+    if (!metadataPlan) {
+      const lineItems = await stripe.checkout.sessions.listLineItems(sessionId, { limit: 10 });
+      const priceId = lineItems.data[0]?.price?.id;
+
+      if (priceId) {
+        const price = await stripe.prices.retrieve(priceId);
+        const productId = typeof price.product === 'string' ? price.product : price.product?.id;
+
+        if (productId) {
+          const product = await stripe.products.retrieve(productId);
+          const name = (product.name || '').toLowerCase();
+
+          if (name.includes('business')) {
+            plan = 'business';
+            appLimit = planConfig.business.appLimit;
+          } else if (name.includes('pro')) {
+            plan = 'pro';
+            appLimit = planConfig.pro.appLimit;
+          } else if (name.includes('starter')) {
+            plan = 'starter';
+            appLimit = planConfig.starter.appLimit;
+          }
         }
       }
     }
 
-    const { error: updateError } = await supabase
-      .from('tenants')
-      .update({ 
-        plan, 
-        app_limit: appLimit,
-        updated_at: new Date().toISOString() 
-      })
-      .eq('id', tenantId);
+    // Modello slot cumulativo: questa sessione può già essere stata
+    // processata dal webhook Stripe (fonte autoritativa) o da un'altra
+    // chiamata a questo stesso endpoint (es. refresh della pagina). La riga
+    // in processed_checkout_sessions fa da guardia di idempotenza: solo chi
+    // riesce a inserirla per primo somma gli slot, gli altri leggono soltanto
+    // lo stato attuale del tenant.
+    const { error: insertError } = await supabase
+      .from('processed_checkout_sessions')
+      .insert({ session_id: sessionId, tenant_id: tenantId, plan, slots_added: appLimit });
 
-    if (updateError) {
-      console.error('[sync-plan] errore update:', updateError);
+    if (insertError && insertError.code !== '23505') {
+      console.error('[sync-plan] errore idempotenza:', insertError);
       return res.status(500).json({ error: 'Errore aggiornamento piano' });
     }
 
-    return res.json({ paid: true, plan, appLimit });
+    if (!insertError) {
+      const { error: rpcError } = await supabase.rpc('add_tenant_slots', {
+        tenant_id: tenantId,
+        slots_to_add: appLimit,
+      });
+      if (rpcError) {
+        console.error('[sync-plan] errore add_tenant_slots:', rpcError);
+        return res.status(500).json({ error: 'Errore aggiornamento piano' });
+      }
+
+      const { data: currentTenant } = await supabase
+        .from('tenants')
+        .select('plan')
+        .eq('id', tenantId)
+        .single();
+
+      if (planRank(plan) >= planRank(currentTenant?.plan)) {
+        const { error: planError } = await supabase
+          .from('tenants')
+          .update({ plan, updated_at: new Date().toISOString() })
+          .eq('id', tenantId);
+
+        if (planError) {
+          console.error('[sync-plan] errore update piano:', planError);
+          return res.status(500).json({ error: 'Errore aggiornamento piano' });
+        }
+      } else {
+        console.log(`[sync-plan] piano ${plan} non applicato: tenant ${tenantId} ha già ${currentTenant?.plan}`);
+      }
+    }
+
+    const { data: tenantRow } = await supabase
+      .from('tenants')
+      .select('plan, app_limit')
+      .eq('id', tenantId)
+      .single();
+
+    return res.json({
+      paid: true,
+      plan: tenantRow?.plan ?? plan,
+      appLimit: tenantRow?.app_limit ?? appLimit,
+    });
   } catch (err) {
     console.error('[sync-plan] errore:', err);
     res.status(500).json({ error: err.message || 'Errore sync piano' });

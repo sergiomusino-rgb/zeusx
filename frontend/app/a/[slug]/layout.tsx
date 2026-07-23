@@ -13,6 +13,7 @@ import Link from 'next/link';
 import { AppInfoProvider, type AuthMode } from './AppInfoContext';
 import { getClientSubscriptionPrice } from '@/lib/pricing';
 import { getDesignTokens } from '@/lib/designTokens';
+import { getDemoApp } from '@/lib/demoApps';
 
 type AppStatus = 'trial' | 'active' | 'expired' | 'past_due' | 'canceled';
 
@@ -76,6 +77,29 @@ export default function AppLayout({ children }: PropsWithChildren) {
     let cancelled = false;
 
     const init = async () => {
+      // Slug delle demo dello Showcase (dashboard/showcase): non sono app
+      // reali, non esiste alcuna riga in `apps` per questi slug. Costruiamo
+      // l'AppInfo localmente per mostrare comunque la landing pubblica reale,
+      // senza toccare Supabase né richiedere alcun login/gate.
+      const demo = getDemoApp(slug);
+      if (demo) {
+        if (!cancelled) {
+          setAppInfo({
+            id: `demo-${slug}`,
+            name: demo.name,
+            status: 'active',
+            trial_ends_at: null,
+            stripe_subscription_id: null,
+            client_subscription_price: 25,
+            client_price: 25,
+            auth_mode: 'supabase',
+            config: { sector: demo.sector, description: demo.description, schema: { tables: demo.tables } },
+          });
+          setLoading(false);
+        }
+        return;
+      }
+
       const [{ data: rawApp }, { data: { user } }] = await Promise.all([
         supabase
           .from('apps')

@@ -178,10 +178,18 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: reason || 'Errore controllo limite app' }, { status: 500 });
     }
 
-    // Genera blueprint dal backend
+    // Genera blueprint dal backend. L'endpoint richiede autenticazione (vedi
+    // requireAuth in backend/server.js): questa è una chiamata server-to-server
+    // per un utente già autenticato sopra in questo stesso handler, quindi si
+    // usa il BACKEND_SERVICE_TOKEN condiviso invece di re-inoltrare il JWT.
     const blueprintRes = await fetch(`${backendUrl}/api/generate-app`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${process.env.BACKEND_SERVICE_TOKEN}`,
+        'X-User-ID': user.id,
+        'X-User-Email': user.email || '',
+      },
       body: JSON.stringify({ sector, prompt, lang: 'it', provider: 'groq' }),
     });
 

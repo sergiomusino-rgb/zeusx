@@ -57,6 +57,43 @@ async function getOrCreateTenant(supabase: any, user: { id: string; email?: stri
   return tenant.id;
 }
 
+// ─── Helper: verifica slot disponibili (stesso meccanismo di /api/apps) ─────────────
+// Creator AI creava app senza mai controllare né incrementare gli slot del
+// tenant: un tenant con app_limit 0 (nessun piano acquistato) poteva generare
+// app illimitate gratis. Allineato a canCreateApp in frontend/app/api/apps/route.ts.
+async function canCreateApp(supabase: any, tenantId: string, userId?: string): Promise<{ allowed: boolean; reason?: string; tenant?: any }> {
+  const { data: tenant, error: tenantError } = await supabase
+    .from('tenants')
+    .select('plan, app_limit, total_apps_created')
+    .eq('id', tenantId)
+    .single();
+
+  if (tenantError || !tenant) {
+    return { allowed: false, reason: 'Tenant non trovato' };
+  }
+
+  // Admin: app illimitate
+  if (userId === ADMIN_USER_ID) {
+    return { allowed: true, tenant };
+  }
+
+  const planLimits: Record<string, number> = {
+    free: 0,
+    starter: 1,
+    pro: 5,
+    business: 100,
+  };
+
+  const appLimit = tenant.app_limit ?? planLimits[tenant.plan] ?? 1;
+  const totalCreated = tenant.total_apps_created || 0;
+
+  if (appLimit - totalCreated <= 0) {
+    return { allowed: false, reason: 'SlotsExhausted', tenant };
+  }
+
+  return { allowed: true, tenant };
+}
+
 // ─── Helper: Call Groq API ─────────────────────────────────────────────────────────
 async function callGroq(prompt: string, sector: string, lang: string): Promise<any> {
   // Carica il design system per il settore
@@ -224,6 +261,28 @@ export async function POST(request: NextRequest) {
       }, { status: 401 });
     }
     
+    // Verifica slot PRIMA di chiamare l'AI, per non sprecare budget se il
+    // tenant ha già esaurito le app disponibili sul suo piano.
+    const tenantId = await getOrCreateTenant(supabase, user);
+    const { allowed, reason, tenant } = await canCreateApp(supabase, tenantId, user.id);
+
+    if (!allowed) {
+      if (reason === 'SlotsExhausted') {
+        return NextResponse.json({
+          success: false,
+          error: 'SlotsExhausted',
+          message: 'Hai esaurito gli slot app. Acquista un nuovo piano per crearne altre.',
+          redirectTo: '/pricing',
+          code: 'SLOTS_EXHAUSTED',
+        }, { status: 403 });
+      }
+      return NextResponse.json({
+        success: false,
+        error: reason || 'Errore controllo limite app',
+        code: 'SLOTS_CHECK_ERROR',
+      }, { status: 500 });
+    }
+
     // Genera schema con Groq (con design system iniettato)
     const rawSchema = await callGroq(userPrompt || `Genera un'app per ${safeSector}`, safeSector, lang);
 
@@ -276,9 +335,6 @@ export async function POST(request: NextRequest) {
       schema: { tables: toViewerTables(blueprint.schema.tables) },
     };
 
-    // Get or create tenant
-    const tenantId = await getOrCreateTenant(supabase, user);
-
     // Genera slug univoco
     const slug = generateSlug(schema.appName || 'app-creator', safeSector);
 
@@ -325,7 +381,16 @@ export async function POST(request: NextRequest) {
         code: 'DB_ERROR'
       }, { status: 500 });
     }
-    
+
+    // Incrementa il contatore permanente di app create (non si libera mai),
+    // stesso meccanismo di frontend/app/api/apps/route.ts.
+    if (user.id !== ADMIN_USER_ID) {
+      await supabase
+        .from('tenants')
+        .update({ total_apps_created: (tenant?.total_apps_created || 0) + 1 })
+        .eq('id', tenantId);
+    }
+
     return NextResponse.json({
       success: true,
       data: {

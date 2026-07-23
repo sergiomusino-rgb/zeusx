@@ -6,6 +6,7 @@ import { usePathname, useRouter } from 'next/navigation';
 import Sidebar from '@/components/layout/Sidebar';
 import AuthGuard from '@/components/layout/AuthGuard';
 import LanguageSelector from '@/components/LanguageSelector';
+import HeaderClock from '@/components/HeaderClock';
 import { useLanguage } from '@/src/lib/LanguageContext';
 import { Menu, X } from 'lucide-react';
 
@@ -116,7 +117,7 @@ export default function DashboardLayoutClient({
         {/* ─── Main Content Area ───────────────────────────────────────── */}
         <div className="flex flex-1 flex-col overflow-hidden">
            {/* Mobile Header (visible only on small screens) */}
-           <header className="flex h-16 items-center justify-between border-b border-slate-800 bg-slate-900 px-4 md:hidden">
+           <header className="relative z-30 flex h-16 items-center justify-between border-b border-slate-800 bg-slate-900 px-4 md:hidden">
             {shouldShowSidebar ? (
               <button
                 onClick={() => setMobileMenuOpen(true)}
@@ -138,7 +139,7 @@ export default function DashboardLayoutClient({
           </header>
 
           {/* Desktop Header (hidden on mobile) - uniform on all dashboard pages */}
-          <header className="hidden h-16 items-center justify-between border-b border-slate-800 bg-slate-900/40 px-6 backdrop-blur md:flex">
+          <header className="relative z-30 hidden h-16 items-center justify-between border-b border-slate-800 bg-slate-900/40 px-6 backdrop-blur md:flex">
             <div className="flex items-center gap-4">
               {isSubPage ? (
                 <Link
@@ -155,6 +156,7 @@ export default function DashboardLayoutClient({
             </div>
 
            <div className="flex items-center gap-4">
+               <HeaderClock textColor="#e2e8f0" mutedColor="#64748b" />
                <LanguageSelector />
              </div>
           </header>

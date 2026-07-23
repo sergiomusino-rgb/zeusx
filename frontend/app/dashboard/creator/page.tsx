@@ -1,10 +1,18 @@
 'use client';
 
-import { useState, ChangeEvent } from 'react';
+import { useState, useEffect, useRef, ChangeEvent } from 'react';
 import { useRouter } from 'next/navigation';
 import { useLanguage } from '@/src/lib/LanguageContext';
-import { Send, Loader2 } from 'lucide-react';
+import { Send, Loader2, Mic, MicOff } from 'lucide-react';
 import { supabaseBrowser } from '@/src/lib/supabase-browser';
+
+// Type declarations for SpeechRecognition (stesso pattern di dashboard/generator/page.tsx)
+declare global {
+  interface Window {
+    SpeechRecognition: any;
+    webkitSpeechRecognition: any;
+  }
+}
 
 // Valori settore: alias riconosciuti da SECTOR_TO_DESIGN_KEY in frontend/lib/designTokens.ts
 // (determinano sia il tema colori sia il layoutType renderizzato in /a/[slug]/app)
@@ -25,6 +33,52 @@ export default function CreatorPage() {
   const [prompt, setPrompt] = useState('');
   const [selectedSector, setSelectedSector] = useState<string | null>(null);
   const [isGenerating, setIsGenerating] = useState(false);
+  const [isListening, setIsListening] = useState(false);
+  const recognitionRef = useRef<any>(null);
+
+  // Inizializza SpeechRecognition (stesso pattern di dashboard/generator/page.tsx)
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+      if (SpeechRecognition) {
+        recognitionRef.current = new SpeechRecognition();
+        recognitionRef.current.lang = locale === 'it' ? 'it-IT' :
+                                   locale === 'es' ? 'es-ES' :
+                                   locale === 'de' ? 'de-DE' :
+                                   locale === 'fr' ? 'fr-FR' : 'en-US';
+        recognitionRef.current.interimResults = true;
+        recognitionRef.current.continuous = false;
+
+        recognitionRef.current.onresult = (event: any) => {
+          const transcript = Array.from(event.results)
+            .map((result: any) => result[0])
+            .map((result: any) => result.transcript)
+            .join('');
+          setPrompt(transcript);
+        };
+
+        recognitionRef.current.onend = () => {
+          setIsListening(false);
+        };
+
+        recognitionRef.current.onerror = () => {
+          setIsListening(false);
+        };
+      }
+    }
+  }, [locale]);
+
+  const toggleListening = () => {
+    if (!recognitionRef.current) return;
+
+    if (isListening) {
+      recognitionRef.current.stop();
+      setIsListening(false);
+    } else {
+      recognitionRef.current.start();
+      setIsListening(true);
+    }
+  };
 
   const handleGenerate = async () => {
     if (!prompt.trim()) return;
@@ -106,13 +160,27 @@ export default function CreatorPage() {
           </div>
 
           {/* Prompt Area */}
-          <div className="mb-6">
+          <div className="mb-6 relative">
             <textarea
               value={prompt}
               onChange={(e: ChangeEvent<HTMLTextAreaElement>) => setPrompt(e.target.value)}
               placeholder={t('creator_prompt_placeholder')}
-              className="w-full h-32 bg-gray-800 text-white rounded-lg border border-gray-700 focus:border-amber-500 resize-none p-4"
+              className="w-full h-32 bg-gray-800 text-white rounded-lg border border-gray-700 focus:border-amber-500 resize-none p-4 pr-12"
             />
+            {/* Microphone Button */}
+            <button
+              type="button"
+              onClick={toggleListening}
+              disabled={isGenerating}
+              className={`absolute right-3 top-3 p-2 rounded-lg transition-colors ${
+                isListening
+                  ? 'bg-red-500/20 text-red-400 animate-pulse'
+                  : 'bg-gray-700 text-gray-400 hover:bg-gray-600 hover:text-white'
+              }`}
+              title={isListening ? 'Stop listening' : 'Speak to enter text'}
+            >
+              {isListening ? <MicOff className="w-5 h-5" /> : <Mic className="w-5 h-5" />}
+            </button>
           </div>
 
           {/* Generate Button */}

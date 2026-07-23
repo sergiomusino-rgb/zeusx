@@ -3,6 +3,7 @@
 import { Suspense, useEffect, useState, useRef } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { useLanguage } from '@/src/lib/LanguageContext';
+import { supabaseBrowser } from '@/src/lib/supabase-browser';
 
 function ChatContent() {
   const searchParams = useSearchParams();
@@ -20,9 +21,13 @@ function ChatContent() {
     setInput('');
 
     try {
+      const { data: { session } } = await supabaseBrowser.auth.getSession();
       const response = await fetch('/api/chat', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          ...(session?.access_token ? { Authorization: `Bearer ${session.access_token}` } : {}),
+        },
         body: JSON.stringify({ messages: [{ role: 'user', content: userMessage }], provider: 'groq' })
       });
 

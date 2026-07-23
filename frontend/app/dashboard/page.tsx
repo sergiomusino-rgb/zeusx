@@ -42,6 +42,12 @@ function SyncPlanBanner() {
         }
       } catch (err) {
         console.error('[Dashboard] sync-plan error:', err);
+      } finally {
+        // Rimuove session_id dall'URL una volta sincronizzato: senza questo,
+        // ricaricare la pagina (o tornare indietro nella cronologia) rilancia
+        // la sincronizzazione con la stessa sessione Stripe già esaurita a
+        // ogni visita, rischiando di sovrascrivere il piano corretto.
+        window.history.replaceState(null, '', window.location.pathname);
       }
     }
 

@@ -33,6 +33,16 @@ function getSlotsForPlan(planId: string): number {
   return slotsMap[planId] || 0;
 }
 
+// Rango dei piani: gli eventi Stripe non arrivano garantiti in ordine
+// cronologico. Se un tenant compra business e poi arriva in ritardo l'evento
+// del vecchio acquisto starter, un update incondizionato di tenants.plan lo
+// farebbe retrocedere. Si applica solo un piano pari o superiore a quello
+// già salvato.
+const PLAN_RANK: Record<string, number> = { free: 0, starter: 1, pro: 2, business: 3 };
+function planRank(plan: string | null | undefined): number {
+  return PLAN_RANK[plan ?? ''] ?? 0;
+}
+
 /**
  * POST /api/webhooks/stripe
  * Webhook per ricevere eventi da Stripe (da account connessi)
@@ -155,33 +165,51 @@ async function handleCheckoutSessionCompleted(event: Stripe.Event, supabase: any
     const slotsToAdd = getSlotsForPlan(planId);
 
     if (slotsToAdd > 0) {
-      // Aggiungi gli slot in modo cumulativo. supabase-js non ha un .raw()
-      // (idiom Knex/Postgres.js): leggiamo il valore corrente e scriviamo il
-      // nuovo totale esplicitamente, altrimenti l'update falliva silenziosamente.
-      const { data: tenant, error: fetchError } = await supabase
-        .from('tenants')
-        .select('app_limit')
-        .eq('id', tenantId)
-        .single();
+      // Questo evento arriva anche al webhook del backend
+      // (backend/server.js, registrato separatamente su Render): entrambi
+      // sono abilitati su checkout.session.completed. La riga in
+      // processed_checkout_sessions fa da guardia di idempotenza condivisa
+      // tra i due: solo chi riesce a inserirla per primo somma gli slot
+      // (via RPC atomica add_tenant_slots), l'altro diventa no-op.
+      const sessionId: string | undefined = data.id;
+      const { error: insertError } = await supabase
+        .from('processed_checkout_sessions')
+        .insert({ session_id: sessionId, tenant_id: tenantId, plan: planId, slots_added: slotsToAdd });
 
-      if (fetchError || !tenant) {
-        console.error('[Stripe Webhook] Errore lettura tenant per aggiunta slot:', fetchError);
-      } else {
-        const newAppLimit = (tenant.app_limit || 0) + slotsToAdd;
-        const { error } = await supabase
-          .from('tenants')
-          .update({
-            app_limit: newAppLimit,
-            plan: planId,
-            updated_at: new Date().toISOString()
-          })
-          .eq('id', tenantId);
+      if (insertError && insertError.code !== '23505') {
+        console.error('[Stripe Webhook] Errore idempotenza:', insertError);
+      } else if (!insertError) {
+        const { error: rpcError } = await supabase.rpc('add_tenant_slots', {
+          tenant_id: tenantId,
+          slots_to_add: slotsToAdd,
+        });
 
-        if (error) {
-          console.error('[Stripe Webhook] Errore aggiunta slot:', error);
+        if (rpcError) {
+          console.error('[Stripe Webhook] Errore aggiunta slot:', rpcError);
         } else {
-          console.log(`[Stripe Webhook] Aggiunti ${slotsToAdd} slot al tenant ${tenantId} per piano ${planId} (nuovo totale: ${newAppLimit})`);
+          const { data: currentTenant } = await supabase
+            .from('tenants')
+            .select('plan')
+            .eq('id', tenantId)
+            .single();
+
+          if (planRank(planId) >= planRank(currentTenant?.plan)) {
+            const { error: planError } = await supabase
+              .from('tenants')
+              .update({ plan: planId, updated_at: new Date().toISOString() })
+              .eq('id', tenantId);
+
+            if (planError) {
+              console.error('[Stripe Webhook] Errore aggiornamento piano:', planError);
+            } else {
+              console.log(`[Stripe Webhook] Aggiunti ${slotsToAdd} slot al tenant ${tenantId} per piano ${planId}`);
+            }
+          } else {
+            console.log(`[Stripe Webhook] piano ${planId} non applicato: tenant ${tenantId} ha già ${currentTenant?.plan}`);
+          }
         }
+      } else {
+        console.log(`[Stripe Webhook] sessione ${sessionId} già processata, skip`);
       }
     }
 

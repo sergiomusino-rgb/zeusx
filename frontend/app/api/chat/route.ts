@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { createClient } from '@supabase/supabase-js';
 
 // Supporta i principali provider AI
 async function callGroq(messages: Array<{role: string, content: string}>): Promise<string> {
@@ -77,8 +78,29 @@ Sei preparato, utile, creativo e conciso. Puoi aiutare gli utenti a:
 
 Rispondi sempre in italiano a meno che non richiesto espressamente in un'altra lingua.`;
 
+// Chiama un provider AI a pagamento con le chiavi del proprietario del sito:
+// senza autenticazione chiunque conoscesse l'URL potrebbe consumare budget
+// illimitato (nessun rate limiting è configurato su questo endpoint).
+async function requireAuth(request: NextRequest): Promise<boolean> {
+  const authHeader = request.headers.get('authorization');
+  const token = authHeader?.startsWith('Bearer ') ? authHeader.slice(7) : null;
+  if (!token) return false;
+
+  const supabase = createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    { auth: { persistSession: false, autoRefreshToken: false } }
+  );
+  const { data: { user }, error } = await supabase.auth.getUser(token);
+  return !error && !!user;
+}
+
 export async function POST(request: NextRequest) {
   try {
+    if (!(await requireAuth(request))) {
+      return NextResponse.json({ error: 'Autenticazione richiesta' }, { status: 401 });
+    }
+
     const body = await request.json();
     const { messages, provider = 'groq' } = body;
 

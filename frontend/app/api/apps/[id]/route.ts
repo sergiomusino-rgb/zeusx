@@ -4,7 +4,12 @@ import { cookies } from 'next/headers';
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
 const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
-const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
+// Nessun fallback alla anon key: questo client deve bypassare la RLS (usato
+// dopo i controlli di autorizzazione già fatti in ciascun handler). Degradare
+// silenziosamente alla anon key se la service role key manca farebbe fallire
+// in modo imprevedibile le query sulle colonne/righe protette da RLS, invece
+// di un errore di configurazione chiaro.
+const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
 
 // Campi anagrafici dell'acquirente/titolare dell'app (distinti dalle
 // credenziali di login gestite da client-access/route.ts). Whitelist

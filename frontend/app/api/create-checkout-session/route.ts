@@ -48,6 +48,21 @@ function getFeePriceId(planId: string): string {
   return feePrices[planId] || feePrices.starter;
 }
 
+// Setup (one-time) price ID for a plan. NON derivare mai questo valore dal
+// priceId passato dal client: planId decide quanti slot vengono concessi
+// (vedi getSlotsForPlan negli handler dei webhook), quindi il priceId
+// addebitato deve essere vincolato lato server allo stesso planId — altrimenti
+// un client potrebbe chiedere planId "business" (100 slot) pagando il prezzo
+// di un piano più economico.
+function getSetupPriceId(planId: string): string | null {
+  const setupPrices: Record<string, string> = {
+    starter: process.env.STRIPE_SETUP_PRICE_STARTER || 'price_1TwTvdRZR2YaFu2sUdqjbupl',
+    pro: process.env.STRIPE_SETUP_PRICE_PRO || 'price_1Tmd1tRZR2YaFu2sgHgxzcTC',
+    business: process.env.STRIPE_SETUP_PRICE_BUSINESS || 'price_1Tmd4GRZR2YaFu2s0FZ4Btym',
+  };
+  return setupPrices[planId] || null;
+}
+
 export async function POST(req: NextRequest) {
   // Initialize clients inside handler to ensure env vars are available
   let stripe: any;
@@ -70,7 +85,7 @@ export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
     
-    const { priceId, planId, quantity = 1 } = body;
+    const { planId, quantity = 1 } = body;
 
     if (!planId) {
       return NextResponse.json({ error: 'Parametri mancanti: planId richiesto' }, { status: 400 });
@@ -154,13 +169,16 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Tenant non trovato o creato' }, { status: 500 });
     }
 
-    // Gestione slot extra (15€ per slot)
+    // Gestione slot extra (15€ per slot). Per i piani regolari il priceId
+    // NON viene mai preso dal body: è derivato server-side da planId (vedi
+    // getSetupPriceId) per evitare che un client paghi un piano economico
+    // dichiarando però un planId più costoso nei metadata.
     const EXTRA_SLOT_PRICE_ID = process.env.NEXT_PUBLIC_EXTRA_SLOT_PRICE_ID || 'price_extra_slot_15';
-    const effectivePriceId = planId === 'extra_slot' ? (priceId || EXTRA_SLOT_PRICE_ID) : priceId;
+    const effectivePriceId = planId === 'extra_slot' ? EXTRA_SLOT_PRICE_ID : getSetupPriceId(planId);
     const effectiveQuantity = planId === 'extra_slot' ? (quantity || 1) : 1;
 
     if (!effectivePriceId) {
-      return NextResponse.json({ error: 'Price ID mancante' }, { status: 400 });
+      return NextResponse.json({ error: 'Piano non riconosciuto' }, { status: 400 });
     }
 
     // Crea o recupera customer Stripe

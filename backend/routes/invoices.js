@@ -9,6 +9,26 @@ function getSupabase() {
   );
 }
 
+// Verifica che il Bearer token (password client in chiaro, stesso schema di
+// routes/client-app.js e routes/custom-tables.js) corrisponda a un'app del
+// tenant indicato. Usato dalle route sotto che operano su tenant_id/fattura_id
+// senza uno slug in URL, per evitare che chiunque possa leggere/scrivere le
+// fatture di un tenant arbitrario.
+async function verifyTenantPassword(supabase, tenantId, token) {
+  if (!token) return false;
+  const { data: apps } = await supabase
+    .from('apps')
+    .select('client_password')
+    .eq('tenant_id', tenantId);
+  return !!apps?.some((a) => a.client_password === token);
+}
+
+function getBearerToken(req) {
+  const authHeader = req.headers.authorization;
+  if (!authHeader || !authHeader.startsWith('Bearer ')) return null;
+  return authHeader.substring(7);
+}
+
 // GET /a/:slug/invoices - Recupera tutte le fatture per un tenant
 router.get('/a/:slug/invoices', async (req, res) => {
   try {
@@ -32,6 +52,11 @@ router.get('/a/:slug/invoices', async (req, res) => {
 
     if (app.expires_at && new Date(app.expires_at) < new Date()) {
       return res.status(403).json({ error: 'App scaduta' });
+    }
+
+    const token = getBearerToken(req);
+    if (app.client_password !== token) {
+      return res.status(401).json({ error: 'Password errata' });
     }
 
     // Load invoices from database
@@ -76,6 +101,10 @@ router.post('/invoices', async (req, res) => {
     }
 
     const supabase = getSupabase();
+
+    if (!(await verifyTenantPassword(supabase, tenant_id, getBearerToken(req)))) {
+      return res.status(401).json({ error: 'Password errata' });
+    }
 
     // Inserisci la fattura
     const { data: fattura, error: fatturaError } = await supabase
@@ -143,6 +172,20 @@ router.patch('/invoices/:id', async (req, res) => {
 
     const supabase = getSupabase();
 
+    const { data: existing, error: existingError } = await supabase
+      .from('fatture')
+      .select('tenant_id')
+      .eq('id', id)
+      .single();
+
+    if (existingError || !existing) {
+      return res.status(404).json({ error: 'Fattura non trovata' });
+    }
+
+    if (!(await verifyTenantPassword(supabase, existing.tenant_id, getBearerToken(req)))) {
+      return res.status(401).json({ error: 'Password errata' });
+    }
+
     const { data: fattura, error: fatturaError } = await supabase
       .from('fatture')
       .update({ stato, updated_at: new Date().toISOString() })
@@ -176,6 +219,10 @@ router.get('/invoices/:id', async (req, res) => {
 
     if (fatturaError || !fattura) {
       return res.status(404).json({ error: 'Fattura non trovata' });
+    }
+
+    if (!(await verifyTenantPassword(supabase, fattura.tenant_id, getBearerToken(req)))) {
+      return res.status(401).json({ error: 'Password errata' });
     }
 
     const { data: righe, error: righeError } = await supabase

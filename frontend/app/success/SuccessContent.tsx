@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
+import { supabaseBrowser } from '@/src/lib/supabase-browser';
 
 export default function SuccessPage() {
   const searchParams = useSearchParams();
@@ -19,12 +20,17 @@ export default function SuccessPage() {
       // Se abbiamo session_id, sincronizza il piano con Stripe
       if (sessionId && !appSlug) {
         setSyncStatus('Sincronizzazione del piano in corso...');
-        
-        fetch('/api/sync-plan', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ session_id: sessionId }),
-        })
+
+        supabaseBrowser.auth.getSession().then(({ data: { session } }) =>
+          fetch('/api/sync-plan', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              ...(session?.access_token ? { Authorization: `Bearer ${session.access_token}` } : {}),
+            },
+            body: JSON.stringify({ session_id: sessionId }),
+          })
+        )
         .then(res => res.json())
         .then(data => {
           console.log('[Sync Plan] Risultato:', data);

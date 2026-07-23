@@ -38,8 +38,9 @@ function getSupabaseClients() {
   return { authClient, dbClient };
 }
 
-// ZeusX fee fissa in centesimi (25€)
-const ZEUSX_FEE_CENTS = 2500;
+// ZeusX fee di default in centesimi (25€), usata solo se l'app non ha un
+// zeusx_fee proprio impostato in DB (vedi stesso pattern in checkout/managed).
+const DEFAULT_ZEUSX_FEE_CENTS = 2500;
 
 /**
  * POST /api/apps/checkout
@@ -160,7 +161,8 @@ export async function POST(req: NextRequest) {
     const clientPriceCents = Math.round((app.client_price || 25) * 100);
     
     // L'importo che va al reseller è: client_price - zeusx_fee
-    const amountToResellerCents = clientPriceCents - ZEUSX_FEE_CENTS;
+    const zeusxFeeCents = Math.round((app.zeusx_fee || 25.00) * 100) || DEFAULT_ZEUSX_FEE_CENTS;
+    const amountToResellerCents = clientPriceCents - zeusxFeeCents;
     
     // Se l'importo è negativo o zero, significa che il prezzo è troppo basso
     if (amountToResellerCents <= 0) {
@@ -198,7 +200,7 @@ export async function POST(req: NextRequest) {
     // application_fee_percent accetta al massimo 2 decimali: arrotondiamo,
     // introduce un'imprecisione trascurabile (frazioni di centesimo) rispetto
     // ai 25€ fissi esatti sui prezzi che non dividono esattamente 2500.
-    const zeusxFeePercent = Math.round((ZEUSX_FEE_CENTS / clientPriceCents) * 100 * 100) / 100;
+    const zeusxFeePercent = Math.round((zeusxFeeCents / clientPriceCents) * 100 * 100) / 100;
 
     const session = await stripe.checkout.sessions.create({
       customer: customerId,

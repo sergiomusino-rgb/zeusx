@@ -224,27 +224,29 @@ export async function generateAppAction(input: GenerateAppInput): Promise<Genera
       },
     });
 
-    // Get user from client-side (most reliable)
-    let userId = input.userId;
+    // L'userId non viene MAI preso da input.userId: è un campo lato client e
+    // questa è una Server Action, quindi chiamabile come un endpoint POST con
+    // un payload arbitrario — fidarsi di un userId fornito dal client
+    // permetterebbe a chiunque di generare app / consumare slot sul tenant di
+    // un'altra vittima passandone semplicemente l'id. L'unica fonte
+    // attendibile è la sessione Supabase legata ai cookie della richiesta.
+    let userId: string | undefined;
     let userError = null;
-    
-    // If no userId from client, try server-side
-    if (!userId) {
-      try {
-        const userResult = await supabaseAuth.auth.getUser();
-        userId = userResult.data.user?.id || undefined;
-        userError = userResult.error;
-        
-        if (!userId) {
-          const sessionResult = await supabaseAuth.auth.getSession();
-          userId = sessionResult.data.session?.user?.id || undefined;
-          userError = sessionResult.error;
-        }
-      } catch (err) {
-        console.log('[generateAppAction] Auth error:', err);
+
+    try {
+      const userResult = await supabaseAuth.auth.getUser();
+      userId = userResult.data.user?.id || undefined;
+      userError = userResult.error;
+
+      if (!userId) {
+        const sessionResult = await supabaseAuth.auth.getSession();
+        userId = sessionResult.data.session?.user?.id || undefined;
+        userError = sessionResult.error;
       }
+    } catch (err) {
+      console.log('[generateAppAction] Auth error:', err);
     }
-    
+
     console.log('[generateAppAction] UserId:', userId, 'error:', userError);
     
     // Get user's tenant - MUST use userId from client

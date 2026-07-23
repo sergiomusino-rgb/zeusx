@@ -67,6 +67,15 @@ export default function AppDetailPage() {
       client_billing_address: loaded.client_billing_address || '',
       client_notes: loaded.client_notes || '',
     });
+
+    // client_password/initial_password non sono più leggibili con la anon/
+    // authenticated key (vedi migrazione lockdown_apps_password_columns): si
+    // recuperano tramite RPC SECURITY DEFINER che verifica la membership sul
+    // tenant dell'app prima di restituirle.
+    supabase.rpc('get_app_client_credentials', { p_app_id: loaded.id }).then(({ data, error }) => {
+      if (error || !data || !data[0]) return;
+      setApp(prev => prev ? { ...prev, client_password: data[0].client_password, initial_password: data[0].initial_password } : prev);
+    });
   }
 
   useEffect(() => {
@@ -79,7 +88,7 @@ export default function AppDetailPage() {
       // Prima prova a cercare per ID (UUID)
       const { data, error } = await supabase
         .from('apps')
-        .select('id, name, config, trial_ends_at, is_active, created_at, blueprint_id, tenant_id, slug, client_password, client_email, client_active, expires_at, initial_password, auth_mode, client_full_name, client_phone, client_tax_id, client_billing_address, client_notes')
+        .select('id, name, config, trial_ends_at, is_active, created_at, blueprint_id, tenant_id, slug, client_email, client_active, expires_at, auth_mode, client_full_name, client_phone, client_tax_id, client_billing_address, client_notes')
         .eq('id', idOrSlug)
         .single();
 
@@ -87,7 +96,7 @@ export default function AppDetailPage() {
       if (error || !data) {
         const { data: slugData, error: slugError } = await supabase
           .from('apps')
-          .select('id, name, config, trial_ends_at, is_active, created_at, blueprint_id, tenant_id, slug, client_password, client_email, client_active, expires_at, initial_password, auth_mode, client_full_name, client_phone, client_tax_id, client_billing_address, client_notes')
+          .select('id, name, config, trial_ends_at, is_active, created_at, blueprint_id, tenant_id, slug, client_email, client_active, expires_at, auth_mode, client_full_name, client_phone, client_tax_id, client_billing_address, client_notes')
           .eq('slug', idOrSlug)
           .single();
 

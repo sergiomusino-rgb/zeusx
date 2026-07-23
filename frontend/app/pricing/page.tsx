@@ -75,7 +75,7 @@ export default function PricingPage() {
         t('calendar_all_day') + ' 30 giorni inclusi',
         'Supporto email'
       ],
-      priceId: 'price_1TmcprRZR2YaFu2sU0m1kbFC',
+      priceId: 'price_1TwTvdRZR2YaFu2sUdqjbupl',
       highlighted: false,
     },
     {
@@ -200,11 +200,17 @@ export default function PricingPage() {
             <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
               <div>
                 <h3 className="text-lg font-semibold mb-2">{t('pricing_current_plan')}</h3>
-                <p className="text-slate-400">
-                  {t('pricing_current_plan_label')} <span className="text-indigo-400 font-bold uppercase">{currentPlan}</span>
-                  {' • '}
-                  {slotsUsed} / {slotsTotal} {t('pricing_slots_used')}
-                </p>
+                {currentPlan === 'free' ? (
+                  <p className="text-slate-400">
+                    <span className="text-indigo-400 font-bold uppercase">{t('pricing_no_plan_title')}</span>
+                  </p>
+                ) : (
+                  <p className="text-slate-400">
+                    {t('pricing_current_plan_label')} <span className="text-indigo-400 font-bold uppercase">{currentPlan}</span>
+                    {' • '}
+                    {slotsUsed} / {slotsTotal} {t('pricing_slots_used')}
+                  </p>
+                )}
               </div>
               <div className="flex items-center gap-2">
                 <div className="w-64 h-3 bg-slate-800 rounded-full overflow-hidden">
@@ -279,12 +285,10 @@ export default function PricingPage() {
                 </ul>
 
                 <button
-                  onClick={() => !isCurrentPlan && plan.id !== 'starter' && handleUpgrade(plan.id)}
-                  disabled={isCurrentPlan || plan.id === 'starter'}
+                  onClick={() => !(plan.id === 'starter' && isCurrentPlan) && handleUpgrade(plan.id)}
+                  disabled={plan.id === 'starter' && isCurrentPlan}
                   className={`w-full py-4 rounded-xl font-bold transition-all mt-6 ${
-                    isCurrentPlan
-                      ? 'bg-emerald-600 text-white cursor-default'
-                      : plan.id === 'starter'
+                    plan.id === 'starter' && isCurrentPlan
                       ? 'bg-slate-800 text-slate-500 cursor-not-allowed'
                       : plan.id === 'business'
                       ? 'bg-amber-600 hover:bg-amber-500 text-white'
@@ -293,7 +297,7 @@ export default function PricingPage() {
                       : 'bg-slate-800 hover:bg-slate-700 text-white'
                   }`}
                 >
-                  {isCurrentPlan ? t('pricing_current') : plan.id === 'starter' ? t('pricing_included') : t('pricing_buy')}
+                  {plan.id === 'starter' && isCurrentPlan ? t('pricing_included') : isCurrentPlan ? t('pricing_buy_again') : t('pricing_buy')}
                 </button>
               </div>
             );

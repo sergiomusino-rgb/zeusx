@@ -14,6 +14,7 @@ import { DesignLayout, DesignComponent } from './DesignParser';
 import { getDesignTokens, type DesignTokens } from '@/lib/designTokens';
 import { resolveIcon } from './iconResolver';
 import FullscreenToggle from '@/components/FullscreenToggle';
+import HeaderClock from '@/components/HeaderClock';
 import { getPlaceholderCategoryForTable, getPlaceholderImageUrl } from '@/lib/recordPlaceholderImages';
 import { renderCellValue } from './cellRenderers';
 
@@ -540,7 +541,8 @@ export default function DynamicLayoutRenderer({
           <div style={{ color: colors.text, fontSize: '16px', fontWeight: 700 }}>
             {activeView === 'dashboard' ? companyName : activeTable?.labelPlural || activeCustomTable?.labelPlural || (activeView.startsWith('import_') || activeView.startsWith('export_') ? getViewLabel(activeView) : companyName)}
           </div>
-          <div style={{ position: 'absolute', right: '24px' }}>
+          <div style={{ position: 'absolute', right: '24px', display: 'flex', alignItems: 'center', gap: '16px' }}>
+            {!isMobile && <HeaderClock textColor={colors.text} mutedColor={colors.textSecondary} />}
             <FullscreenToggle color={colors.textSecondary} />
           </div>
         </header>

@@ -358,32 +358,39 @@ function LegacyLoginGate() {
     setSubmitting(true);
 
     try {
-    // Verifica password direttamente da Supabase (policy RLS permette lettura pubblica)
-    const { data: appData, error: appError } = await supabase
-      .from('apps')
-      .select('id, slug, name, client_password, initial_password, client_active, expires_at, config')
-      .eq('slug', slug)
-      .single();
+    // La password non viene mai letta/confrontata lato client: la RLS su
+    // `apps` filtra solo per riga (client_active = true), non per colonna, quindi
+    // un client con la sola anon key potrebbe altrimenti leggere client_password/
+    // initial_password in chiaro per qualunque app attiva. La verifica avviene
+    // invece sull'endpoint backend esistente (client_password confrontata
+    // server-side, mai restituita al browser).
+    const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || 'https://zeusx-backend.onrender.com';
+    const loginRes = await fetch(`${backendUrl}/api/a/${slug}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ password }),
+    });
+    const loginData = await loginRes.json().catch(() => ({}));
 
-    if (appError || !appData) {
+    if (loginRes.status === 404) {
       setError(t('login_error_not_found'));
       setSubmitting(false);
       return;
     }
 
-    if (!appData.client_active) {
+    if (loginData.blocked) {
       setError(t('login_error_blocked'));
       setSubmitting(false);
       return;
     }
 
-    // Usa initial_password come fallback se client_password non è impostato
-    const validPassword = appData.client_password || appData.initial_password;
-    if (validPassword !== password) {
+    if (!loginRes.ok || !loginData.appInfo) {
       setError(t('login_error_wrong_password'));
       setSubmitting(false);
       return;
     }
+
+    const appData = { id: loginData.appInfo.id };
 
       // Se primo accesso, salva email
       if (!app?.client_email && email.trim()) {
@@ -440,7 +447,7 @@ function LegacyLoginGate() {
          appInfo: {
            id: appData.id,
            slug,
-           name: appData.name,
+           name: appInfoData?.name,
            config: combinedConfig,
          },
        };

@@ -93,6 +93,64 @@ async function upsertSubscription(supabase, tenantId, data) {
   }
 }
 
+const PLAN_SLOTS = { starter: 1, pro: 5, business: 100, basic: 1, vip: 100 };
+
+// Rango dei piani: gli eventi Stripe (checkout.session.completed,
+// payment_intent.succeeded) non arrivano garantiti in ordine cronologico.
+// Se un tenant compra business e poi arriva in ritardo l'evento del vecchio
+// acquisto starter, un update incondizionato di tenants.plan lo farebbe
+// retrocedere. Si applica solo un piano pari o superiore a quello già salvato.
+const PLAN_RANK = { free: 0, starter: 1, basic: 1, pro: 2, business: 3, vip: 3 };
+function planRank(plan) {
+  return PLAN_RANK[plan] ?? 0;
+}
+
+// Somma slot e (opzionalmente) aggiorna il piano del tenant una sola volta per
+// checkout session, indipendentemente da quale dei 3 punti di sync (webhook,
+// pagina /success, banner dashboard) la processa per primo o se Stripe
+// re-invia lo stesso evento webhook. Il modello degli slot è cumulativo
+// (vedi supabase_migrations/20260722_update_tenants_slots_cumulative.sql),
+// quindi senza questa guardia una stessa sessione sommerebbe gli slot più volte.
+async function applyCheckoutSessionOnce(supabase, sessionId, tenantId, plan, slotsToAdd) {
+  const { error: insertError } = await supabase
+    .from('processed_checkout_sessions')
+    .insert({ session_id: sessionId, tenant_id: tenantId, plan: plan || 'extra_slot', slots_added: slotsToAdd });
+
+  if (insertError) {
+    if (insertError.code === '23505') {
+      console.log(`[Stripe Webhook] sessione ${sessionId} già processata, skip`);
+      return false;
+    }
+    throw insertError;
+  }
+
+  const { error: rpcError } = await supabase.rpc('add_tenant_slots', {
+    tenant_id: tenantId,
+    slots_to_add: slotsToAdd,
+  });
+  if (rpcError) throw rpcError;
+
+  if (plan) {
+    const { data: currentTenant } = await supabase
+      .from('tenants')
+      .select('plan')
+      .eq('id', tenantId)
+      .single();
+
+    if (planRank(plan) >= planRank(currentTenant?.plan)) {
+      const { error: planError } = await supabase
+        .from('tenants')
+        .update({ plan, updated_at: new Date().toISOString() })
+        .eq('id', tenantId);
+      if (planError) throw planError;
+    } else {
+      console.log(`[Stripe Webhook] piano ${plan} non applicato: tenant ${tenantId} ha già ${currentTenant?.plan}`);
+    }
+  }
+
+  return true;
+}
+
 async function getTenantIdBySubscriptionId(supabase, subscriptionId) {
   const { data, error } = await supabase
     .from('subscriptions')
@@ -104,23 +162,39 @@ async function getTenantIdBySubscriptionId(supabase, subscriptionId) {
   return data.tenant_id;
 }
 
+const KNOWN_PLANS = ['starter', 'pro', 'business', 'basic', 'vip'];
+
 async function resolvePlanFromSession(stripe, session) {
+  // Il piano scelto è già salvato correttamente in metadata.plan_id al
+  // momento della creazione della sessione (vedi routes/stripe.js) — è la
+  // stessa fonte usata da /api/sync-plan. Prima questa funzione indovinava
+  // il piano solo dal nome del prodotto Stripe (vip/pro/basic) e faceva
+  // fallback a "pro" per QUALSIASI nome non riconosciuto (es. "starter" o
+  // "business") o in caso di errore: il webhook, che è la fonte autoritativa
+  // lato server, sovrascriveva così il piano corretto già impostato dal
+  // client con "pro". Il match sul nome resta solo come fallback per
+  // sessioni vecchie prive di questo metadata.
+  const metadataPlan = session.metadata?.plan_id;
+  if (metadataPlan && KNOWN_PLANS.includes(metadataPlan)) return metadataPlan;
+
   try {
     const lineItems = await stripe.checkout.sessions.listLineItems(session.id, { limit: 1 });
     const priceId = lineItems.data[0]?.price?.id;
-    if (!priceId) return 'pro';
+    if (!priceId) return metadataPlan || 'starter';
     const price = await stripe.prices.retrieve(priceId);
     const productId = typeof price.product === 'string' ? price.product : price.product?.id;
-    if (!productId) return 'pro';
+    if (!productId) return metadataPlan || 'starter';
     const product = await stripe.products.retrieve(productId);
     const name = (product.name || '').toLowerCase();
+    if (name.includes('business')) return 'business';
     if (name.includes('vip')) return 'vip';
     if (name.includes('pro')) return 'pro';
+    if (name.includes('starter')) return 'starter';
     if (name.includes('basic') || name.includes('base')) return 'basic';
-    return 'pro';
+    return metadataPlan || 'starter';
   } catch (err) {
     console.error('[resolvePlanFromSession] errore:', err);
-    return 'pro';
+    return metadataPlan || 'starter';
   }
 }
 
@@ -159,11 +233,11 @@ app.post('/api/webhooks/stripe', express.raw({ type: 'application/json' }), asyn
 
         const planId = session.metadata?.plan_id || 'starter';
         const quantity = parseInt(session.metadata?.quantity || '1', 10);
-        
-        // Get current tenant to check for app_limit update
+
+        // Verifica che il tenant esista
         const { data: tenant, error: tenantError } = await supabase
           .from('tenants')
-          .select('id, name, owner_id, app_limit')
+          .select('id')
           .eq('id', tenantId)
           .single();
 
@@ -172,52 +246,23 @@ app.post('/api/webhooks/stripe', express.raw({ type: 'application/json' }), asyn
           break;
         }
 
-        // Handle extra slot purchase - increment app_limit
+        // Handle extra slot purchase - somma slot (cumulativo)
         if (planId === 'extra_slot') {
-          const newAppLimit = (tenant.app_limit || 0) + quantity;
-          const { error: updateTenantError } = await supabase
-            .from('tenants')
-            .update({ 
-              app_limit: newAppLimit,
-              updated_at: new Date().toISOString() 
-            })
-            .eq('id', tenantId);
-          
-          if (updateTenantError) {
-            console.error(`[Stripe Webhook] errore aggiornamento app_limit per tenant ${tenantId}`, updateTenantError);
-            throw updateTenantError;
+          const applied = await applyCheckoutSessionOnce(supabase, session.id, tenantId, null, quantity);
+          if (applied) {
+            console.log(`[Stripe Webhook] +${quantity} slot extra per tenant ${tenantId}`);
           }
-          console.log(`[Stripe Webhook] app_limit aggiornato: ${tenant.app_limit} -> ${newAppLimit}`);
         } else {
-          // Regular plan upgrade - resolve plan and update BOTH plan and app_limit atomically
+          // Regular plan - risolve il piano e somma gli slot (cumulativo),
+          // il campo "plan" mostra sempre l'ultimo piano acquistato
           const plan = await resolvePlanFromSession(stripe, session);
           console.log(`[Stripe Webhook] piano risolto: ${plan}`);
-          
-          // Map plan to app_limit
-          const planLimits = {
-            starter: 1,
-            pro: 5,
-            business: 100,
-            basic: 1,
-            vip: 100,
-          };
-          const appLimit = planLimits[plan] || 1;
-          
-          const { error: updateTenantError } = await supabase
-            .from('tenants')
-            .update({ 
-              plan, 
-              app_limit: appLimit,
-              updated_at: new Date().toISOString() 
-            })
-            .eq('id', tenantId);
 
-          if (updateTenantError) {
-            console.error(`[Stripe Webhook] errore aggiornamento tenant ${tenantId}`, updateTenantError);
-            throw updateTenantError;
+          const slotsToAdd = PLAN_SLOTS[plan] || 1;
+          const applied = await applyCheckoutSessionOnce(supabase, session.id, tenantId, plan, slotsToAdd);
+          if (applied) {
+            console.log(`[Stripe Webhook] tenant ${tenantId} aggiornato: plan=${plan}, +${slotsToAdd} slot`);
           }
-          
-          console.log(`[Stripe Webhook] tenant ${tenantId} aggiornato: plan=${plan}, app_limit=${appLimit}`);
         }
 
         const subscriptionId = session.subscription;
@@ -351,10 +396,10 @@ app.post('/api/webhooks/stripe', express.raw({ type: 'application/json' }), asyn
 
         console.log(`[Stripe Webhook] payment_intent.succeeded for tenant ${tenantId}, plan ${planId}`);
 
-        // Get current tenant
+        // Verifica che il tenant esista
         const { data: tenant, error: tenantError } = await supabase
           .from('tenants')
-          .select('id, app_limit')
+          .select('id')
           .eq('id', tenantId)
           .single();
 
@@ -363,21 +408,15 @@ app.post('/api/webhooks/stripe', express.raw({ type: 'application/json' }), asyn
           break;
         }
 
-        // Handle extra slot purchase - increment app_limit
+        // Handle extra slot purchase - somma slot (cumulativo), idempotente su paymentIntent.id
         if (planId === 'extra_slot') {
-          const newAppLimit = (tenant.app_limit || 0) + quantity;
-          const { error: updateError } = await supabase
-            .from('tenants')
-            .update({ 
-              app_limit: newAppLimit,
-              updated_at: new Date().toISOString() 
-            })
-            .eq('id', tenantId);
-
-          if (updateError) {
-            console.error(`[Stripe Webhook] errore aggiornamento app_limit per extra_slot`, updateError);
-          } else {
-            console.log(`[Stripe Webhook] app_limit aggiornato per extra_slot: ${tenant.app_limit} -> ${newAppLimit}`);
+          try {
+            const applied = await applyCheckoutSessionOnce(supabase, paymentIntent.id, tenantId, null, quantity);
+            if (applied) {
+              console.log(`[Stripe Webhook] +${quantity} slot extra per tenant ${tenantId}`);
+            }
+          } catch (err) {
+            console.error(`[Stripe Webhook] errore aggiornamento app_limit per extra_slot`, err);
           }
         } else {
           // Regular plan upgrade - create subscription
@@ -423,13 +462,46 @@ function clientMissing(res, provider) {
   return res.status(503).json({ error: `${provider} non configurato. Aggiungi la chiave API.` });
 }
 
+// Le route AI sotto (chat, vision, generate-app) chiamano provider a pagamento
+// (Groq/OpenAI/Gemini/Anthropic) con le chiavi del proprietario del sito: senza
+// autenticazione chiunque conoscesse l'URL del backend potrebbe consumare
+// budget illimitato. Accetta sia un JWT Supabase reale (chiamata diretta dal
+// browser) sia il BACKEND_SERVICE_TOKEN condiviso + X-User-ID (stesso schema
+// di routes/stripe.js::getUser, per le chiamate server-to-server dal
+// frontend Next.js che già autentica l'utente a monte).
+async function requireAuth(req, res, next) {
+  const authHeader = req.headers.authorization;
+  const serviceToken = process.env.BACKEND_SERVICE_TOKEN;
+
+  if (serviceToken && authHeader === `Bearer ${serviceToken}`) {
+    const userId = req.headers['x-user-id'];
+    if (!userId) return res.status(401).json({ error: 'x-user-id mancante' });
+    req.user = { id: userId, email: req.headers['x-user-email'] };
+    return next();
+  }
+
+  const token = authHeader?.startsWith('Bearer ') ? authHeader.slice(7) : null;
+  if (!token) return res.status(401).json({ error: 'Autenticazione richiesta' });
+
+  try {
+    const supabase = getSupabase();
+    const { data: { user }, error } = await supabase.auth.getUser(token);
+    if (error || !user) return res.status(401).json({ error: 'Token non valido' });
+    req.user = user;
+    next();
+  } catch (err) {
+    console.error('[requireAuth] errore:', err);
+    res.status(401).json({ error: 'Token non valido' });
+  }
+}
+
 // --- HEALTH CHECK ---
 app.get('/api/health', (_req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() });
 });
 
 // --- CHAT API ---
-app.post('/api/chat', async (req, res) => {
+app.post('/api/chat', requireAuth, async (req, res) => {
   try {
     const { messages, provider = 'groq', model } = req.body;
     if (!Array.isArray(messages) || messages.length === 0) {
@@ -482,7 +554,7 @@ app.post('/api/chat', async (req, res) => {
 });
 
 // --- VISION API ---
-app.post('/api/vision/analyze', async (req, res) => {
+app.post('/api/vision/analyze', requireAuth, async (req, res) => {
   try {
     const { prompt, image, provider = 'groq', model } = req.body;
     if (!image) return res.status(400).json({ error: 'Immagine richiesta' });
@@ -543,7 +615,7 @@ app.post('/api/vision/analyze', async (req, res) => {
 });
 
 // --- GENERATE APP BLUEPRINT ---
-app.post('/api/generate-app', async (req, res) => {
+app.post('/api/generate-app', requireAuth, async (req, res) => {
   try {
     const { sector, tenantId } = req.body;
     if (!sector) return res.status(400).json({ error: 'Settore richiesto' });

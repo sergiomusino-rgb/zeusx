@@ -5,6 +5,7 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { createClient } from '@supabase/supabase-js';
 import { Copy, Check, CreditCard, AlertCircle, Settings, Wallet, TrendingUp, LayoutGrid } from 'lucide-react';
 import { getClientSubscriptionPrice, ZEUSX_MINIMUM_FEE_EUR } from '@/lib/pricing';
+import { useLanguage } from '@/src/lib/LanguageContext';
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '';
@@ -29,6 +30,7 @@ interface App {
 }
 
 export default function ManagementConsolePage() {
+  const { t } = useLanguage();
   const router = useRouter();
   const searchParams = useSearchParams();
   const highlightAppId = searchParams.get('appId');
@@ -103,7 +105,7 @@ export default function ManagementConsolePage() {
     // Recupera le app del tenant
     const { data: appsData, error: appsError } = await supabase
       .from('apps')
-      .select('id, name, slug, totalum_app_id, stripe_connect_id, client_subscription_price, client_price, status, trial_ends_at, is_active, client_active, expires_at, client_email, client_password, created_at')
+      .select('id, name, slug, totalum_app_id, stripe_connect_id, client_subscription_price, client_price, status, trial_ends_at, is_active, client_active, expires_at, client_email, created_at')
       .eq('tenant_id', tenantId)
       .order('created_at', { ascending: false });
 
@@ -111,6 +113,15 @@ export default function ManagementConsolePage() {
       setError(appsError.message);
     } else {
       setApps(appsData || []);
+      // client_password non è più leggibile con la anon/authenticated key
+      // (vedi migrazione lockdown_apps_password_columns): recuperata via RPC
+      // SECURITY DEFINER che verifica la membership sul tenant.
+      (appsData || []).forEach((a: App) => {
+        supabase.rpc('get_app_client_credentials', { p_app_id: a.id }).then(({ data, error: rpcError }) => {
+          if (rpcError || !data || !data[0]) return;
+          setApps(prev => prev.map(x => x.id === a.id ? { ...x, client_password: data[0].client_password } : x));
+        });
+      });
       // Inizializza gli input dei prezzi con il prezzo realmente in vigore
       // (client_subscription_price || client_price || quota minima ZeusX),
       // non solo client_subscription_price: per le app appena create con
@@ -143,10 +154,10 @@ export default function ManagementConsolePage() {
       if (data.url) {
         window.location.href = data.url;
       } else {
-        setError(data.error || 'Errore durante la connessione a Stripe');
+        setError(data.error || t('mgmt_err_stripe_connect'));
       }
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Errore di rete');
+      setError(err instanceof Error ? err.message : t('mgmt_err_network'));
     } finally {
       setConnectingStripe(false);
     }
@@ -154,10 +165,10 @@ export default function ManagementConsolePage() {
 
   const updatePrice = async (appId: string, totalumAppId: string | null) => {
     const price = parseFloat(priceInputs[appId] || '0');
-    
+
     // Validazione prezzo minimo per piano Starter
     if (userPlan === 'starter' && price < 25) {
-      setError('Il piano Starter richiede un prezzo minimo di 25.00€');
+      setError(t('mgmt_err_min_price_starter'));
       return;
     }
 
@@ -181,7 +192,7 @@ export default function ManagementConsolePage() {
 
       if (!response.ok) {
         const data = await response.json();
-        setError(data.error || "Errore durante l'aggiornamento del prezzo");
+        setError(data.error || t('mgmt_err_update_price'));
       } else {
         // Aggiorna lo stato locale
         setApps(prev => prev.map(app => 
@@ -191,7 +202,7 @@ export default function ManagementConsolePage() {
         ));
       }
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Errore di rete');
+      setError(err instanceof Error ? err.message : t('mgmt_err_network'));
     } finally {
       setSavingPrice(prev => ({ ...prev, [appId]: false }));
     }
@@ -228,11 +239,11 @@ export default function ManagementConsolePage() {
       canceled: 'bg-gray-500/20 text-gray-300',
     };
     const labels = {
-      trial: 'In Prova',
-      active: 'Attiva',
-      expired: 'Scaduta',
-      past_due: 'Insoluta',
-      canceled: 'Cancellata',
+      trial: t('mgmt_status_trial'),
+      active: t('mgmt_status_active'),
+      expired: t('mgmt_status_expired'),
+      past_due: t('mgmt_status_past_due'),
+      canceled: t('mgmt_status_canceled'),
     };
     return (
       <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${styles[status as keyof typeof styles]}`}>
@@ -246,7 +257,7 @@ export default function ManagementConsolePage() {
       <div className="flex items-center justify-center min-h-dvh">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600 mx-auto"></div>
-          <p className="mt-4 text-gray-400">Caricamento...</p>
+          <p className="mt-4 text-gray-400">{t('mgmt_loading')}</p>
         </div>
       </div>
     );
@@ -266,56 +277,56 @@ export default function ManagementConsolePage() {
   return (
     <div className="p-4 sm:p-6">
       <div className="mb-4 sm:mb-6">
-        <h1 className="text-xl sm:text-2xl font-bold text-white">Management Console</h1>
-        <p className="text-gray-400 mt-1 text-sm sm:text-base">Gestisci le app dei tuoi clienti e le quote ZEUSX</p>
+        <h1 className="text-xl sm:text-2xl font-bold text-white">{t('mgmt_title')}</h1>
+        <p className="text-gray-400 mt-1 text-sm sm:text-base">{t('mgmt_subtitle')}</p>
       </div>
 
       {/* Riepilogo Finanziario */}
       <div className="bg-slate-900/40 border border-slate-800/80 backdrop-blur-md rounded-2xl p-4 sm:p-6 mb-4 sm:mb-6">
-        <h2 className="text-lg font-semibold text-white mb-3 sm:mb-4">Riepilogo Finanziario</h2>
+        <h2 className="text-lg font-semibold text-white mb-3 sm:mb-4">{t('mgmt_financial_summary')}</h2>
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
           <div className="bg-slate-800/50 rounded-xl p-3 sm:p-4">
             <div className="flex items-center gap-2 text-gray-400 text-xs uppercase tracking-wide mb-1.5">
-              <Wallet size={14} /> Incassi Clienti
+              <Wallet size={14} /> {t('mgmt_client_revenue')}
             </div>
             <div className="text-xl sm:text-2xl font-bold text-white">
               {totalRevenue.toLocaleString('it-IT', { minimumFractionDigits: 2 })} €
-              <span className="text-xs font-normal text-gray-500">/mese</span>
+              <span className="text-xs font-normal text-gray-500">{t('mgmt_per_month')}</span>
             </div>
-            <div className="text-xs text-gray-500 mt-1">{activeApps.length} app attive</div>
+            <div className="text-xs text-gray-500 mt-1">{activeApps.length} {t('mgmt_active_apps_suffix')}</div>
           </div>
 
           <div className="bg-slate-800/50 rounded-xl p-3 sm:p-4">
             <div className="flex items-center gap-2 text-gray-400 text-xs uppercase tracking-wide mb-1.5">
-              <CreditCard size={14} /> Quote Licenza ZeusX
+              <CreditCard size={14} /> {t('mgmt_zeusx_fees')}
             </div>
             <div className="text-xl sm:text-2xl font-bold text-white">
               {totalZeusxFee.toLocaleString('it-IT', { minimumFractionDigits: 2 })} €
-              <span className="text-xs font-normal text-gray-500">/mese</span>
+              <span className="text-xs font-normal text-gray-500">{t('mgmt_per_month')}</span>
             </div>
-            <div className="text-xs text-gray-500 mt-1">{ZEUSX_MINIMUM_FEE_EUR}€ × {activeApps.length} app attive</div>
+            <div className="text-xs text-gray-500 mt-1">{ZEUSX_MINIMUM_FEE_EUR}€ × {activeApps.length} {t('mgmt_active_apps_suffix')}</div>
           </div>
 
           <div className="bg-slate-800/50 rounded-xl p-3 sm:p-4">
             <div className="flex items-center gap-2 text-gray-400 text-xs uppercase tracking-wide mb-1.5">
-              <TrendingUp size={14} /> Margine Netto
+              <TrendingUp size={14} /> {t('mgmt_net_margin')}
             </div>
             <div className={`text-xl sm:text-2xl font-bold ${netMargin >= 0 ? 'text-green-400' : 'text-red-400'}`}>
               {netMargin.toLocaleString('it-IT', { minimumFractionDigits: 2 })} €
-              <span className="text-xs font-normal text-gray-500">/mese</span>
+              <span className="text-xs font-normal text-gray-500">{t('mgmt_per_month')}</span>
             </div>
-            <div className="text-xs text-gray-500 mt-1">Incassi − quote ZeusX</div>
+            <div className="text-xs text-gray-500 mt-1">{t('mgmt_net_margin_desc')}</div>
           </div>
 
           <div className="bg-slate-800/50 rounded-xl p-3 sm:p-4">
             <div className="flex items-center gap-2 text-gray-400 text-xs uppercase tracking-wide mb-1.5">
-              <LayoutGrid size={14} /> Stato Slot
+              <LayoutGrid size={14} /> {t('mgmt_slot_status')}
             </div>
             <div className="text-xl sm:text-2xl font-bold text-white">
               {slotInfo.totalCreated} <span className="text-xs font-normal text-gray-500">/ {slotInfo.appLimit}</span>
             </div>
             <div className="text-xs text-gray-500 mt-1">
-              {activeApps.length} attivi · {expiredApps.length} scaduti · {freeSlots} liberi
+              {activeApps.length} {t('mgmt_slot_active')} · {expiredApps.length} {t('mgmt_slot_expired')} · {freeSlots} {t('mgmt_slot_free')}
             </div>
           </div>
         </div>
@@ -323,21 +334,21 @@ export default function ManagementConsolePage() {
 
       {/* Box Configurazione Stripe Connect */}
       <div className="bg-slate-900/40 border border-slate-800/80 backdrop-blur-md rounded-2xl p-4 sm:p-6 mb-4 sm:mb-6">
-        <h2 className="text-lg font-semibold text-white mb-3 sm:mb-4">Configurazione Stripe Connect</h2>
-        
+        <h2 className="text-lg font-semibold text-white mb-3 sm:mb-4">{t('mgmt_stripe_config_title')}</h2>
+
         {stripeConnectId ? (
           <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3">
             <span className="inline-flex px-3 py-1 text-sm font-semibold rounded-full bg-green-500/20 text-green-300">
-              Configurazione completata
+              {t('mgmt_stripe_configured')}
             </span>
             <span className="text-gray-400 text-sm">
-              Account ID: {stripeConnectId}
+              {t('mgmt_stripe_account_id')}: {stripeConnectId}
             </span>
           </div>
         ) : (
           <div>
             <p className="text-yellow-400 mb-3 sm:mb-4 text-sm">
-              Configura il tuo account Stripe per iniziare a ricevere i pagamenti dei tuoi clienti
+              {t('mgmt_stripe_configure_desc')}
             </p>
             <button
               onClick={connectStripe}
@@ -345,7 +356,7 @@ export default function ManagementConsolePage() {
               className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 disabled:opacity-50 flex items-center gap-2 text-sm"
             >
               <CreditCard size={16} />
-              {connectingStripe ? 'Connessione...' : 'Collega Stripe'}
+              {connectingStripe ? t('mgmt_stripe_connecting') : t('mgmt_stripe_connect_button')}
             </button>
           </div>
         )}
@@ -366,19 +377,19 @@ export default function ManagementConsolePage() {
             <thead className="bg-slate-800/50">
               <tr>
                 <th className="px-4 sm:px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">
-                  Nome App
+                  {t('mgmt_th_name')}
                 </th>
                 <th className="px-4 sm:px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">
-                  Stato
+                  {t('mgmt_th_status')}
                 </th>
                 <th className="px-4 sm:px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">
-                  Prezzo Cliente
+                  {t('mgmt_th_price')}
                 </th>
                 <th className="px-4 sm:px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">
-                  Giorni Trial
+                  {t('mgmt_th_trial_days')}
                 </th>
                 <th className="px-4 sm:px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">
-                  Azioni
+                  {t('mgmt_th_actions')}
                 </th>
               </tr>
             </thead>
@@ -413,12 +424,12 @@ export default function ManagementConsolePage() {
                         disabled={savingPrice[app.id]}
                         className="px-2 py-1 bg-indigo-600 text-white rounded text-xs hover:bg-indigo-700 disabled:opacity-50"
                       >
-                        {savingPrice[app.id] ? '...' : 'Salva'}
+                        {savingPrice[app.id] ? '...' : t('mgmt_save')}
                       </button>
                     </div>
                   </td>
                   <td className="px-4 sm:px-6 py-3 sm:py-4 whitespace-nowrap text-sm text-gray-400">
-                    {getDaysRemaining(app.trial_ends_at)} giorni
+                    {getDaysRemaining(app.trial_ends_at)} {t('mgmt_days_suffix')}
                   </td>
                   <td className="px-4 sm:px-6 py-3 sm:py-4 whitespace-nowrap">
                     <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2">
@@ -428,7 +439,7 @@ export default function ManagementConsolePage() {
                           className="px-3 py-1 bg-slate-700 text-white rounded text-sm hover:bg-slate-600 flex items-center gap-1"
                         >
                           {copied ? <Check size={14} /> : <Copy size={14} />}
-                          Link Checkout
+                          {t('mgmt_checkout_link')}
                         </button>
                       )}
                       <a
@@ -436,7 +447,7 @@ export default function ManagementConsolePage() {
                         className="px-3 py-1 bg-slate-700 text-white rounded text-sm hover:bg-slate-600 flex items-center gap-1"
                       >
                         <Settings size={14} />
-                        Dettagli
+                        {t('mgmt_details')}
                       </a>
                     </div>
                   </td>
@@ -463,7 +474,7 @@ export default function ManagementConsolePage() {
               </div>
 
               <div className="flex items-center justify-between">
-                <span className="text-gray-400 text-xs">Prezzo Cliente</span>
+                <span className="text-gray-400 text-xs">{t('mgmt_th_price')}</span>
                 <div className="flex items-center gap-2">
                   <input
                     type="number"
@@ -480,16 +491,16 @@ export default function ManagementConsolePage() {
                     disabled={savingPrice[app.id]}
                     className="px-2 py-1 bg-indigo-600 text-white rounded text-xs hover:bg-indigo-700 disabled:opacity-50"
                   >
-                    {savingPrice[app.id] ? '...' : 'Salva'}
+                    {savingPrice[app.id] ? '...' : t('mgmt_save')}
                   </button>
                 </div>
               </div>
-              
+
               <div className="flex justify-between items-center">
-                <span className="text-gray-400 text-xs">Giorni Trial</span>
-                <span className="text-gray-400 text-xs">{getDaysRemaining(app.trial_ends_at)} giorni</span>
+                <span className="text-gray-400 text-xs">{t('mgmt_th_trial_days')}</span>
+                <span className="text-gray-400 text-xs">{getDaysRemaining(app.trial_ends_at)} {t('mgmt_days_suffix')}</span>
               </div>
-              
+
               <div className="flex flex-col gap-2 pt-2">
                 {app.totalum_app_id && (
                   <button
@@ -497,7 +508,7 @@ export default function ManagementConsolePage() {
                     className="w-full px-3 py-2 bg-slate-700 text-white rounded text-sm hover:bg-slate-600 flex items-center justify-center gap-1"
                   >
                     {copied ? <Check size={14} /> : <Copy size={14} />}
-                    Link Checkout
+                    {t('mgmt_checkout_link')}
                   </button>
                 )}
                 <a
@@ -505,7 +516,7 @@ export default function ManagementConsolePage() {
                   className="w-full px-3 py-2 bg-slate-700 text-white rounded text-sm hover:bg-slate-600 flex items-center justify-center gap-1"
                 >
                   <Settings size={14} />
-                  Dettagli
+                  {t('mgmt_details')}
                 </a>
               </div>
             </div>
@@ -514,7 +525,7 @@ export default function ManagementConsolePage() {
 
         {apps.length === 0 && (
           <div className="p-4 sm:p-6 text-center text-gray-400 text-sm">
-            Nessuna app trovata. Genera la tua prima app dal generator.
+            {t('mgmt_no_apps')}
           </div>
         )}
       </div>

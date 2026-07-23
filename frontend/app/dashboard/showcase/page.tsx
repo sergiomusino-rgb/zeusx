@@ -4,45 +4,7 @@ import Link from 'next/link';
 import { ArrowLeft } from 'lucide-react';
 import { useLanguage } from '@/src/lib/LanguageContext';
 import PreviewCard from '@/components/PreviewCard';
-
-const DEMO_APPS = [
-  {
-    title: 'Ristorante La Piazza',
-    slug: 'demo-ristorante',
-    appType: 'Ristorante',
-    description: 'Gestione tavoli, menu, ordini e cucina in tempo reale',
-  },
-  {
-    title: 'Studio Medico Bianchi',
-    slug: 'demo-studio-medico',
-    appType: 'Medico',
-    description: 'Pazienti, appuntamenti e cartelle cliniche digitali',
-  },
-  {
-    title: 'Officina Rossi',
-    slug: 'demo-officina',
-    appType: 'Officina',
-    description: 'Veicoli, interventi, ricambi e fatturazione',
-  },
-  {
-    title: 'Hotel Mediterraneo',
-    slug: 'demo-hotel',
-    appType: 'Hotel',
-    description: 'Camere, prenotazioni, ospiti e housekeeping',
-  },
-  {
-    title: 'Palestra FitLab',
-    slug: 'demo-palestra',
-    appType: 'Palestra',
-    description: 'Iscritti, abbonamenti, schede e presenze',
-  },
-  {
-    title: 'Negozio Moda & Co.',
-    slug: 'demo-negozio',
-    appType: 'Negozio',
-    description: 'Prodotti, vendite, magazzino e fornitori',
-  },
-];
+import { DEMO_APPS } from '@/lib/demoApps';
 
 export default function ShowcasePage() {
   const { t } = useLanguage();
@@ -76,7 +38,7 @@ export default function ShowcasePage() {
           {DEMO_APPS.map((app) => (
             <PreviewCard
               key={app.slug}
-              title={app.title}
+              title={app.name}
               slug={app.slug}
               appType={app.appType}
               description={app.description}
