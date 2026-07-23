@@ -6,6 +6,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { getDesignSystemForSector } from '@/lib/designSystemLoader';
 import { sanitizeBlueprint, normalizeSector, type Table } from '@/src/lib/blueprint-schema';
+import { ZEUSX_MINIMUM_FEE_EUR } from '@/lib/pricing';
 
 // Configurazione Supabase
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
@@ -307,8 +308,13 @@ export async function POST(request: NextRequest) {
         client_active: true,
         client_email: tenantEmail,
         auth_mode: 'supabase',
+        // Prezzo di resell di default = quota minima ZeusX corrente, scritto
+        // esplicitamente invece di affidarsi al default della colonna SQL:
+        // se ZEUSX_MINIMUM_FEE_EUR cambia, le nuove app lo erediteranno subito.
+        client_price: ZEUSX_MINIMUM_FEE_EUR,
+        client_subscription_price: ZEUSX_MINIMUM_FEE_EUR,
       })
-      .select('id, name, slug, status, trial_ends_at, client_email, auth_mode')
+      .select('id, name, slug, status, trial_ends_at, client_email, auth_mode, client_price')
       .single();
     
     if (appError) {

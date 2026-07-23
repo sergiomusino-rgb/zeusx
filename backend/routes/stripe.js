@@ -252,7 +252,7 @@ router.post('/sync-plan', async (req, res) => {
     const planConfig = {
       starter: { appLimit: 1 },
       pro: { appLimit: 5 },
-      business: { appLimit: 250 }
+      business: { appLimit: 100 }
     };
 
     if (priceId) {

@@ -1,33 +1,73 @@
+import { createClient } from '@supabase/supabase-js';
 import { NextRequest, NextResponse } from 'next/server';
+import { getDesignTokens } from '@/lib/designTokens';
 
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
+const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
+const supabase = createClient(supabaseUrl, serviceRoleKey);
+
+// Manifest PWA dinamico per app generata: nome, logo e palette (theme/background
+// color) presi dai dati reali dell'app invece del placeholder generico ZeusX,
+// cosi' l'icona/splash installata sulla Home corrisponde al brand del cliente.
 export async function GET(req: NextRequest, { params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
 
-  // Return a generic manifest without backend dependency
-  // The app name and branding will be loaded from the app itself
+  const { data: app } = await supabase
+    .from('apps')
+    .select('id, name, config')
+    .eq('slug', slug)
+    .single();
+
+  const config = (app?.config || {}) as Record<string, unknown>;
+  const branding = (config.branding || {}) as Record<string, unknown>;
+  const sector = (config.sector as string) || (config.blueprint as any)?.sector || '';
+
+  // Dati aziendali reali (compilati dal titolare dopo la generazione): quando
+  // presenti hanno priorità sul nome/logo generico salvato in config alla
+  // generazione AI, stessa fonte usata dalla landing page pubblica.
+  let realName: string | null = null;
+  let realLogo: string | null = null;
+  if (app?.id) {
+    const { data: record } = await supabase
+      .from('app_records')
+      .select('data')
+      .eq('app_id', app.id)
+      .eq('table_name', 'dati_aziendali')
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    const raw = (record?.data || {}) as Record<string, unknown>;
+    realName = typeof raw.ragione_sociale === 'string' ? raw.ragione_sociale : null;
+    realLogo = typeof raw.logo === 'string' ? raw.logo : null;
+  }
+
+  const appName = realName || (branding.company_name as string) || (config.appName as string) || app?.name || 'ZeusX App';
+  const description = (config.description as string) || `Gestionale ${appName}`;
+  const logo = realLogo || (branding.logo_url as string) || (config.logo as string) || '';
+
+  const designTokens = getDesignTokens(sector, `${appName} ${description}`);
+  const themeColor = (branding.primary_color as string) || designTokens.colors.primary;
+  const backgroundColor = designTokens.colors.bg;
+
+  const icons = [
+    ...(logo
+      ? [{ src: logo, sizes: 'any', purpose: 'any' }]
+      : []),
+    { src: '/icons/icon-192x192.png', sizes: '192x192', type: 'image/png', purpose: 'any' },
+    { src: '/icons/icon-512x512.png', sizes: '512x512', type: 'image/png', purpose: 'any' },
+  ];
+
   const manifest = {
-    name: 'ZeusX App',
-    short_name: 'ZeusX',
-    description: 'Gestionale ZeusX',
-    start_url: `/a/${slug}/app`,
+    name: appName,
+    short_name: appName.length > 14 ? `${appName.slice(0, 13)}…` : appName,
+    description,
+    start_url: `/a/${slug}`,
+    scope: `/a/${slug}`,
     display: 'standalone',
     orientation: 'portrait',
-    background_color: '#0a0e1a',
-    theme_color: '#6366f1',
-    icons: [
-      {
-        src: '/icons/icon-192x192.png',
-        sizes: '192x192',
-        type: 'image/png',
-        purpose: 'any maskable',
-      },
-      {
-        src: '/icons/icon-512x512.png',
-        sizes: '512x512',
-        type: 'image/png',
-        purpose: 'any maskable',
-      },
-    ],
+    background_color: backgroundColor,
+    theme_color: themeColor,
+    icons,
     screenshots: [],
     prefer_related_applications: false,
     categories: ['business', 'productivity'],
@@ -35,9 +75,9 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ slug
 
   return NextResponse.json(manifest, {
     headers: {
-      'Content-Type': 'application/json',
+      'Content-Type': 'application/manifest+json',
       'Access-Control-Allow-Origin': '*',
-      'Cache-Control': 'public, max-age=3600',
+      'Cache-Control': 'public, max-age=300, must-revalidate',
     },
   });
 }

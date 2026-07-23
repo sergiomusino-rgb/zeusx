@@ -15,7 +15,7 @@ async function fix() {
   console.log('PRIMA:', current);
 
   // Fix app_limit in base al piano
-  const limitMap = { starter: 1, pro: 5, business: 250 };
+  const limitMap = { starter: 1, pro: 5, business: 100 };
   const newLimit = limitMap[current?.plan] || 1;
 
   const { data: updated } = await supabase

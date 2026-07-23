@@ -6,8 +6,12 @@ import { createClient } from '@supabase/supabase-js';
 import { Eye, EyeOff, LogIn } from 'lucide-react';
 import { useLanguage } from '@/src/lib/LanguageContext';
 import { useAppInfo } from './AppInfoContext';
-import { getDesignTokens, getLayoutTypeForSector } from '@/lib/designTokens';
+import { getDesignTokens, getDesignKeyForSector } from '@/lib/designTokens';
+import { getHeroContentForDesignKey } from '@/lib/landingHero';
 import { resolveIcon } from './app/iconResolver';
+import FullscreenToggle from '@/components/FullscreenToggle';
+import InstallAppBanner from '@/components/InstallAppBanner';
+import { usePwaSetup } from '@/hooks/usePwaSetup';
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
@@ -26,14 +30,42 @@ export default function AppRootPage() {
   return authMode === 'supabase' ? <LandingPublic /> : <LegacyLoginGate />;
 }
 
+interface CompanyInfo {
+  ragione_sociale: string | null;
+  indirizzo: string | null;
+  telefono: string | null;
+  logo: string | null;
+}
+
 // ─── Landing pubblica (nuove app) ───────────────────────────────────────────
 function LandingPublic() {
   const { slug, appName, config } = useAppInfo();
   const sector = (config?.sector as string) || '';
   const description = (config?.description as string) || '';
   const tables = ((config?.schema as any)?.tables as Array<{ name: string; label: string; labelPlural?: string; icon?: string }>) || [];
-  const designTokens = getDesignTokens(sector);
-  const layoutType = getLayoutTypeForSector(sector);
+  const sectorSignal = `${appName || ''} ${description || ''}`;
+  const designKey = getDesignKeyForSector(sector, sectorSignal);
+  const designTokens = getDesignTokens(sector, sectorSignal);
+  const hero = getHeroContentForDesignKey(designKey);
+
+  // Dati aziendali reali (compilati dal titolare dopo la generazione AI):
+  // quando presenti sostituiscono il nome generico creato alla generazione,
+  // senza toccare nulla se il titolare non li ha ancora inseriti.
+  const [companyInfo, setCompanyInfo] = useState<CompanyInfo | null>(null);
+  useEffect(() => {
+    if (!slug) return;
+    fetch(`/api/a/${slug}/company-info`)
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data) => setCompanyInfo(data))
+      .catch(() => {});
+  }, [slug]);
+
+  const displayName = companyInfo?.ragione_sociale || appName;
+
+  usePwaSetup(slug, designTokens.colors.primary);
+
+  // Spezza la tagline sulla keyword di settore per evidenziarla in corsivo/colore primario
+  const [taglineBefore, taglineAfter] = hero.tagline.split('{keyword}');
 
   return (
     <div style={{ minHeight: '100vh', background: designTokens.colors.bg, fontFamily: designTokens.fonts.body }}>
@@ -45,36 +77,171 @@ function LandingPublic() {
           background: designTokens.colors.surface,
         }}
       >
-        <span style={{ fontFamily: designTokens.fonts.headline, fontSize: '20px', fontWeight: 700, color: designTokens.colors.text }}>
-          {appName}
-        </span>
-        <a
-          href={`/a/${slug}/login`}
-          style={{
-            display: 'flex', alignItems: 'center', gap: '8px',
-            background: designTokens.colors.primary, color: '#fff',
-            padding: '10px 20px', borderRadius: designTokens.radii.md,
-            fontWeight: 600, fontSize: '14px', textDecoration: 'none',
-          }}
-        >
-          <LogIn size={16} /> Accedi / Area Riservata
-        </a>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+          {companyInfo?.logo && (
+            <img src={companyInfo.logo} alt="" style={{ height: '32px', width: '32px', objectFit: 'contain', borderRadius: '6px' }} />
+          )}
+          <span style={{ fontFamily: designTokens.fonts.headline, fontSize: '20px', fontWeight: 700, color: designTokens.colors.text }}>
+            {displayName}
+          </span>
+        </div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+          <FullscreenToggle color={designTokens.colors['text-secondary']} />
+          <a
+            href={`/a/${slug}/login`}
+            style={{
+              display: 'flex', alignItems: 'center', gap: '8px',
+              background: designTokens.colors.primary, color: '#fff',
+              padding: '10px 20px', borderRadius: designTokens.radii.md,
+              fontWeight: 600, fontSize: '14px', textDecoration: 'none',
+            }}
+          >
+            <LogIn size={16} /> Accedi / Area Riservata
+          </a>
+        </div>
       </header>
 
-      {/* Hero */}
+      {/* Hero: layout asimmetrico a due colonne, palette e font di settore */}
       <section
+        className="relative overflow-hidden"
         style={{
-          padding: '80px 32px', textAlign: 'center',
-          background: `linear-gradient(135deg, ${designTokens.colors.primary}, ${designTokens.colors.secondary || designTokens.colors.primary})`,
-          color: '#fff',
+          padding: '80px 32px',
+          background: `linear-gradient(160deg, ${designTokens.colors.bg} 0%, ${designTokens.colors['card-bg-alt'] || designTokens.colors.surface} 100%)`,
         }}
       >
-        <h1 style={{ fontFamily: designTokens.fonts.headline, fontSize: '42px', fontWeight: 800, margin: '0 0 16px 0' }}>
-          {appName}
-        </h1>
-        <p style={{ fontSize: '18px', opacity: 0.9, maxWidth: '640px', margin: '0 auto' }}>
-          {description || 'Gestisci la tua attività in un unico posto.'}
-        </p>
+        {/* Bagliore sfumato di settore */}
+        <div
+          className="pointer-events-none absolute left-0 top-0"
+          style={{
+            width: '560px', height: '560px', borderRadius: '9999px',
+            background: `radial-gradient(circle, ${designTokens.colors.primary}33, transparent 70%)`,
+            filter: 'blur(50px)', transform: 'translate(-30%, -30%)',
+          }}
+        />
+
+        <div className="relative mx-auto grid max-w-6xl grid-cols-1 items-center gap-14 lg:grid-cols-[1.15fr_0.85fr]">
+          {/* Colonna testo */}
+          <div>
+            <div
+              className="mb-6 inline-flex items-center gap-2 rounded-full px-4 py-1.5 text-xs font-bold tracking-wide backdrop-blur-sm"
+              style={{
+                border: `1px solid ${designTokens.colors.primary}40`,
+                background: `${designTokens.colors.primary}14`,
+                color: designTokens.colors.primary,
+              }}
+            >
+              <span
+                className="inline-block h-1.5 w-1.5 rounded-full"
+                style={{ background: designTokens.colors.success }}
+              />
+              {hero.badgeLabel}
+            </div>
+
+            <h1
+              className="text-4xl font-extrabold leading-tight tracking-tight sm:text-5xl"
+              style={{ fontFamily: designTokens.fonts.headline, color: designTokens.colors.text }}
+            >
+              {displayName}
+            </h1>
+
+            <p
+              className="mt-5 max-w-xl text-lg leading-relaxed"
+              style={{ color: designTokens.colors['text-secondary'], fontFamily: designTokens.fonts.body }}
+            >
+              {taglineBefore}
+              <em style={{ fontStyle: 'italic', color: designTokens.colors.primary, fontWeight: 600 }}>
+                {hero.keyword}
+              </em>
+              {taglineAfter}
+            </p>
+
+            {description && (
+              <p
+                className="mt-3 max-w-xl text-sm leading-relaxed"
+                style={{ color: designTokens.colors['text-secondary'], opacity: 0.85 }}
+              >
+                {description}
+              </p>
+            )}
+
+            <div className="mt-8 flex flex-wrap items-center gap-4">
+              <a
+                href={`/a/${slug}/register`}
+                className="shadow-lg transition-transform duration-200 hover:-translate-y-0.5"
+                style={{
+                  background: designTokens.colors.primary, color: '#fff',
+                  padding: '14px 28px', borderRadius: designTokens.radii.md,
+                  fontWeight: 700, fontSize: '15px', textDecoration: 'none',
+                  boxShadow: `0 8px 24px ${designTokens.colors.primary}40`,
+                }}
+              >
+                Registrati ora
+              </a>
+              <a
+                href={`/a/${slug}/login`}
+                className="flex items-center gap-2 transition-colors duration-200"
+                style={{
+                  border: `1px solid ${designTokens.colors.border}`,
+                  color: designTokens.colors.text,
+                  padding: '14px 24px', borderRadius: designTokens.radii.md,
+                  fontWeight: 600, fontSize: '15px', textDecoration: 'none',
+                }}
+              >
+                <LogIn size={16} /> Accedi
+              </a>
+            </div>
+          </div>
+
+          {/* Colonna immagine: foto HD contestuale di settore, bordi fortemente arrotondati */}
+          <div className="relative">
+            <div
+              className="relative overflow-hidden shadow-2xl"
+              style={{ borderRadius: '2rem', aspectRatio: '4 / 5' }}
+            >
+              <img
+                src={hero.image}
+                alt={hero.imageAlt}
+                className="h-full w-full object-cover"
+                loading="eager"
+              />
+              <div
+                className="pointer-events-none absolute inset-0"
+                style={{ background: `linear-gradient(0deg, ${designTokens.colors.primary}30 0%, transparent 45%)` }}
+              />
+            </div>
+
+            {/* Card statistica sovrapposta, per l'asimmetria del layout */}
+            {tables.length > 0 && (
+              <div
+                className="absolute -bottom-6 -left-6 hidden sm:flex items-center gap-3 shadow-xl"
+                style={{
+                  background: designTokens.colors.surface,
+                  border: `1px solid ${designTokens.colors.border}`,
+                  borderRadius: designTokens.radii.lg,
+                  padding: '16px 20px',
+                }}
+              >
+                <div
+                  className="flex items-center justify-center"
+                  style={{
+                    width: '40px', height: '40px', borderRadius: designTokens.radii.md,
+                    background: `${designTokens.colors.primary}1A`, color: designTokens.colors.primary,
+                  }}
+                >
+                  {resolveIcon(tables[0]?.icon || '', tables[0]?.name)}
+                </div>
+                <div>
+                  <div style={{ fontFamily: designTokens.fonts.headline, fontWeight: 700, fontSize: '18px', color: designTokens.colors.text }}>
+                    {tables.length}
+                  </div>
+                  <div style={{ fontSize: '12px', color: designTokens.colors['text-secondary'] }}>
+                    sezioni gestite
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
       </section>
 
       {/* Griglia sezioni (placeholder da schema, nessun dato reale) */}
@@ -86,9 +253,9 @@ function LandingPublic() {
           {tables.map((table) => (
             <div
               key={table.name}
+              className="group border border-slate-100/80 transition-all duration-300 hover:-translate-y-1 hover:shadow-xl"
               style={{
                 background: designTokens.colors['card-bg'] || designTokens.colors.surface,
-                border: `1px solid ${designTokens.colors.border}`,
                 borderRadius: designTokens.radii.lg,
                 padding: '24px',
                 boxShadow: '0 1px 2px rgba(16,24,40,0.04), 0 4px 12px rgba(16,24,40,0.06)',
@@ -100,14 +267,20 @@ function LandingPublic() {
                 background: `${designTokens.colors.primary}1A`, color: designTokens.colors.primary,
                 marginBottom: '16px',
               }}>
-                {resolveIcon(table.icon || layoutType)}
+                {resolveIcon(table.icon || '', table.name)}
               </div>
               <h3 style={{ fontFamily: designTokens.fonts.headline, fontSize: '16px', fontWeight: 600, color: designTokens.colors.text, margin: '0 0 6px 0' }}>
                 {table.labelPlural || table.label}
               </h3>
-              <p style={{ fontSize: '13px', color: designTokens.colors['text-secondary'], margin: 0 }}>
+              <p style={{ fontSize: '13px', color: designTokens.colors['text-secondary'], margin: '0 0 14px 0' }}>
                 Gestisci i tuoi {(table.labelPlural || table.label).toLowerCase()} in tempo reale.
               </p>
+              <span
+                className="inline-flex items-center gap-1 text-xs font-semibold transition-transform duration-300 group-hover:translate-x-0.5"
+                style={{ color: designTokens.colors.primary }}
+              >
+                Scopri di più →
+              </span>
             </div>
           ))}
         </div>
@@ -115,11 +288,25 @@ function LandingPublic() {
 
       {/* Footer */}
       <footer style={{ padding: '32px', textAlign: 'center', borderTop: `1px solid ${designTokens.colors.border}`, color: designTokens.colors['text-secondary'], fontSize: '13px' }}>
-        <p style={{ margin: '0 0 8px 0' }}>{appName}</p>
+        <p style={{ margin: '0 0 8px 0' }}>{displayName}</p>
+        {(companyInfo?.indirizzo || companyInfo?.telefono) && (
+          <p style={{ margin: '0 0 8px 0' }}>
+            {[companyInfo.indirizzo, companyInfo.telefono].filter(Boolean).join(' · ')}
+          </p>
+        )}
         <a href={`/a/${slug}/register`} style={{ color: designTokens.colors.primary, fontWeight: 600, textDecoration: 'none' }}>
           Registrati per accedere all&apos;area riservata
         </a>
       </footer>
+
+      <InstallAppBanner
+        appName={displayName}
+        slug={slug}
+        primaryColor={designTokens.colors.primary}
+        textColor={designTokens.colors.text}
+        surfaceColor={designTokens.colors.surface}
+        borderColor={designTokens.colors.border}
+      />
     </div>
   );
 }

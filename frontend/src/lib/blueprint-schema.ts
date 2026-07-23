@@ -178,6 +178,68 @@ export type DashboardCard = z.infer<typeof DashboardCardSchema>;
 export type UIConfig = z.infer<typeof UIConfigSchema>;
 export type BlueprintJSON = z.infer<typeof BlueprintJSONSchema>;
 
+// ─── Tabelle di sistema obbligatorie ────────────────────────────────────────
+// Ogni app generata deve SEMPRE includere questi dati anagrafici/fiscali di
+// base, a prescindere dal settore: senza questi campi (P.IVA, IBAN, fatture,
+// stato pagamento...) il cliente finale non ha modo di gestire i dati fiscali
+// della propria attività. L'AI di settore genera solo le tabelle di dominio
+// (pazienti, ordini, ...); queste due vengono iniettate sempre in coda.
+function coreField(f: { id: string; type: string; label: string; required?: boolean; options?: string[] }): Field {
+  return { required: false, options: [], target: undefined, targetLabel: undefined, ...f };
+}
+
+const CORE_TABLE_DATI_AZIENDALI: Table = {
+  name: 'dati_aziendali',
+  label: 'Dato Aziendale',
+  labelPlural: 'Dati Azienda',
+  icon: '🏢',
+  fields: [
+    coreField({ id: 'ragione_sociale', type: 'text', label: 'Ragione Sociale', required: true }),
+    coreField({ id: 'partita_iva', type: 'text', label: 'P.IVA' }),
+    coreField({ id: 'codice_fiscale', type: 'text', label: 'Codice Fiscale' }),
+    coreField({ id: 'indirizzo', type: 'text', label: 'Indirizzo' }),
+    coreField({ id: 'email_pec_sdi', type: 'text', label: 'Email PEC / Codice SDI' }),
+    coreField({ id: 'telefono', type: 'phone', label: 'Telefono' }),
+    coreField({ id: 'iban', type: 'text', label: 'IBAN' }),
+    coreField({ id: 'logo', type: 'image', label: 'Logo' }),
+  ],
+};
+
+const CORE_TABLE_FATTURE: Table = {
+  name: 'fatture',
+  label: 'Fattura',
+  labelPlural: 'Fatture',
+  icon: '🧾',
+  fields: [
+    coreField({ id: 'numero_documento', type: 'text', label: 'Numero Documento', required: true }),
+    coreField({ id: 'data', type: 'date', label: 'Data', required: true }),
+    coreField({ id: 'cliente', type: 'text', label: 'Cliente', required: true }),
+    coreField({ id: 'importo_totale', type: 'currency', label: 'Importo Totale', required: true }),
+    coreField({ id: 'iva', type: 'number', label: 'IVA (%)' }),
+    coreField({ id: 'stato_pagamento', type: 'select', label: 'Stato Pagamento', options: ['Pagata', 'In attesa', 'Scaduta', 'Annullata'] }),
+    coreField({ id: 'link_pdf', type: 'text', label: 'Link PDF/Stampa' }),
+  ],
+};
+
+// Nomi/alias che, se già presenti nello schema generato dall'AI, evitano la
+// doppia iniezione della relativa tabella di sistema.
+const DATI_AZIENDALI_ALIASES = new Set(['dati_aziendali', 'impostazioni_azienda']);
+const FATTURE_ALIASES = new Set(['fatture', 'documenti']);
+
+export function ensureCoreSystemTables(tables: Table[]): Table[] {
+  const existingNames = new Set(tables.map((t) => t.name));
+  const result = [...tables];
+
+  if (![...DATI_AZIENDALI_ALIASES].some((alias) => existingNames.has(alias))) {
+    result.push(CORE_TABLE_DATI_AZIENDALI);
+  }
+  if (![...FATTURE_ALIASES].some((alias) => existingNames.has(alias))) {
+    result.push(CORE_TABLE_FATTURE);
+  }
+
+  return result;
+}
+
 function safeString(v: unknown, fallback = ''): string {
   if (v == null) return fallback;
   return String(v);
@@ -272,7 +334,9 @@ export function sanitizeBlueprint(raw: unknown): BlueprintJSON | null {
   // Try Zod parse first
   try {
     const result = BlueprintJSONSchema.parse(raw);
-    if (result.schema.tables.length > 0) return result;
+    if (result.schema.tables.length > 0) {
+      return { ...result, schema: { tables: ensureCoreSystemTables(result.schema.tables) } };
+    }
   } catch (e) {
     console.warn('[sanitizeBlueprint] Zod parse failed, doing manual extraction:', (e as any)?.message?.slice(0, 200));
   }
@@ -283,7 +347,7 @@ export function sanitizeBlueprint(raw: unknown): BlueprintJSON | null {
     const sector = safeString(r.sector ?? r.settore, 'custom');
     const description = safeString(r.description ?? r.descrizione, '');
     const logo = safeString(r.logo, '');
-    const tables = extractTables(r);
+    const tables = ensureCoreSystemTables(extractTables(r));
 
     // UI
     const uiRaw = r.ui ?? {};

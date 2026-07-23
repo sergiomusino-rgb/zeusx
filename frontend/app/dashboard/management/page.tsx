@@ -1,9 +1,10 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { createClient } from '@supabase/supabase-js';
-import { Copy, Check, CreditCard, AlertCircle, Settings } from 'lucide-react';
+import { Copy, Check, CreditCard, AlertCircle, Settings, Wallet, TrendingUp, LayoutGrid } from 'lucide-react';
+import { getClientSubscriptionPrice, ZEUSX_MINIMUM_FEE_EUR } from '@/lib/pricing';
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '';
@@ -16,7 +17,8 @@ interface App {
   totalum_app_id: string | null;
   stripe_connect_id: string | null;
   client_subscription_price: number;
-  status: 'trial' | 'active' | 'expired';
+  client_price?: number | null;
+  status: 'trial' | 'active' | 'expired' | 'past_due' | 'canceled';
   trial_ends_at: string | null;
   is_active: boolean;
   created_at: string;
@@ -28,6 +30,8 @@ interface App {
 
 export default function ManagementConsolePage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const highlightAppId = searchParams.get('appId');
   const [loading, setLoading] = useState(true);
   const [apps, setApps] = useState<App[]>([]);
   const [userPlan, setUserPlan] = useState<string>('free');
@@ -37,6 +41,7 @@ export default function ManagementConsolePage() {
   const [savingPrice, setSavingPrice] = useState<Record<string, boolean>>({});
   const [error, setError] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
+  const [slotInfo, setSlotInfo] = useState<{ appLimit: number; totalCreated: number }>({ appLimit: 0, totalCreated: 0 });
 
   useEffect(() => {
     loadData();
@@ -81,20 +86,38 @@ export default function ManagementConsolePage() {
 
     const tenantId = membershipData?.tenant_id;
 
+    // Recupera gli slot del piano (per il Riepilogo Finanziario: quanti sono
+    // usati/liberi sui slot totali acquistati con il piano PRO/Starter/Business)
+    if (tenantId) {
+      const { data: tenantSlots } = await supabase
+        .from('tenants')
+        .select('app_limit, total_apps_created')
+        .eq('id', tenantId)
+        .single();
+      setSlotInfo({
+        appLimit: tenantSlots?.app_limit || 0,
+        totalCreated: tenantSlots?.total_apps_created || 0,
+      });
+    }
+
     // Recupera le app del tenant
     const { data: appsData, error: appsError } = await supabase
       .from('apps')
-      .select('id, name, slug, totalum_app_id, stripe_connect_id, client_subscription_price, status, trial_ends_at, is_active, client_active, expires_at, client_email, client_password, created_at')
-      .eq('tenant_id', tenantId);
+      .select('id, name, slug, totalum_app_id, stripe_connect_id, client_subscription_price, client_price, status, trial_ends_at, is_active, client_active, expires_at, client_email, client_password, created_at')
+      .eq('tenant_id', tenantId)
+      .order('created_at', { ascending: false });
 
     if (appsError) {
       setError(appsError.message);
     } else {
       setApps(appsData || []);
-      // Inizializza gli input dei prezzi
+      // Inizializza gli input dei prezzi con il prezzo realmente in vigore
+      // (client_subscription_price || client_price || quota minima ZeusX),
+      // non solo client_subscription_price: per le app appena create con
+      // Creator AI quella colonna è 0.00 e mostrerebbe un prezzo sbagliato.
       const initialPrices: Record<string, string> = {};
       appsData?.forEach(app => {
-        initialPrices[app.id] = app.client_subscription_price?.toString() || '';
+        initialPrices[app.id] = getClientSubscriptionPrice(app).toString();
       });
       setPriceInputs(initialPrices);
     }
@@ -130,8 +153,6 @@ export default function ManagementConsolePage() {
   };
 
   const updatePrice = async (appId: string, totalumAppId: string | null) => {
-    if (!totalumAppId) return;
-
     const price = parseFloat(priceInputs[appId] || '0');
     
     // Validazione prezzo minimo per piano Starter
@@ -152,6 +173,7 @@ export default function ManagementConsolePage() {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
+          app_id: appId,
           totalum_app_id: totalumAppId,
           client_subscription_price: price,
         }),
@@ -202,11 +224,15 @@ export default function ManagementConsolePage() {
       trial: 'bg-yellow-500/20 text-yellow-300',
       active: 'bg-green-500/20 text-green-300',
       expired: 'bg-red-500/20 text-red-300',
+      past_due: 'bg-orange-500/20 text-orange-300',
+      canceled: 'bg-gray-500/20 text-gray-300',
     };
     const labels = {
       trial: 'In Prova',
       active: 'Attiva',
       expired: 'Scaduta',
+      past_due: 'Insoluta',
+      canceled: 'Cancellata',
     };
     return (
       <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${styles[status as keyof typeof styles]}`}>
@@ -226,11 +252,73 @@ export default function ManagementConsolePage() {
     );
   }
 
+  // Riepilogo Finanziario: solo le app 'active' generano incasso reale e
+  // quota ZeusX (25€/mese ciascuna, la quota minima trattenuta via Stripe
+  // Connect — vedi lib/pricing.ts). Le app in trial non hanno ancora un
+  // cliente pagante, quindi non contano né come incasso né come costo.
+  const activeApps = apps.filter((a) => a.status === 'active');
+  const expiredApps = apps.filter((a) => a.status === 'expired' || a.status === 'past_due' || a.status === 'canceled');
+  const totalRevenue = activeApps.reduce((sum, a) => sum + getClientSubscriptionPrice(a), 0);
+  const totalZeusxFee = activeApps.length * ZEUSX_MINIMUM_FEE_EUR;
+  const netMargin = totalRevenue - totalZeusxFee;
+  const freeSlots = Math.max(0, slotInfo.appLimit - slotInfo.totalCreated);
+
   return (
     <div className="p-4 sm:p-6">
       <div className="mb-4 sm:mb-6">
         <h1 className="text-xl sm:text-2xl font-bold text-white">Management Console</h1>
         <p className="text-gray-400 mt-1 text-sm sm:text-base">Gestisci le app dei tuoi clienti e le quote ZEUSX</p>
+      </div>
+
+      {/* Riepilogo Finanziario */}
+      <div className="bg-slate-900/40 border border-slate-800/80 backdrop-blur-md rounded-2xl p-4 sm:p-6 mb-4 sm:mb-6">
+        <h2 className="text-lg font-semibold text-white mb-3 sm:mb-4">Riepilogo Finanziario</h2>
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+          <div className="bg-slate-800/50 rounded-xl p-3 sm:p-4">
+            <div className="flex items-center gap-2 text-gray-400 text-xs uppercase tracking-wide mb-1.5">
+              <Wallet size={14} /> Incassi Clienti
+            </div>
+            <div className="text-xl sm:text-2xl font-bold text-white">
+              {totalRevenue.toLocaleString('it-IT', { minimumFractionDigits: 2 })} €
+              <span className="text-xs font-normal text-gray-500">/mese</span>
+            </div>
+            <div className="text-xs text-gray-500 mt-1">{activeApps.length} app attive</div>
+          </div>
+
+          <div className="bg-slate-800/50 rounded-xl p-3 sm:p-4">
+            <div className="flex items-center gap-2 text-gray-400 text-xs uppercase tracking-wide mb-1.5">
+              <CreditCard size={14} /> Quote Licenza ZeusX
+            </div>
+            <div className="text-xl sm:text-2xl font-bold text-white">
+              {totalZeusxFee.toLocaleString('it-IT', { minimumFractionDigits: 2 })} €
+              <span className="text-xs font-normal text-gray-500">/mese</span>
+            </div>
+            <div className="text-xs text-gray-500 mt-1">{ZEUSX_MINIMUM_FEE_EUR}€ × {activeApps.length} app attive</div>
+          </div>
+
+          <div className="bg-slate-800/50 rounded-xl p-3 sm:p-4">
+            <div className="flex items-center gap-2 text-gray-400 text-xs uppercase tracking-wide mb-1.5">
+              <TrendingUp size={14} /> Margine Netto
+            </div>
+            <div className={`text-xl sm:text-2xl font-bold ${netMargin >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+              {netMargin.toLocaleString('it-IT', { minimumFractionDigits: 2 })} €
+              <span className="text-xs font-normal text-gray-500">/mese</span>
+            </div>
+            <div className="text-xs text-gray-500 mt-1">Incassi − quote ZeusX</div>
+          </div>
+
+          <div className="bg-slate-800/50 rounded-xl p-3 sm:p-4">
+            <div className="flex items-center gap-2 text-gray-400 text-xs uppercase tracking-wide mb-1.5">
+              <LayoutGrid size={14} /> Stato Slot
+            </div>
+            <div className="text-xl sm:text-2xl font-bold text-white">
+              {slotInfo.totalCreated} <span className="text-xs font-normal text-gray-500">/ {slotInfo.appLimit}</span>
+            </div>
+            <div className="text-xs text-gray-500 mt-1">
+              {activeApps.length} attivi · {expiredApps.length} scaduti · {freeSlots} liberi
+            </div>
+          </div>
+        </div>
       </div>
 
       {/* Box Configurazione Stripe Connect */}
@@ -296,7 +384,7 @@ export default function ManagementConsolePage() {
             </thead>
             <tbody className="bg-slate-900/40 divide-y divide-slate-800">
               {apps.map((app) => (
-                <tr key={app.id}>
+                <tr key={app.id} className={app.id === highlightAppId ? 'bg-indigo-500/10 ring-1 ring-inset ring-indigo-500/40' : undefined}>
                   <td className="px-4 sm:px-6 py-3 sm:py-4 whitespace-nowrap text-sm font-medium">
                     <button
                       onClick={() => router.push(`/dashboard/projects/${app.id}`)}
@@ -320,15 +408,13 @@ export default function ManagementConsolePage() {
                         placeholder="0.00"
                       />
                       <span className="text-gray-400">€</span>
-                      {app.totalum_app_id && (
-                        <button
-                          onClick={() => updatePrice(app.id, app.totalum_app_id)}
-                          disabled={savingPrice[app.id]}
-                          className="px-2 py-1 bg-indigo-600 text-white rounded text-xs hover:bg-indigo-700 disabled:opacity-50"
-                        >
-                          {savingPrice[app.id] ? '...' : 'Salva'}
-                        </button>
-                      )}
+                      <button
+                        onClick={() => updatePrice(app.id, app.totalum_app_id)}
+                        disabled={savingPrice[app.id]}
+                        className="px-2 py-1 bg-indigo-600 text-white rounded text-xs hover:bg-indigo-700 disabled:opacity-50"
+                      >
+                        {savingPrice[app.id] ? '...' : 'Salva'}
+                      </button>
                     </div>
                   </td>
                   <td className="px-4 sm:px-6 py-3 sm:py-4 whitespace-nowrap text-sm text-gray-400">
@@ -363,7 +449,7 @@ export default function ManagementConsolePage() {
         {/* Mobile Cards */}
         <div className="sm:hidden divide-y divide-slate-800">
           {apps.map((app) => (
-            <div key={app.id} className="p-4 space-y-3">
+            <div key={app.id} className={`p-4 space-y-3 ${app.id === highlightAppId ? 'bg-indigo-500/10 ring-1 ring-inset ring-indigo-500/40' : ''}`}>
               <div className="flex justify-between items-start">
                 <div>
                   <button
@@ -375,7 +461,7 @@ export default function ManagementConsolePage() {
                 </div>
                 {getStatusBadge(app.status)}
               </div>
-              
+
               <div className="flex items-center justify-between">
                 <span className="text-gray-400 text-xs">Prezzo Cliente</span>
                 <div className="flex items-center gap-2">
@@ -389,15 +475,13 @@ export default function ManagementConsolePage() {
                     placeholder="0.00"
                   />
                   <span className="text-gray-400 text-xs">€</span>
-                  {app.totalum_app_id && (
-                    <button
-                      onClick={() => updatePrice(app.id, app.totalum_app_id)}
-                      disabled={savingPrice[app.id]}
-                      className="px-2 py-1 bg-indigo-600 text-white rounded text-xs hover:bg-indigo-700 disabled:opacity-50"
-                    >
-                      {savingPrice[app.id] ? '...' : 'Salva'}
-                    </button>
-                  )}
+                  <button
+                    onClick={() => updatePrice(app.id, app.totalum_app_id)}
+                    disabled={savingPrice[app.id]}
+                    className="px-2 py-1 bg-indigo-600 text-white rounded text-xs hover:bg-indigo-700 disabled:opacity-50"
+                  >
+                    {savingPrice[app.id] ? '...' : 'Salva'}
+                  </button>
                 </div>
               </div>
               

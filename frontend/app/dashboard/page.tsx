@@ -77,9 +77,9 @@ export default function DashboardPage() {
 
   const coreFeatures = [
     { 
-      title: t('dashboard_create_app_title'), 
+      title: t('dashboard_create_app_title'),
       desc: t('dashboard_create_app_desc'),
-      link: "/dashboard/generator", 
+      link: "/dashboard/creator",
       color: "bg-gradient-to-br from-indigo-600 to-purple-600",
       icon: "✨",
       highlighted: true

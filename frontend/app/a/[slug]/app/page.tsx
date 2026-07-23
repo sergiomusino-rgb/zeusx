@@ -5,24 +5,31 @@ import { SYSTEM_TABLES, getTableByName, createEmptyRecord } from './table-defini
 import DynamicDataTable from './DynamicDataTable';
 import DynamicRecordModal from './DynamicRecordModal';
 import CreateCustomTableModal from './CreateCustomTableModal';
+import AITableModal from './AITableModal';
 import EditTableModal from './EditTableModal';
 import CustomTableRenderer from './CustomTableRenderer';
 import CustomRecordModal from './CustomRecordModal';
 import {
   LayoutDashboard, Settings, LogOut, Search, Plus, Pencil, Trash2,
-  X, ChevronDown, Users, ShoppingCart, Package, DollarSign, TrendingUp,
+  X, ChevronDown, TrendingUp,
   AlertTriangle, Calendar, CheckCircle, Clock, XCircle, Menu,
   Download, Upload, Download as InstallIcon, MessageSquare, Mail, MessageCircle,
-  Settings2, FileText, FileSpreadsheet, File as FileIcon, Database,
+  Settings2, FileText, FileSpreadsheet, File as FileIcon, Database, CreditCard,
+  Sparkles,
 } from 'lucide-react';
   import { QRCodeCanvas } from 'qrcode.react';
   import { useLanguage } from '@/src/lib/LanguageContext';
-  import { applyDesignTokens, getDesignTokens, getLayoutTypeForSector, cssVar } from '@/lib/designTokens';
+  import { applyDesignTokens, getDesignTokens, getLayoutTypeForSector, cssVar, type DesignTokens } from '@/lib/designTokens';
   import DynamicLayoutRenderer from './DynamicLayoutRenderer';
+  import { resolveIcon } from './iconResolver';
+  import { StatusBadge } from './cellRenderers';
   import { getAuthToken } from './session-helpers';
   import { supabaseBrowser } from '@/src/lib/supabase-browser';
-  import { useAppInfo } from '../AppInfoContext';
+  import { useAppInfo, type SubscriptionStatus } from '../AppInfoContext';
   import { useRouter, usePathname } from 'next/navigation';
+  import FullscreenToggle from '@/components/FullscreenToggle';
+  import { usePwaSetup } from '@/hooks/usePwaSetup';
+  import { sortTablesForSidebar, getDatiAziendaliTable } from './table-definitions';
 
 // ─── Interfaces ───────────────────────────────────────────────────────────────
 
@@ -110,14 +117,6 @@ interface UserPrefs {
 
 const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || 'https://zeusx-backend.onrender.com';
 
-const ICON_MAP: Record<string, React.ReactNode> = {
-  users: <Users size={18} />,
-  orders: <ShoppingCart size={18} />,
-  products: <Package size={18} />,
-  invoices: <DollarSign size={18} />,
-  default: <LayoutDashboard size={18} />,
-};
-
 const LAYOUT_CONFIG = {
   corporate:  { sidebarWidth: 'w-72', padding: 'p-8', radius: 'rounded-2xl', shadow: 'shadow-2xl' },
   modern:     { sidebarWidth: 'w-64', padding: 'p-6', radius: 'rounded-xl',  shadow: 'shadow-xl' },
@@ -154,11 +153,46 @@ function getThemeVars(theme: 'dark' | 'light', primaryColor: string) {
   };
 }
 
-// ─── Utility: Icon Resolver ──────────────────────────────────────────────────
+// Adatta i design token di settore (design.md, da lib/designTokens.ts) alla
+// stessa forma di getThemeVars, così tutti i componenti che già ricevono
+// `colors` come prop (DynamicDataTable, DynamicRecordModal, CustomTableRenderer,
+// CreateCustomTableModal, AITableModal, EditTableModal, CustomRecordModal,
+// SettingsModal, ecc.) ottengono la palette del settore senza alcuna modifica
+// al loro codice interno — cambia solo come `colors` viene calcolato qui sotto.
+function designTokensToThemeVars(tokens: DesignTokens, primaryColorOverride?: string) {
+  const c = tokens.colors;
+  const primary = primaryColorOverride || c.primary;
+  return {
+    bg: c.bg,
+    text: c.text,
+    textSecondary: c['text-secondary'],
+    cardBg: c['card-bg'],
+    cardBgAlt: c['card-bg-alt'],
+    border: c.border,
+    sidebarBg: c['sidebar-bg'],
+    sidebarText: c['sidebar-text'],
+    sidebarHover: c['sidebar-hover'],
+    inputBg: c['input-bg'],
+    inputBorder: c.border,
+    primary,
+    primaryHover: primaryColorOverride ? primaryColorOverride + 'dd' : c['primary-hover'],
+    danger: c.error,
+    success: c.success,
+    warning: c.warning,
+  };
+}
 
-function resolveIcon(iconName: string): React.ReactNode {
-  const key = iconName?.toLowerCase() || 'default';
-  return ICON_MAP[key] || ICON_MAP.default;
+// Luminosità percepita di un colore esadecimale (formula standard), per
+// dedurre se la palette di un settore è "scura di proposito" (es. coinpulse,
+// glassmorphism, industrial-dark) e va trattata come tema scuro di default.
+function isColorDark(hex: string): boolean {
+  const m = hex.replace('#', '');
+  if (m.length < 6) return false;
+  const r = parseInt(m.substring(0, 2), 16);
+  const g = parseInt(m.substring(2, 4), 16);
+  const b = parseInt(m.substring(4, 6), 16);
+  if ([r, g, b].some((n) => isNaN(n))) return false;
+  return (0.299 * r + 0.587 * g + 0.114 * b) < 140;
 }
 
 // ─── KPI Card ─────────────────────────────────────────────────────────────────
@@ -176,26 +210,38 @@ interface KpiCardProps {
 function KpiCard({ title, value, icon, trend, trendUp, colors, radius }: KpiCardProps) {
   return (
     <div
-      className={`${radius} ${LAYOUT_CONFIG.corporate.shadow}`}
+      className={`relative overflow-hidden ${radius} ${LAYOUT_CONFIG.corporate.shadow} transition-all duration-300 hover:-translate-y-1`}
       style={{
-        background: colors.cardBg,
-        border: `1px solid ${colors.border}`,
+        background: `linear-gradient(160deg, ${colors.cardBg}, ${colors.primary}0d)`,
+        border: `1px solid ${colors.primary}33`,
         padding: '24px',
         display: 'flex',
         flexDirection: 'column',
         gap: '12px',
-        transition: 'transform 0.2s, box-shadow 0.2s',
       }}
-      onMouseEnter={(e) => { e.currentTarget.style.transform = 'translateY(-2px)'; }}
-      onMouseLeave={(e) => { e.currentTarget.style.transform = 'translateY(0)'; }}
     >
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+      {/* Bagliore decorativo in alto a destra */}
+      <div
+        className="pointer-events-none absolute -right-6 -top-6 h-24 w-24 rounded-full"
+        style={{ background: colors.primary, opacity: 0.12, filter: 'blur(20px)' }}
+      />
+
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', position: 'relative' }}>
         <span style={{ color: colors.textSecondary, fontSize: '14px', fontWeight: 500 }}>{title}</span>
-        <div style={{ color: colors.primary, opacity: 0.8 }}>{icon}</div>
+        <div
+          style={{
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            width: '36px', height: '36px', borderRadius: '10px',
+            background: `${colors.primary}1F`, color: colors.primary,
+          }}
+        >
+          {icon}
+        </div>
       </div>
-      <span style={{ color: colors.text, fontSize: '28px', fontWeight: 700 }}>{value}</span>
-      {trend && (
-        <div style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '13px' }}>
+      <span style={{ color: colors.text, fontSize: '28px', fontWeight: 700, position: 'relative' }}>{value}</span>
+
+      {trend ? (
+        <div style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '13px', position: 'relative' }}>
           <TrendingUp
             size={14}
             style={{ color: trendUp ? colors.success : colors.danger, transform: trendUp ? 'none' : 'rotate(180deg)' }}
@@ -203,12 +249,48 @@ function KpiCard({ title, value, icon, trend, trendUp, colors, radius }: KpiCard
           <span style={{ color: trendUp ? colors.success : colors.danger }}>{trend}</span>
           <span style={{ color: colors.textSecondary }}>vs mese scorso</span>
         </div>
+      ) : (
+        <svg width="100%" height="28" viewBox="0 0 120 28" preserveAspectRatio="none" style={{ position: 'relative' }}>
+          <polyline
+            points="0,20 15,17 30,21 45,12 60,16 75,8 90,13 105,6 120,10"
+            fill="none"
+            stroke={colors.primary}
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            opacity="0.35"
+          />
+        </svg>
       )}
     </div>
   );
 }
 
 // ─── Dashboard Component ──────────────────────────────────────────────────────
+
+interface RecentActivityItem {
+  tableName: string;
+  tableLabel: string;
+  icon: React.ReactNode;
+  recordLabel: string;
+  timestamp: string | null;
+  statusValue: string | null;
+}
+
+function formatRelativeTime(iso: string | null): string {
+  if (!iso) return '';
+  const date = new Date(iso);
+  if (isNaN(date.getTime())) return '';
+  const diffMs = Date.now() - date.getTime();
+  const diffMin = Math.round(diffMs / 60000);
+  if (diffMin < 1) return 'adesso';
+  if (diffMin < 60) return `${diffMin} min fa`;
+  const diffH = Math.round(diffMin / 60);
+  if (diffH < 24) return `${diffH} ${diffH === 1 ? 'ora' : 'ore'} fa`;
+  const diffD = Math.round(diffH / 24);
+  if (diffD < 7) return `${diffD} ${diffD === 1 ? 'giorno' : 'giorni'} fa`;
+  return date.toLocaleDateString('it-IT');
+}
 
 interface DashboardProps {
   colors: ReturnType<typeof getThemeVars>;
@@ -218,21 +300,28 @@ interface DashboardProps {
   tables: TableDef[];
   appId?: string;
   authToken?: string;
+  onQuickAdd: (tableName: string) => void;
 }
 
-function Dashboard({ colors, radius, shadow, companyName, tables, appId, authToken }: DashboardProps) {
+function Dashboard({ colors, radius, shadow, companyName, tables, appId, authToken, onQuickAdd }: DashboardProps) {
   const { t } = useLanguage();
   const [totalRecords, setTotalRecords] = useState(0);
+  const [tableCounts, setTableCounts] = useState<Record<string, number>>({});
+  const [recentActivity, setRecentActivity] = useState<RecentActivityItem[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // Count total records across all tables
+    // Conta i record per tabella e costruisce il feed attività recenti
+    // riusando gli stessi dati già scaricati (nessuna chiamata aggiuntiva).
     async function loadDashboardData() {
       try {
         const password = authToken;
         if (!appId || !password) { setLoading(false); return; }
 
         let total = 0;
+        const counts: Record<string, number> = {};
+        const activity: RecentActivityItem[] = [];
+
         for (const table of tables) {
           try {
             const res = await fetch(`/api/client/apps/${appId}/records?table=${table.name}`, {
@@ -241,10 +330,31 @@ function Dashboard({ colors, radius, shadow, companyName, tables, appId, authTok
             if (res.ok) {
               const data = await res.json();
               const recs: any[] = Array.isArray(data) ? data : data.records || data.data || [];
+              counts[table.name] = recs.length;
               total += recs.length;
+
+              const textField = table.fields.find((f) => ['text', 'email', 'tel'].includes(f.type) && fieldName(f) !== 'id');
+              const statusField = table.fields.find((f) => f.type === 'select');
+
+              for (const r of recs) {
+                const ts = (r.updated_at || r.created_at) as string | undefined;
+                const label = textField ? String(r.data?.[fieldName(textField)] ?? '').trim() : '';
+                activity.push({
+                  tableName: table.name,
+                  tableLabel: table.labelPlural || table.label,
+                  icon: resolveIcon(table.icon || '', table.name),
+                  recordLabel: label || `#${String(r.id).slice(0, 6)}`,
+                  timestamp: ts || null,
+                  statusValue: statusField ? (r.data?.[fieldName(statusField)] ? String(r.data[fieldName(statusField)]) : null) : null,
+                });
+              }
             }
           } catch { /* skip table */ }
         }
+
+        activity.sort((a, b) => new Date(b.timestamp || 0).getTime() - new Date(a.timestamp || 0).getTime());
+        setRecentActivity(activity.slice(0, 6));
+        setTableCounts(counts);
         setTotalRecords(total);
       } catch { /* ignore */ }
       setLoading(false);
@@ -256,7 +366,7 @@ function Dashboard({ colors, radius, shadow, companyName, tables, appId, authTok
     return (
       <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
         <div>
-          <h1 style={{ fontFamily: "'Plus Jakarta Sans', sans-serif", color: '#18181B', fontSize: '28px', fontWeight: 700, margin: 0 }}>
+          <h1 style={{ fontFamily: "'Plus Jakarta Sans', sans-serif", color: colors.text, fontSize: '28px', fontWeight: 700, margin: 0 }}>
             {t('nav_dashboard')}
           </h1>
           <p style={{ color: colors.textSecondary, fontSize: '14px', marginTop: '4px' }}>
@@ -273,7 +383,7 @@ function Dashboard({ colors, radius, shadow, companyName, tables, appId, authTok
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
       <div>
-          <h1 style={{ fontFamily: "'Plus Jakarta Sans', sans-serif", color: '#18181B', fontSize: '28px', fontWeight: 700, margin: 0 }}>
+          <h1 style={{ fontFamily: "'Plus Jakarta Sans', sans-serif", color: colors.text, fontSize: '28px', fontWeight: 700, margin: 0 }}>
           {t('nav_dashboard')}
         </h1>
         <p style={{ color: colors.textSecondary, fontSize: '14px', marginTop: '4px' }}>
@@ -284,15 +394,15 @@ function Dashboard({ colors, radius, shadow, companyName, tables, appId, authTok
       {tables.length === 0 ? (
         <div
           style={{
-            background: '#FFFFFF',
-            border: '1px solid #F4F4F5',
+            background: colors.cardBg,
+            border: `1px solid ${colors.border}`,
             borderRadius: '8px',
             padding: '60px 40px',
             textAlign: 'center',
           }}
         >
           <LayoutDashboard size={48} style={{ color: colors.primary, marginBottom: '16px' }} />
-          <h2 style={{ fontFamily: "'Plus Jakarta Sans', sans-serif", color: '#18181B', fontSize: '22px', fontWeight: 700, margin: '0 0 12px 0' }}>
+          <h2 style={{ fontFamily: "'Plus Jakarta Sans', sans-serif", color: colors.text, fontSize: '22px', fontWeight: 700, margin: '0 0 12px 0' }}>
             Benvenuto in {companyName}!
           </h2>
           <p style={{ color: colors.textSecondary, fontSize: '14px', lineHeight: 1.6, maxWidth: '500px', margin: '0 auto' }}>
@@ -317,41 +427,140 @@ function Dashboard({ colors, radius, shadow, companyName, tables, appId, authTok
               colors={colors}
               radius={radius}
             />
+            <KpiCard
+              title="Ultima Attività"
+              value={recentActivity[0] ? formatRelativeTime(recentActivity[0].timestamp) || '—' : '—'}
+              icon={<Clock size={22} />}
+              colors={colors}
+              radius={radius}
+            />
           </div>
 
-          {/* Tables overview */}
+          {/* Azioni rapide */}
           <div
             style={{
-              background: '#FFFFFF',
-              border: '1px solid #F4F4F5',
+              background: colors.cardBg,
+              border: `1px solid ${colors.border}`,
               borderRadius: '8px',
-              padding: '24px',
+              padding: '20px 24px',
             }}
           >
-            <h3 style={{ fontFamily: "'Plus Jakarta Sans', sans-serif", color: '#18181B', fontSize: '16px', fontWeight: 600, margin: '0 0 16px 0' }}>
-              Le tue Tabelle
+            <h3 style={{ fontFamily: "'Plus Jakarta Sans', sans-serif", color: colors.text, fontSize: '16px', fontWeight: 600, margin: '0 0 14px 0' }}>
+              Azioni Rapide
             </h3>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-              {tables.map((table) => (
-                <div
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '10px' }}>
+              {tables.slice(0, 4).map((table) => (
+                <button
                   key={table.name}
+                  onClick={() => onQuickAdd(table.name)}
+                  className="transition-all duration-200 hover:-translate-y-0.5"
                   style={{
-                    display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-                    padding: '12px 16px', borderRadius: '8px',
-                    background: '#FFFFFF', border: '1px solid #F4F4F5',
+                    display: 'flex', alignItems: 'center', gap: '8px',
+                    padding: '10px 16px', borderRadius: '10px', border: `1px solid ${colors.primary}33`,
+                    background: `${colors.primary}12`, color: colors.primary,
+                    fontSize: '13px', fontWeight: 600, cursor: 'pointer',
                   }}
                 >
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                    {resolveIcon(table.icon || '')}
-                    <span style={{ fontFamily: "'Plus Jakarta Sans', sans-serif", color: '#18181B', fontSize: '14px', fontWeight: 500 }}>
-                      {table.labelPlural || table.label}
+                  <Plus size={14} />
+                  Nuovo {table.label}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '20px', alignItems: 'start' }}>
+            {/* Tables overview con breakdown record per tabella */}
+            <div
+              style={{
+                background: colors.cardBg,
+                border: `1px solid ${colors.border}`,
+                borderRadius: '8px',
+                padding: '24px',
+              }}
+            >
+              <h3 style={{ fontFamily: "'Plus Jakarta Sans', sans-serif", color: colors.text, fontSize: '16px', fontWeight: 600, margin: '0 0 16px 0' }}>
+                Le tue Tabelle
+              </h3>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                {tables.map((table) => (
+                  <div
+                    key={table.name}
+                    className="transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md"
+                    style={{
+                      display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                      padding: '12px 16px', borderRadius: '10px',
+                      background: colors.cardBg, border: `1px solid ${colors.primary}22`,
+                    }}
+                  >
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                      <div
+                        style={{
+                          display: 'flex', alignItems: 'center', justifyContent: 'center',
+                          width: '32px', height: '32px', borderRadius: '8px',
+                          background: `${colors.primary}1A`, color: colors.primary,
+                        }}
+                      >
+                        {resolveIcon(table.icon || '', table.name)}
+                      </div>
+                      <span style={{ fontFamily: "'Plus Jakarta Sans', sans-serif", color: colors.text, fontSize: '14px', fontWeight: 500 }}>
+                        {table.labelPlural || table.label}
+                      </span>
+                    </div>
+                    <span style={{ color: colors.textSecondary, fontSize: '13px' }}>
+                      {tableCounts[table.name] ?? 0} record
                     </span>
                   </div>
-                  <span style={{ color: colors.textSecondary, fontSize: '13px' }}>
-                    {table.fields?.length || 0} campi
-                  </span>
+                ))}
+              </div>
+            </div>
+
+            {/* Feed attività recenti */}
+            <div
+              style={{
+                background: colors.cardBg,
+                border: `1px solid ${colors.border}`,
+                borderRadius: '8px',
+                padding: '24px',
+              }}
+            >
+              <h3 style={{ fontFamily: "'Plus Jakarta Sans', sans-serif", color: colors.text, fontSize: '16px', fontWeight: 600, margin: '0 0 16px 0' }}>
+                Attività Recente
+              </h3>
+              {recentActivity.length === 0 ? (
+                <p style={{ color: colors.textSecondary, fontSize: '13px' }}>Nessuna attività ancora registrata.</p>
+              ) : (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                  {recentActivity.map((item, i) => (
+                    <div
+                      key={i}
+                      style={{
+                        display: 'flex', alignItems: 'center', gap: '12px',
+                        padding: '10px 12px', borderRadius: '10px',
+                        background: colors.cardBgAlt,
+                      }}
+                    >
+                      <div
+                        style={{
+                          display: 'flex', alignItems: 'center', justifyContent: 'center',
+                          width: '28px', height: '28px', borderRadius: '8px', flexShrink: 0,
+                          background: `${colors.primary}1A`, color: colors.primary,
+                        }}
+                      >
+                        {item.icon}
+                      </div>
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{ color: colors.text, fontSize: '13px', fontWeight: 500, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                          {item.recordLabel}
+                        </div>
+                        <div style={{ color: colors.textSecondary, fontSize: '12px' }}>
+                          {item.tableLabel} · {formatRelativeTime(item.timestamp) || 'data sconosciuta'}
+                        </div>
+                      </div>
+                      {item.statusValue && <StatusBadge value={item.statusValue} />}
+                    </div>
+                  ))}
                 </div>
-              ))}
+              )}
             </div>
           </div>
         </>
@@ -1086,24 +1295,71 @@ interface SettingsModalProps {
   onChangePassword: (oldPw: string, newPw: string) => Promise<void>;
   colors: ReturnType<typeof getThemeVars>;
   slug: string;
+  authMode?: 'legacy' | 'supabase';
+  subscriptionStatus?: SubscriptionStatus | null;
+  trialEndsAt?: string | null;
+  subscriptionPrice: number;
+  onResetSchema: () => void;
+  resettingSchema: boolean;
+  customTableCount: number;
 }
 
-function SettingsModal({ prefs, onPrefsChange, onClose, onLogout, onChangePassword, colors, slug }: SettingsModalProps) {
+function SettingsModal({ prefs, onPrefsChange, onClose, onLogout, onChangePassword, colors, slug, authMode, subscriptionStatus, trialEndsAt, subscriptionPrice, onResetSchema, resettingSchema, customTableCount }: SettingsModalProps) {
+  const isSupabaseAuth = authMode === 'supabase';
   const [oldPassword, setOldPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [passwordMsg, setPasswordMsg] = useState<{ text: string; type: 'success' | 'error' } | null>(null);
   const [changingPw, setChangingPw] = useState(false);
+  const [subscriptionLoading, setSubscriptionLoading] = useState(false);
+  const [subscriptionMsg, setSubscriptionMsg] = useState<{ text: string; type: 'success' | 'error' } | null>(null);
 
   const updatePref = <K extends keyof UserPrefs>(key: K, value: UserPrefs[K]) => {
     onPrefsChange({ ...prefs, [key]: value });
+  };
+
+  const handleSubscribe = async () => {
+    setSubscriptionLoading(true);
+    setSubscriptionMsg(null);
+    try {
+      const res = await fetch(`/api/a/${slug}/create-checkout-session`, { method: 'POST' });
+      const data = await res.json();
+      if (data.url) {
+        window.location.href = data.url;
+      } else {
+        setSubscriptionMsg({ text: data.error || 'Errore durante la creazione del checkout', type: 'error' });
+      }
+    } catch {
+      setSubscriptionMsg({ text: 'Errore di connessione', type: 'error' });
+    } finally {
+      setSubscriptionLoading(false);
+    }
+  };
+
+  const handleCancelSubscription = async () => {
+    if (!confirm('Sei sicuro di voler disdire l\'abbonamento? L\'app continuerà a funzionare fino al prossimo rinnovo.')) return;
+    setSubscriptionLoading(true);
+    setSubscriptionMsg(null);
+    try {
+      const res = await fetch(`/api/a/${slug}/cancel-subscription`, { method: 'POST' });
+      const data = await res.json();
+      if (data.success) {
+        setSubscriptionMsg({ text: 'Abbonamento disdetto: resterà attivo fino a fine periodo.', type: 'success' });
+      } else {
+        setSubscriptionMsg({ text: data.error || 'Errore durante la disdetta', type: 'error' });
+      }
+    } catch {
+      setSubscriptionMsg({ text: 'Errore di connessione', type: 'error' });
+    } finally {
+      setSubscriptionLoading(false);
+    }
   };
 
   const handlePasswordChange = async (e: React.FormEvent) => {
     e.preventDefault();
     setPasswordMsg(null);
 
-    if (!oldPassword || !newPassword || !confirmPassword) {
+    if ((!isSupabaseAuth && !oldPassword) || !newPassword || !confirmPassword) {
       setPasswordMsg({ text: 'Compila tutti i campi', type: 'error' });
       return;
     }
@@ -1345,14 +1601,16 @@ function SettingsModal({ prefs, onPrefsChange, onClose, onLogout, onChangePasswo
         <div style={sectionBox}>
           <div style={sectionTitle}>Cambia Password</div>
           <form onSubmit={handlePasswordChange} style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-            <input
-              type="password"
-              placeholder="Password attuale"
-              value={oldPassword}
-              onChange={(e) => setOldPassword(e.target.value)}
-              autoComplete="current-password"
-              style={inputStyle}
-            />
+            {!isSupabaseAuth && (
+              <input
+                type="password"
+                placeholder="Password attuale"
+                value={oldPassword}
+                onChange={(e) => setOldPassword(e.target.value)}
+                autoComplete="current-password"
+                style={inputStyle}
+              />
+            )}
             <input
               type="password"
               placeholder="Nuova password"
@@ -1391,6 +1649,83 @@ function SettingsModal({ prefs, onPrefsChange, onClose, onLogout, onChangePasswo
               {changingPw ? 'Salvataggio...' : 'Cambia Password'}
             </button>
           </form>
+        </div>
+
+        {/* Subscription Section */}
+        <div style={sectionBox}>
+          <div style={sectionTitle}>Abbonamento</div>
+          {subscriptionStatus === 'trial' && trialEndsAt && (
+            <p style={{ color: colors.textSecondary, fontSize: '13px', marginBottom: '12px' }}>
+              Periodo di prova attivo fino al {new Date(trialEndsAt).toLocaleDateString('it-IT')}
+            </p>
+          )}
+          {(subscriptionStatus === 'trial' || subscriptionStatus === 'expired' || subscriptionStatus === 'past_due' || subscriptionStatus === 'canceled') ? (
+            <button
+              type="button"
+              onClick={handleSubscribe}
+              disabled={subscriptionLoading}
+              style={{
+                width: '100%', padding: '12px 20px', borderRadius: '10px', border: 'none',
+                background: colors.primary, color: '#fff', fontSize: '14px', fontWeight: 700,
+                cursor: subscriptionLoading ? 'not-allowed' : 'pointer', opacity: subscriptionLoading ? 0.6 : 1,
+                display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px',
+              }}
+            >
+              <CreditCard size={16} />
+              {subscriptionLoading ? 'Attendere...' : `${subscriptionStatus === 'expired' ? 'Rinnova Abbonamento' : 'Abbonati'} - ${subscriptionPrice}€/mese`}
+            </button>
+          ) : (
+            <button
+              type="button"
+              onClick={handleCancelSubscription}
+              disabled={subscriptionLoading}
+              style={{
+                width: '100%', padding: '12px 20px', borderRadius: '10px',
+                border: `1px solid ${colors.danger}55`, background: 'transparent', color: colors.danger,
+                fontSize: '14px', fontWeight: 700, cursor: subscriptionLoading ? 'not-allowed' : 'pointer',
+                opacity: subscriptionLoading ? 0.6 : 1,
+                display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px',
+              }}
+            >
+              <XCircle size={16} />
+              {subscriptionLoading ? 'Attendere...' : 'Disdici Abbonamento'}
+            </button>
+          )}
+          {subscriptionMsg && (
+            <div style={{
+              marginTop: '12px', padding: '10px 14px', borderRadius: '8px', fontSize: '13px', fontWeight: 500,
+              background: subscriptionMsg.type === 'success' ? colors.success + '20' : colors.danger + '20',
+              color: subscriptionMsg.type === 'success' ? colors.success : colors.danger,
+            }}>
+              {subscriptionMsg.text}
+            </div>
+          )}
+        </div>
+
+        {/* Reset Schema Section */}
+        <div style={sectionBox}>
+          <div style={sectionTitle}>Tabelle Personalizzate</div>
+          <p style={{ color: colors.textSecondary, fontSize: '13px', marginBottom: '16px' }}>
+            {customTableCount > 0
+              ? `Hai ${customTableCount} tabelle personalizzate create con l'AI o manualmente. Se qualcosa non funziona come previsto, puoi riportare l'app allo stato iniziale: verranno rimosse solo le tabelle personalizzate e i loro dati, le tabelle originali del gestionale (${'clienti, prodotti, ordini...'}) restano intatte.`
+              : 'Non hai ancora creato tabelle personalizzate.'}
+          </p>
+          <button
+            type="button"
+            onClick={onResetSchema}
+            disabled={resettingSchema || customTableCount === 0}
+            style={{
+              width: '100%', padding: '12px 20px', borderRadius: '10px',
+              border: `1px solid ${colors.danger}55`, background: 'transparent', color: colors.danger,
+              fontSize: '14px', fontWeight: 700,
+              cursor: resettingSchema || customTableCount === 0 ? 'not-allowed' : 'pointer',
+              opacity: resettingSchema || customTableCount === 0 ? 0.6 : 1,
+              display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px',
+            }}
+          >
+            <XCircle size={16} />
+            {resettingSchema ? 'Ripristino...' : 'Ripristina stato iniziale'}
+          </button>
         </div>
 
         {/* QR Code Section */}
@@ -1566,7 +1901,7 @@ export default function ViewerProFinal() {
   // /a/[slug]/dashboard (nuove app, vedi dashboard/page.tsx). Chi arriva su
   // /app con un'app auth_mode='supabase' viene rimandato a /dashboard.
   const appInfoCtx = useAppInfo();
-  const { authMode } = appInfoCtx;
+  const { authMode, status: subscriptionStatus, trialEndsAt, clientPrice } = appInfoCtx;
   const router = useRouter();
   const pathname = usePathname() || '';
   useEffect(() => {
@@ -1640,6 +1975,10 @@ export default function ViewerProFinal() {
   const [customRecordsLoading, setCustomRecordsLoading] = useState(false);
   const [showCreateCustomTable, setShowCreateCustomTable] = useState(false);
   const [creatingCustomTable, setCreatingCustomTable] = useState(false);
+  const [showAITableModal, setShowAITableModal] = useState(false);
+  const [aiTableGenerating, setAiTableGenerating] = useState(false);
+  const [aiTableError, setAiTableError] = useState<string | null>(null);
+  const [resettingSchema, setResettingSchema] = useState(false);
   const [customModalRecord, setCustomModalRecord] = useState<any | null | 'new'>(null);
   const [customSaving, setCustomSaving] = useState(false);
   // Edit table modal
@@ -1683,6 +2022,7 @@ export default function ViewerProFinal() {
   console.log('[Viewer] Tables found:', tables.length, tables);
   
   const activeTable = tables.find((t) => t.name === activeView) || null;
+  const datiAziendaliTable = getDatiAziendaliTable(tables);
 
   const companyName = prefs.companyName
     || config?.branding?.company_name
@@ -1694,17 +2034,11 @@ export default function ViewerProFinal() {
     || config?.logo
     || '';
 
-  const primaryColor = prefs.primaryColor
-    || config?.branding?.primary_color
-    || '#6366f1';
-
-  const theme = prefs.theme || config?.branding?.theme || 'dark';
-  const colors = useMemo(() => getThemeVars(theme, primaryColor), [theme, primaryColor]);
-  const layoutCfg = LAYOUT_CONFIG[prefs.layout];
-
   // Settore salvato nello schema (blueprint.sector per la pipeline Totalum,
   // sector diretto per la pipeline Creator) — guida sia i colori (getDesignTokens)
-  // sia il layout renderizzato (getLayoutTypeForSector).
+  // sia il layout renderizzato (getLayoutTypeForSector). Calcolato prima di
+  // `colors` perché la palette ora deriva dai design token di settore invece
+  // che da un dark/light fisso.
   const sectorFromConfig = innerConfig?.blueprint?.sector
     || (innerConfig?.sector as string | undefined)
     || config?.blueprint?.sector
@@ -1712,6 +2046,21 @@ export default function ViewerProFinal() {
     || '';
   const richLayoutType = getLayoutTypeForSector(sectorFromConfig);
   const designTokens = useMemo(() => getDesignTokens(sectorFromConfig), [sectorFromConfig]);
+
+  const primaryColor = prefs.primaryColor
+    || config?.branding?.primary_color
+    || designTokens.colors.primary;
+
+  const theme = prefs.theme || config?.branding?.theme || (isColorDark(designTokens.colors.bg) ? 'dark' : 'light');
+  // `colors` ora riflette sempre la palette di design.md per il settore
+  // dell'app (design.md coerente su sidebar/tabelle/form/modali), con
+  // l'eventuale colore primario personalizzato dall'utente in Impostazioni
+  // come override — non più un dark/light fisso indipendente dal settore.
+  const colors = useMemo(
+    () => designTokensToThemeVars(designTokens, prefs.primaryColor || config?.branding?.primary_color || undefined),
+    [designTokens, prefs.primaryColor, config?.branding?.primary_color]
+  );
+  const layoutCfg = LAYOUT_CONFIG[prefs.layout];
 
   // ─── Load preferences from localStorage ──────────────────────────────────
 
@@ -1725,6 +2074,25 @@ export default function ViewerProFinal() {
     } catch { /* ignore */ }
   }, [prefsKey]);
 
+  // ─── Semina i default (colore primario, tema) dai design token di settore
+  // alla primissima apertura (nessuna preferenza salvata) — dopo, la scelta
+  // esplicita dell'utente in Impostazioni resta sempre rispettata.
+  const defaultsSeededRef = useRef(false);
+  useEffect(() => {
+    if (defaultsSeededRef.current || !sectorFromConfig) return;
+    defaultsSeededRef.current = true;
+    try {
+      const saved = localStorage.getItem(prefsKey);
+      if (!saved) {
+        setPrefs((prev) => ({
+          ...prev,
+          primaryColor: designTokens.colors.primary,
+          theme: isColorDark(designTokens.colors.bg) ? 'dark' : 'light',
+        }));
+      }
+    } catch { /* ignore */ }
+  }, [sectorFromConfig, designTokens, prefsKey]);
+
   // ─── Save preferences to localStorage ────────────────────────────────────
 
   useEffect(() => {
@@ -1733,18 +2101,9 @@ export default function ViewerProFinal() {
     } catch { /* ignore */ }
   }, [prefs, prefsKey]);
 
-  // ─── Register service worker on mount ───────────────────────────────────
+  // ─── Registra service worker + manifest PWA dinamico ─────────────────────
 
-  useEffect(() => {
-    if ('serviceWorker' in navigator) {
-      navigator.serviceWorker.register('/sw.js').catch(() => {});
-    }
-    // Aggiungi link manifest dinamicamente
-    const link = document.createElement('link');
-    link.rel = 'manifest';
-    link.href = `/a/${slug}/manifest`;
-    document.head.appendChild(link);
-  }, [slug]);
+  usePwaSetup(slug, designTokens.colors.primary);
 
   // ─── Detect mobile viewport ──────────────────────────────────────────────
 
@@ -1950,6 +2309,78 @@ export default function ViewerProFinal() {
     }
   }, [session, loadCustomTables]);
 
+  // Traduce una richiesta in linguaggio naturale in una tabella personalizzata
+  // tramite /api/client/apps/{id}/schema (Groq + riuso della stessa API di
+  // creazione usata da handleCreateCustomTable qui sopra).
+  const handleGenerateAITable = useCallback(async (instruction: string) => {
+    if (!session) return;
+    setAiTableGenerating(true);
+    setAiTableError(null);
+    try {
+      const res = await fetch(`/api/client/apps/${session.appInfo.id}/schema`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${getAuthToken(session)}`,
+        },
+        body: JSON.stringify({ instruction }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.error || 'Errore generazione tabella');
+      }
+      setShowAITableModal(false);
+      await loadCustomTables();
+    } catch (err) {
+      setAiTableError(err instanceof Error ? err.message : 'Errore');
+    } finally {
+      setAiTableGenerating(false);
+    }
+  }, [session, loadCustomTables]);
+
+  // Ripristina l'app allo stato iniziale: elimina tutte le tabelle
+  // personalizzate/create con l'AI (e i loro record), senza mai toccare le
+  // tabelle originali del gestionale (clienti/prodotti/ordini/ecc.), che
+  // vivono sotto nomi diversi da "_custom_*" e non sono gestite qui.
+  const handleResetCustomTables = useCallback(async () => {
+    if (!session) return;
+    if (customTables.length === 0) {
+      alert('Non ci sono tabelle personalizzate da rimuovere: l\'app è già allo stato iniziale.');
+      return;
+    }
+    if (!confirm(`Questo eliminerà tutte le ${customTables.length} tabelle personalizzate create (e i loro dati). Le tabelle originali del gestionale non verranno toccate. Continuare?`)) {
+      return;
+    }
+
+    setResettingSchema(true);
+    try {
+      for (const table of customTables) {
+        const tableId = table._record_id || table.id;
+        const res = await fetch(`/api/client/apps/${session.appInfo.id}/custom-tables`, {
+          method: 'DELETE',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${getAuthToken(session)}`,
+          },
+          body: JSON.stringify({ tableId }),
+        });
+        if (!res.ok) {
+          const err = await res.json().catch(() => ({}));
+          throw new Error(err.error || `Errore eliminazione tabella "${table.label || table.name}"`);
+        }
+      }
+      if (activeCustomTable) {
+        setActiveView('dashboard');
+      }
+      await loadCustomTables();
+      alert('App ripristinata allo stato iniziale.');
+    } catch (err) {
+      alert(err instanceof Error ? err.message : 'Errore durante il ripristino');
+    } finally {
+      setResettingSchema(false);
+    }
+  }, [session, customTables, activeCustomTable, loadCustomTables]);
+
   const handleCreateCustomRecord = useCallback(async (formData: Record<string, unknown>) => {
     if (!session || !activeCustomTable) return;
     setCustomSaving(true);
@@ -2118,6 +2549,15 @@ export default function ViewerProFinal() {
   }, [session, activeTable, loadRecords]);
 
   const handleChangePassword = useCallback(async (oldPw: string, newPw: string) => {
+    // App auth_mode='supabase': la password vive in Supabase Auth, non nella
+    // colonna legacy apps.client_password — l'utente ha già una sessione
+    // valida, quindi updateUser non richiede la vecchia password.
+    if (session?.mode === 'supabase') {
+      const { error } = await supabaseBrowser.auth.updateUser({ password: newPw });
+      if (error) throw new Error(error.message || 'Errore nel cambio password');
+      return;
+    }
+
     const res = await fetch(`/api/a/${slug}/change-password`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -2293,6 +2733,13 @@ export default function ViewerProFinal() {
             onChangePassword={handleChangePassword}
             colors={colors}
             slug={slug}
+            authMode={authMode}
+            subscriptionStatus={subscriptionStatus}
+            trialEndsAt={trialEndsAt}
+            subscriptionPrice={clientPrice}
+            onResetSchema={handleResetCustomTables}
+            resettingSchema={resettingSchema}
+            customTableCount={customTables.length}
           />
         )}
 
@@ -2402,12 +2849,12 @@ export default function ViewerProFinal() {
             primaryColor={primaryColor}
           />
 
-          {/* Tables fisse */}
-          {tables.map((table) => (
+          {/* Tables fisse: di lavoro in cima, tabelle di sistema (Fatture, Dati Azienda) in fondo */}
+          {sortTablesForSidebar(tables).map((table) => (
             <div key={table.name} style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
               <div style={{ flex: 1, minWidth: 0 }}>
                 <SidebarItem
-                  icon={resolveIcon(table.icon)}
+                  icon={resolveIcon(table.icon, table.name)}
                   label={table.labelPlural}
                   active={activeView === table.name}
                   onClick={() => setActiveView(table.name)}
@@ -2439,8 +2886,8 @@ export default function ViewerProFinal() {
           ))}
 
           {/* Tabelle personalizzate */}
-          <div style={{ marginTop: '8px', paddingTop: '8px', borderTop: `1px solid rgba(255,255,255,0.2)` }}>
-            <div style={{ padding: '0 14px 8px', fontSize: '11px', fontWeight: 600, color: 'rgba(255,255,255,0.6)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+          <div style={{ marginTop: '8px', paddingTop: '8px', borderTop: `1px solid rgba(0,0,0,0.08)` }}>
+            <div style={{ padding: '0 14px 8px', fontSize: '11px', fontWeight: 600, color: 'rgba(0,0,0,0.5)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
               Personalizzate
             </div>
             {customTables.map((ct: any) => (
@@ -2459,31 +2906,46 @@ export default function ViewerProFinal() {
               style={{
                 display: 'flex', alignItems: 'center', gap: '8px',
                 padding: '8px 14px', borderRadius: '8px', border: 'none',
-                background: 'rgba(255,255,255,0.1)', color: '#fff',
+                background: 'rgba(0,0,0,0.04)', color: '#18181B',
                 fontSize: '13px', fontWeight: 500, cursor: 'pointer',
                 width: '100%', justifyContent: 'center', marginTop: '4px',
                 transition: 'background 0.2s',
               }}
-              onMouseEnter={(e) => { e.currentTarget.style.background = 'rgba(255,255,255,0.2)'; }}
-              onMouseLeave={(e) => { e.currentTarget.style.background = 'rgba(255,255,255,0.1)'; }}
+              onMouseEnter={(e) => { e.currentTarget.style.background = 'rgba(0,0,0,0.08)'; }}
+              onMouseLeave={(e) => { e.currentTarget.style.background = 'rgba(0,0,0,0.04)'; }}
             >
               <Plus size={14} /> Nuova Tabella
+            </button>
+            <button
+              onClick={() => { setAiTableError(null); setShowAITableModal(true); }}
+              style={{
+                display: 'flex', alignItems: 'center', gap: '8px',
+                padding: '8px 14px', borderRadius: '8px', border: 'none',
+                background: `${primaryColor}15`, color: primaryColor,
+                fontSize: '13px', fontWeight: 500, cursor: 'pointer',
+                width: '100%', justifyContent: 'center', marginTop: '6px',
+                transition: 'background 0.2s',
+              }}
+              onMouseEnter={(e) => { e.currentTarget.style.background = `${primaryColor}25`; }}
+              onMouseLeave={(e) => { e.currentTarget.style.background = `${primaryColor}15`; }}
+            >
+              <Sparkles size={14} /> Crea con AI
             </button>
           </div>
 
           {/* Comunicazioni - Collapsible */}
-          <div style={{ marginTop: '8px', paddingTop: '8px', borderTop: `1px solid rgba(255,255,255,0.2)` }}>
+          <div style={{ marginTop: '8px', paddingTop: '8px', borderTop: `1px solid rgba(0,0,0,0.08)` }}>
             <button
               onClick={() => setComunicazioniOpen(!comunicazioniOpen)}
               style={{
                 display: 'flex', alignItems: 'center', gap: '8px',
                 padding: '8px 14px', borderRadius: '8px', border: 'none',
-                background: 'transparent', color: '#fff',
+                background: 'transparent', color: '#18181B',
                 fontSize: '11px', fontWeight: 600, cursor: 'pointer',
                 width: '100%', textTransform: 'uppercase',
                 letterSpacing: '0.05em', transition: 'background 0.2s',
               }}
-              onMouseEnter={(e) => { e.currentTarget.style.background = 'rgba(255,255,255,0.1)'; }}
+              onMouseEnter={(e) => { e.currentTarget.style.background = 'rgba(0,0,0,0.05)'; }}
               onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; }}
             >
               <MessageSquare size={14} />
@@ -2527,18 +2989,18 @@ export default function ViewerProFinal() {
           </div>
 
           {/* Importazioni - Collapsible */}
-          <div style={{ marginTop: '8px', paddingTop: '8px', borderTop: `1px solid rgba(255,255,255,0.2)` }}>
+          <div style={{ marginTop: '8px', paddingTop: '8px', borderTop: `1px solid rgba(0,0,0,0.08)` }}>
             <button
               onClick={() => setImportazioniOpen(!importazioniOpen)}
               style={{
                 display: 'flex', alignItems: 'center', gap: '8px',
                 padding: '8px 14px', borderRadius: '8px', border: 'none',
-                background: 'transparent', color: '#fff',
+                background: 'transparent', color: '#18181B',
                 fontSize: '11px', fontWeight: 600, cursor: 'pointer',
                 width: '100%', textTransform: 'uppercase',
                 letterSpacing: '0.05em', transition: 'background 0.2s',
               }}
-              onMouseEnter={(e) => { e.currentTarget.style.background = 'rgba(255,255,255,0.1)'; }}
+              onMouseEnter={(e) => { e.currentTarget.style.background = 'rgba(0,0,0,0.05)'; }}
               onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; }}
             >
               <Upload size={14} />
@@ -2632,6 +3094,16 @@ export default function ViewerProFinal() {
             colors={colors}
             primaryColor={primaryColor}
           />
+          {datiAziendaliTable && (
+            <SidebarItem
+              icon={resolveIcon(datiAziendaliTable.icon, datiAziendaliTable.name)}
+              label={datiAziendaliTable.labelPlural}
+              active={activeView === datiAziendaliTable.name}
+              onClick={() => setActiveView(datiAziendaliTable.name)}
+              colors={colors}
+              primaryColor={primaryColor}
+            />
+          )}
           <SidebarItem
             icon={<LogOut size={18} />}
             label="Logout"
@@ -2675,7 +3147,9 @@ export default function ViewerProFinal() {
           <div style={{ color: colors.text, fontSize: '16px', fontWeight: 700 }}>
             {activeView === 'dashboard' ? companyName : activeTable?.labelPlural || activeCustomTable?.labelPlural || (activeView.startsWith('import_') || activeView.startsWith('export_') ? getViewLabel(activeView) : companyName)}
           </div>
-          <div style={{ width: '30px', position: 'absolute', right: '24px' }} />
+          <div style={{ position: 'absolute', right: '24px' }}>
+            <FullscreenToggle color={colors.textSecondary} />
+          </div>
         </header>
 
         {/* Content area */}
@@ -2690,6 +3164,7 @@ export default function ViewerProFinal() {
                 tables={tables}
                 appId={session?.appInfo?.id}
                 authToken={session ? getAuthToken(session) : undefined}
+                onQuickAdd={(tableName) => { setActiveView(tableName); setModalRecord('new'); }}
               />
             ) : activeTable ? (
               <DynamicDataTable
@@ -2704,8 +3179,6 @@ export default function ViewerProFinal() {
                 colors={colors}
                 radius={layoutCfg.radius}
                 shadow={layoutCfg.shadow}
-                appId={session?.appInfo?.id}
-                password={session ? getAuthToken(session) : undefined}
               />
             ) : activeCustomTable ? (
               <CustomTableRenderer
@@ -2764,6 +3237,13 @@ export default function ViewerProFinal() {
           onChangePassword={handleChangePassword}
           colors={colors}
           slug={slug}
+          authMode={authMode}
+          subscriptionStatus={subscriptionStatus}
+          trialEndsAt={trialEndsAt}
+          subscriptionPrice={clientPrice}
+          onResetSchema={handleResetCustomTables}
+          resettingSchema={resettingSchema}
+          customTableCount={customTables.length}
         />
       )}
 
@@ -2773,6 +3253,17 @@ export default function ViewerProFinal() {
           onSave={handleCreateCustomTable}
           onClose={() => setShowCreateCustomTable(false)}
           saving={creatingCustomTable}
+          colors={colors}
+        />
+      )}
+
+      {/* AI Table Modal */}
+      {showAITableModal && (
+        <AITableModal
+          onGenerate={handleGenerateAITable}
+          onClose={() => setShowAITableModal(false)}
+          generating={aiTableGenerating}
+          error={aiTableError}
           colors={colors}
         />
       )}

@@ -96,7 +96,7 @@ export async function POST(req: NextRequest) {
         zeusx_fee,
         stripe_connect_id,
         status,
-        trial_end
+        trial_ends_at
       `)
       .eq('id', appId)
       .single();
@@ -117,9 +117,17 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Non sei il proprietario di questa app' }, { status: 403 });
     }
 
-    // Verifica che l'app sia in trial
-    if (app.status !== 'trial') {
-      return NextResponse.json({ error: 'Questa app non è in periodo di prova' }, { status: 400 });
+    // Blocca solo un'app già attiva (nessun bisogno di ripagare) o cancellata
+    // dal reseller stesso. Un'app 'expired'/'past_due' — cioè con trial
+    // scaduto, esattamente il caso che questo endpoint deve sbloccare — deve
+    // poter completare il checkout: negarlo qui impediva proprio al cliente
+    // di riattivare l'app dopo la scadenza del trial (bug riprodotto durante
+    // lo stress-test E2E).
+    if (app.status === 'active') {
+      return NextResponse.json({ error: 'Questa app è già attiva' }, { status: 400 });
+    }
+    if (app.status === 'canceled') {
+      return NextResponse.json({ error: 'Questa app è stata cancellata' }, { status: 400 });
     }
 
     // Verifica che il reseller abbia configurato Stripe Connect
@@ -180,9 +188,18 @@ export async function POST(req: NextRequest) {
     });
 
     // Crea la sessione di checkout con Stripe Connect
-    // Usa subscription_data per configurare lo split payment:
-    // - application_fee_amount: 25€ fissi che vanno a ZeusX (platform)
-    // - transfer_data.destination: il resto va al reseller
+    // Usa subscription_data per configurare lo split payment. La versione
+    // dell'API Stripe pinnata in questo progetto (2026-06-24.dahlia) non
+    // accetta più subscription_data.application_fee_amount su una
+    // subscription ricorrente ("Received unknown parameter... Did you mean
+    // application_fee_percent?") — va espresso come percentuale. Essendo il
+    // prezzo cliente fisso, la percentuale equivalente a 25€ fissi resta
+    // costante mese per mese, quindi il risultato economico è identico.
+    // application_fee_percent accetta al massimo 2 decimali: arrotondiamo,
+    // introduce un'imprecisione trascurabile (frazioni di centesimo) rispetto
+    // ai 25€ fissi esatti sui prezzi che non dividono esattamente 2500.
+    const zeusxFeePercent = Math.round((ZEUSX_FEE_CENTS / clientPriceCents) * 100 * 100) / 100;
+
     const session = await stripe.checkout.sessions.create({
       customer: customerId,
       mode: 'subscription',
@@ -203,27 +220,25 @@ export async function POST(req: NextRequest) {
         zeusx_fee: app.zeusx_fee?.toString() || '25.00',
       },
       subscription_data: {
-        application_fee_amount: ZEUSX_FEE_CENTS, // 25€ fissi a ZeusX
+        application_fee_percent: zeusxFeePercent, // equivalente a 25€ fissi al prezzo cliente attuale
         transfer_data: {
           destination: app.stripe_connect_id, // Account Connect del reseller
         },
       },
     });
 
-    // Aggiorna l'app con l'ID della subscription
-    await dbClient
-      .from('apps')
-      .update({ 
-        stripe_subscription_id: session.subscription,
-        status: 'active', // Passa a active dopo il checkout
-        updated_at: new Date().toISOString()
-      })
-      .eq('id', app.id);
-
-    return NextResponse.json({ 
+    // NON impostare qui status:'active': una Checkout Session in modalità
+    // subscription valorizza session.subscription solo al termine del
+    // pagamento sulla pagina hosted — a questo punto è sempre null, quindi
+    // marcare l'app attiva qui equivaleva a sbloccarla senza che il cliente
+    // avesse davvero pagato (bug di sicurezza confermato durante lo
+    // stress-test E2E). L'attivazione avviene esclusivamente nel webhook
+    // Stripe (handleCheckoutSessionCompleted, Caso 0 su metadata.app_id, già
+    // impostato sopra) quando checkout.session.completed conferma il
+    // pagamento, e viene mantenuta sui rinnovi da handleInvoicePaid.
+    return NextResponse.json({
       url: session.url,
       sessionId: session.id,
-      subscriptionId: session.subscription 
     });
 
   } catch (error) {

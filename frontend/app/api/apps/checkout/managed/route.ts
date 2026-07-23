@@ -105,7 +105,7 @@ export async function POST(req: NextRequest) {
         zeusx_fee,
         stripe_connect_id,
         status,
-        trial_end,
+        trial_ends_at,
         slug
       `)
       .eq('id', appId)
@@ -242,20 +242,16 @@ export async function POST(req: NextRequest) {
       // Non blocchiamo il flusso, ma logghiamo l'errore
     }
 
-    // Aggiorna l'app con l'ID della sessione/subscription
-    await dbClient
-      .from('apps')
-      .update({ 
-        stripe_subscription_id: session.subscription,
-        status: 'active',
-        updated_at: new Date().toISOString(),
-      })
-      .eq('id', app.id);
+    // NON impostare status:'active' qui: session.subscription è sempre null
+    // finché il cliente non completa il pagamento sulla pagina hosted —
+    // marcarla attiva a questo punto la sbloccherebbe senza pagamento
+    // confermato. L'attivazione avviene solo nel webhook Stripe su
+    // checkout.session.completed/invoice.paid (stesso fix applicato a
+    // app/api/apps/checkout/route.ts).
 
-    return NextResponse.json({ 
+    return NextResponse.json({
       url: session.url,
       sessionId: session.id,
-      subscriptionId: session.subscription,
       clientPrice,
       zeusxFee,
       resellerAmount: (resellerAmountCents / 100).toFixed(2),

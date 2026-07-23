@@ -211,11 +211,28 @@ export default function AppCreatePage() {
               )}
             </div>
 
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <a
+                href={appUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="w-full bg-amber-600 hover:bg-amber-500 text-white py-3 rounded-lg font-semibold transition flex items-center justify-center gap-2"
+              >
+                Apri la tua app
+                <ExternalLink className="w-4 h-4" />
+              </a>
+              <button
+                onClick={() => router.push(`/dashboard/management?appId=${app.id}`)}
+                className="w-full bg-gray-800 hover:bg-gray-700 border border-gray-700 text-white py-3 rounded-lg font-semibold transition"
+              >
+                Imposta prezzo di rivendita
+              </button>
+            </div>
             <button
               onClick={() => router.push('/dashboard/projects')}
-              className="w-full bg-amber-600 hover:bg-amber-500 text-white py-3 rounded-lg font-semibold transition"
+              className="w-full mt-3 text-gray-400 hover:text-white text-sm py-2 transition"
             >
-              Vai alle App Create
+              Le mie App
             </button>
           </>
         )}

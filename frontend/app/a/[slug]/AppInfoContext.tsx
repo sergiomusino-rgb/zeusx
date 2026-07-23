@@ -3,6 +3,7 @@
 import { createContext, useContext, ReactNode } from 'react';
 
 export type AuthMode = 'legacy' | 'supabase';
+export type SubscriptionStatus = 'trial' | 'active' | 'expired' | 'past_due' | 'canceled';
 
 export interface AppInfoContextValue {
   appId: string;
@@ -10,6 +11,12 @@ export interface AppInfoContextValue {
   authMode: AuthMode;
   appName: string;
   config: Record<string, unknown> | null;
+  status: SubscriptionStatus | null;
+  trialEndsAt: string | null;
+  stripeSubscriptionId: string | null;
+  /** Prezzo mensile (€) che il cliente finale paga per questa app: deciso dal
+   * reseller in Management, non fisso — vedi lib/pricing.ts. */
+  clientPrice: number;
 }
 
 const AppInfoContext = createContext<AppInfoContextValue | undefined>(undefined);

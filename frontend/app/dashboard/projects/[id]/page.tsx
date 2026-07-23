@@ -22,6 +22,12 @@ interface App {
   client_active?: boolean;
   expires_at?: string;
   initial_password?: string;
+  auth_mode?: 'legacy' | 'supabase';
+  client_full_name?: string | null;
+  client_phone?: string | null;
+  client_tax_id?: string | null;
+  client_billing_address?: string | null;
+  client_notes?: string | null;
 }
 
 interface Membership {
@@ -42,6 +48,26 @@ export default function AppDetailPage() {
   const [extending, setExtending] = useState(false);
   const [regenerating, setRegenerating] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [buyerForm, setBuyerForm] = useState({
+    client_full_name: '',
+    client_phone: '',
+    client_tax_id: '',
+    client_billing_address: '',
+    client_notes: '',
+  });
+  const [savingBuyer, setSavingBuyer] = useState(false);
+  const [buyerSaved, setBuyerSaved] = useState(false);
+
+  function applyLoadedApp(loaded: App) {
+    setApp(loaded);
+    setBuyerForm({
+      client_full_name: loaded.client_full_name || '',
+      client_phone: loaded.client_phone || '',
+      client_tax_id: loaded.client_tax_id || '',
+      client_billing_address: loaded.client_billing_address || '',
+      client_notes: loaded.client_notes || '',
+    });
+  }
 
   useEffect(() => {
     async function loadApp() {
@@ -53,7 +79,7 @@ export default function AppDetailPage() {
       // Prima prova a cercare per ID (UUID)
       const { data, error } = await supabase
         .from('apps')
-        .select('id, name, config, trial_ends_at, is_active, created_at, blueprint_id, tenant_id, slug, client_password, client_email, client_active, expires_at, initial_password')
+        .select('id, name, config, trial_ends_at, is_active, created_at, blueprint_id, tenant_id, slug, client_password, client_email, client_active, expires_at, initial_password, auth_mode, client_full_name, client_phone, client_tax_id, client_billing_address, client_notes')
         .eq('id', idOrSlug)
         .single();
 
@@ -61,17 +87,17 @@ export default function AppDetailPage() {
       if (error || !data) {
         const { data: slugData, error: slugError } = await supabase
           .from('apps')
-          .select('id, name, config, trial_ends_at, is_active, created_at, blueprint_id, tenant_id, slug, client_password, client_email, client_active, expires_at, initial_password')
+          .select('id, name, config, trial_ends_at, is_active, created_at, blueprint_id, tenant_id, slug, client_password, client_email, client_active, expires_at, initial_password, auth_mode, client_full_name, client_phone, client_tax_id, client_billing_address, client_notes')
           .eq('slug', idOrSlug)
           .single();
-        
+
         if (slugData) {
-          setApp(slugData);
+          applyLoadedApp(slugData);
         } else {
           setError('App non trovata o accesso negato');
         }
       } else {
-        setApp(data);
+        applyLoadedApp(data);
       }
 
       setLoading(false);
@@ -178,6 +204,36 @@ export default function AppDetailPage() {
     }
   }
 
+  async function handleSaveBuyer() {
+    if (!app?.id) return;
+    setSavingBuyer(true);
+    setBuyerSaved(false);
+    setError('');
+
+    try {
+      const res = await fetch(`/api/apps/${app.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(buyerForm),
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        setError(data.error || 'Errore salvataggio dati acquirente');
+        return;
+      }
+
+      setApp(prev => prev ? { ...prev, ...buyerForm } : prev);
+      setBuyerSaved(true);
+      setTimeout(() => setBuyerSaved(false), 2000);
+    } catch (err) {
+      setError('Errore di connessione');
+    } finally {
+      setSavingBuyer(false);
+    }
+  }
+
   async function copyToClipboard(text: string) {
     try {
       await navigator.clipboard.writeText(text);
@@ -218,7 +274,6 @@ export default function AppDetailPage() {
   }
 
   const tables = app.config?.schema?.tables || [];
-  const primaryColor = app.config?.ui?.primaryColor || '#6366f1';
   const expired = isTrialExpired(app.trial_ends_at);
   const appUrl = app.slug ? `${window.location.origin}/a/${app.slug}` : '';
 
@@ -239,7 +294,7 @@ export default function AppDetailPage() {
         <div className="flex items-center gap-3">
           {app.slug && (
             <a
-              href={`/a/${app.slug}/login`}
+              href={`/a/${app.slug}`}
               target="_blank"
               rel="noopener noreferrer"
               className="bg-indigo-600 hover:bg-indigo-700 text-white px-6 py-2 rounded-xl text-sm font-semibold transition flex items-center gap-2"
@@ -247,7 +302,7 @@ export default function AppDetailPage() {
               <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
               </svg>
-              Vai all'app
+              Apri Landing Page
             </a>
           )}
           <button
@@ -271,65 +326,6 @@ export default function AppDetailPage() {
           </Link>
         </div>
       )}
-
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Info app */}
-        <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 space-y-4">
-          <h2 className="text-lg font-semibold">Dettagli App</h2>
-          <div className="space-y-3 text-sm">
-            <div className="flex justify-between">
-              <span className="text-slate-400">Creata il</span>
-              <span>{formatDate(app.created_at)}</span>
-            </div>
-            <div className="flex justify-between">
-              <span className="text-slate-400">Trial fino al</span>
-              <span>{formatDate(app.trial_ends_at)}</span>
-            </div>
-            <div className="flex justify-between">
-              <span className="text-slate-400">Stato</span>
-              <span>{app.is_active ? 'Attiva' : 'Disattivata'}</span>
-            </div>
-            <div className="flex justify-between">
-              <span className="text-slate-400">ID App</span>
-              <span className="font-mono text-xs">{app.id.slice(0, 8)}...</span>
-            </div>
-          </div>
-        </div>
-
-        {/* Tabelle */}
-        <div className="lg:col-span-2 bg-slate-900 border border-slate-800 rounded-2xl p-6 space-y-4">
-          <h2 className="text-lg font-semibold">Tabelle del Gestionale</h2>
-          
-          {tables.length === 0 ? (
-            <p className="text-slate-500 text-sm">Nessuna tabella definita nel blueprint.</p>
-          ) : (
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              {tables.map((table: any) => (
-                <div key={table.name} className="border border-slate-800 rounded-xl p-4 hover:border-slate-600 transition">
-                  <div className="flex items-center gap-2 mb-3">
-                    <span className="text-xl">{table.icon || '📄'}</span>
-                    <div>
-                      <h3 className="font-medium">{table.label || table.name}</h3>
-                      <p className="text-xs text-slate-500">{table.fields?.length || 0} campi</p>
-                    </div>
-                  </div>
-                    <div className="space-y-1">
-                      {(table.fields || []).slice(0, 4).map((field: any, index: number) => (
-                        <div key={field.name || field.id || index} className="text-xs text-slate-400 flex justify-between">
-                          <span>{field.label || field.name || field.id}</span>
-                          <span className="text-slate-600 uppercase">{field.type}</span>
-                        </div>
-                      ))}
-                    {(table.fields || []).length > 4 && (
-                      <p className="text-xs text-slate-500 mt-2">+ altri campi...</p>
-                    )}
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-      </div>
 
       {/* Accesso Cliente */}
       {app.slug && (
@@ -361,36 +357,45 @@ export default function AppDetailPage() {
               </div>
             </div>
 
-            {/* Password iniziale */}
-            <div className="space-y-2">
-              <label className="text-sm font-medium text-slate-400">Password iniziale</label>
-              <div className="flex gap-2">
-                <input
-                  type="text"
-                  readOnly
-                  value={app.client_password || '-'}
-                  className="flex-1 px-4 py-2 bg-slate-800 border border-slate-700 rounded-lg text-sm text-amber-400 font-mono focus:outline-none"
-                />
-                <button
-                  onClick={() => copyToClipboard(app.client_password ?? '')}
-                  disabled={!app.client_password}
-                  className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 disabled:bg-indigo-900/50 text-white rounded-lg text-sm font-medium transition flex items-center gap-2"
-                >
-                  {copied ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
-                  Copia
-                </button>
-                <button
-                  onClick={() => handleClientAccess('regenerate-password')}
-                  disabled={regenerating}
-                  className="px-4 py-2 bg-amber-600 hover:bg-amber-700 disabled:bg-amber-900/50 text-white rounded-lg text-sm font-medium transition"
-                >
-                  {regenerating ? 'Generazione...' : 'Rigenera'}
-                </button>
+            {/* Password iniziale (solo app legacy) */}
+            {app.auth_mode !== 'supabase' && (
+              <div className="space-y-2">
+                <label className="text-sm font-medium text-slate-400">Password iniziale</label>
+                <div className="flex gap-2">
+                  <input
+                    type="text"
+                    readOnly
+                    value={app.client_password || '-'}
+                    className="flex-1 px-4 py-2 bg-slate-800 border border-slate-700 rounded-lg text-sm text-amber-400 font-mono focus:outline-none"
+                  />
+                  <button
+                    onClick={() => copyToClipboard(app.client_password ?? '')}
+                    disabled={!app.client_password}
+                    className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 disabled:bg-indigo-900/50 text-white rounded-lg text-sm font-medium transition flex items-center gap-2"
+                  >
+                    {copied ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
+                    Copia
+                  </button>
+                  <button
+                    onClick={() => handleClientAccess('regenerate-password')}
+                    disabled={regenerating}
+                    className="px-4 py-2 bg-amber-600 hover:bg-amber-700 disabled:bg-amber-900/50 text-white rounded-lg text-sm font-medium transition"
+                  >
+                    {regenerating ? 'Generazione...' : 'Rigenera'}
+                  </button>
+                </div>
+                <p className="text-xs text-slate-500">
+                   Il cliente può cambiare la password in qualsiasi momento dall'interno dell'app.
+                </p>
               </div>
-              <p className="text-xs text-slate-500">
-                 Il cliente può cambiare la password in qualsiasi momento dall'interno dell'app.
-              </p>
-            </div>
+            )}
+
+            {/* Messaggio Supabase Auth (solo app auth_mode='supabase') */}
+            {app.auth_mode === 'supabase' && (
+              <div className="p-4 rounded-lg bg-emerald-500/10 border border-emerald-500/30 text-emerald-300 text-sm">
+                Autenticazione Supabase Auth attiva. Il cliente si registra autonomamente dalla Landing Page via mail ({app.client_email || 'client_email'}).
+              </div>
+            )}
 
             {/* Link di accesso */}
             <div className="space-y-2">
@@ -409,7 +414,7 @@ export default function AppDetailPage() {
                   Copia
                 </button>
                 <a
-                  href={`/a/${app.slug}/login`}
+                  href={`/a/${app.slug}`}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg text-sm font-medium transition flex items-center gap-2"
@@ -488,17 +493,142 @@ export default function AppDetailPage() {
         </div>
       )}
 
-      {/* Anteprima colore */}
-      <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6">
-        <h2 className="text-lg font-semibold mb-4">Anteprima Brand</h2>
-        <div className="flex items-center gap-4">
-          <div
-            className="w-16 h-16 rounded-xl shadow-lg"
-            style={{ backgroundColor: primaryColor }}
-          />
-          <div className="text-sm text-slate-400">
-            <p>Colore primario: <span className="font-mono text-slate-200">{primaryColor}</span></p>
+      {/* Dati Acquirente */}
+      <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 space-y-4">
+        <h2 className="text-lg font-semibold">Dati Acquirente</h2>
+        <p className="text-sm text-slate-400 -mt-2">
+          Anagrafica del titolare che usa l'app e paga l'abbonamento (diversa dalle credenziali di accesso qui sopra).
+        </p>
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div className="space-y-2">
+            <label className="text-sm font-medium text-slate-400">Nome / Ragione Sociale</label>
+            <input
+              type="text"
+              value={buyerForm.client_full_name}
+              onChange={(e) => setBuyerForm(prev => ({ ...prev, client_full_name: e.target.value }))}
+              placeholder="Mario Rossi / Rossi S.r.l."
+              className="w-full px-4 py-2 bg-slate-800 border border-slate-700 rounded-lg text-sm text-slate-200 focus:outline-none focus:border-indigo-500"
+            />
           </div>
+
+          <div className="space-y-2">
+            <label className="text-sm font-medium text-slate-400">Telefono</label>
+            <input
+              type="text"
+              value={buyerForm.client_phone}
+              onChange={(e) => setBuyerForm(prev => ({ ...prev, client_phone: e.target.value }))}
+              placeholder="+39 333 1234567"
+              className="w-full px-4 py-2 bg-slate-800 border border-slate-700 rounded-lg text-sm text-slate-200 focus:outline-none focus:border-indigo-500"
+            />
+          </div>
+
+          <div className="space-y-2">
+            <label className="text-sm font-medium text-slate-400">P.IVA / Codice Fiscale</label>
+            <input
+              type="text"
+              value={buyerForm.client_tax_id}
+              onChange={(e) => setBuyerForm(prev => ({ ...prev, client_tax_id: e.target.value }))}
+              placeholder="IT01234567890"
+              className="w-full px-4 py-2 bg-slate-800 border border-slate-700 rounded-lg text-sm text-slate-200 focus:outline-none focus:border-indigo-500"
+            />
+          </div>
+
+          <div className="space-y-2">
+            <label className="text-sm font-medium text-slate-400">Indirizzo di fatturazione</label>
+            <input
+              type="text"
+              value={buyerForm.client_billing_address}
+              onChange={(e) => setBuyerForm(prev => ({ ...prev, client_billing_address: e.target.value }))}
+              placeholder="Via Roma 1, 20100 Milano (MI)"
+              className="w-full px-4 py-2 bg-slate-800 border border-slate-700 rounded-lg text-sm text-slate-200 focus:outline-none focus:border-indigo-500"
+            />
+          </div>
+
+          <div className="space-y-2 sm:col-span-2">
+            <label className="text-sm font-medium text-slate-400">Note</label>
+            <textarea
+              value={buyerForm.client_notes}
+              onChange={(e) => setBuyerForm(prev => ({ ...prev, client_notes: e.target.value }))}
+              rows={3}
+              placeholder="Annotazioni libere sul cliente..."
+              className="w-full px-4 py-2 bg-slate-800 border border-slate-700 rounded-lg text-sm text-slate-200 focus:outline-none focus:border-indigo-500 resize-none"
+            />
+          </div>
+        </div>
+
+        <div className="flex items-center gap-3 pt-2">
+          <button
+            onClick={handleSaveBuyer}
+            disabled={savingBuyer}
+            className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 disabled:bg-indigo-900/50 text-white rounded-lg text-sm font-medium transition"
+          >
+            {savingBuyer ? 'Salvataggio...' : 'Salva dati acquirente'}
+          </button>
+          {buyerSaved && (
+            <span className="text-emerald-400 text-sm flex items-center gap-1">
+              <Check className="w-4 h-4" /> Salvato
+            </span>
+          )}
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        {/* Info app */}
+        <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 space-y-4">
+          <h2 className="text-lg font-semibold">Dettagli App</h2>
+          <div className="space-y-3 text-sm">
+            <div className="flex justify-between">
+              <span className="text-slate-400">Creata il</span>
+              <span>{formatDate(app.created_at)}</span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-slate-400">Trial fino al</span>
+              <span>{formatDate(app.trial_ends_at)}</span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-slate-400">Stato</span>
+              <span>{app.is_active ? 'Attiva' : 'Disattivata'}</span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-slate-400">ID App</span>
+              <span className="font-mono text-xs">{app.id.slice(0, 8)}...</span>
+            </div>
+          </div>
+        </div>
+
+        {/* Tabelle */}
+        <div className="lg:col-span-2 bg-slate-900 border border-slate-800 rounded-2xl p-6 space-y-4">
+          <h2 className="text-lg font-semibold">Tabelle del Gestionale</h2>
+
+          {tables.length === 0 ? (
+            <p className="text-slate-500 text-sm">Nessuna tabella definita nel blueprint.</p>
+          ) : (
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              {tables.map((table: any) => (
+                <div key={table.name} className="border border-slate-800 rounded-xl p-4 hover:border-slate-600 transition">
+                  <div className="flex items-center gap-2 mb-3">
+                    <span className="text-xl">{table.icon || '📄'}</span>
+                    <div>
+                      <h3 className="font-medium">{table.label || table.name}</h3>
+                      <p className="text-xs text-slate-500">{table.fields?.length || 0} campi</p>
+                    </div>
+                  </div>
+                    <div className="space-y-1">
+                      {(table.fields || []).slice(0, 4).map((field: any, index: number) => (
+                        <div key={field.name || field.id || index} className="text-xs text-slate-400 flex justify-between">
+                          <span>{field.label || field.name || field.id}</span>
+                          <span className="text-slate-600 uppercase">{field.type}</span>
+                        </div>
+                      ))}
+                    {(table.fields || []).length > 4 && (
+                      <p className="text-xs text-slate-500 mt-2">+ altri campi...</p>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       </div>
     </div>

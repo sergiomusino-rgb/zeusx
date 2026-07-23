@@ -114,7 +114,7 @@ async function canCreateApp(supabase: any, tenantId: string, userId?: string): P
       free: 0,
       starter: 1,
       pro: 5,
-      business: 250,
+      business: 100,
     };
 
     const appLimit = tenant.app_limit ?? planLimits[tenant.plan] ?? 1;

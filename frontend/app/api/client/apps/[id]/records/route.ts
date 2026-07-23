@@ -18,12 +18,6 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
     return NextResponse.json({ error: 'Parametro table mancante' }, { status: 400 });
   }
 
-  // Verifica che la tabella sia una tabella fissa supportata
-  const fixedTables = ['clienti', 'prodotti', 'ordini', 'magazzino'];
-  if (!fixedTables.includes(tableName)) {
-    return NextResponse.json({ error: `Tabella '${tableName}' non supportata. Usa le API custom-records per tabelle personalizzate.` }, { status: 400 });
-  }
-
   try {
     // Il backend è registrato con prefisso /api nel server.js
     const targetUrl = `${BACKEND_URL}/api/client/apps/${id}/records?table=${tableName}`;

@@ -9,21 +9,24 @@ function getSupabase() {
   );
 }
 
-// Client auth middleware (copied inline per evitare dipendenze circolari)
+// Client auth middleware (copiato da routes/client-app.js) - dual-mode:
+// - auth_mode='legacy' (app esistenti): Bearer è la password in chiaro, invariato.
+// - auth_mode='supabase' (nuove app): Bearer è un vero JWT Supabase Auth,
+//   verificato con supabase.auth.getUser() + membership attiva su app_users.
 async function clientAuthMiddleware(req, res, next) {
   const authHeader = req.headers.authorization;
   if (!authHeader || !authHeader.startsWith('Bearer ')) {
-    return res.status(401).json({ error: 'Password mancante' });
+    return res.status(401).json({ error: 'Autenticazione mancante' });
   }
 
-  const password = authHeader.substring(7);
+  const token = authHeader.substring(7);
   const { appId } = req.params;
 
   const supabase = getSupabase();
 
   const { data: app, error } = await supabase
     .from('apps')
-    .select('id, tenant_id, client_password, client_active, expires_at')
+    .select('id, tenant_id, client_password, client_active, expires_at, auth_mode')
     .eq('id', appId)
     .single();
 
@@ -39,13 +42,38 @@ async function clientAuthMiddleware(req, res, next) {
     return res.status(403).json({ error: 'App scaduta' });
   }
 
-  if (app.client_password !== password) {
+  if (app.auth_mode === 'supabase') {
+    const { data: { user }, error: userError } = await supabase.auth.getUser(token);
+    if (userError || !user) {
+      return res.status(401).json({ error: 'Utente non autenticato' });
+    }
+
+    const { data: appUser, error: appUserError } = await supabase
+      .from('app_users')
+      .select('role, is_active')
+      .eq('user_id', user.id)
+      .eq('app_id', appId)
+      .eq('is_active', true)
+      .single();
+
+    if (appUserError || !appUser) {
+      return res.status(403).json({ error: 'Utente non autorizzato per questa app' });
+    }
+
+    req.tenantId = app.tenant_id;
+    req.appId = appId;
+    req.appUserRole = appUser.role;
+    return next();
+  }
+
+  // Legacy: confronto password in chiaro, comportamento invariato
+  if (app.client_password !== token) {
     return res.status(401).json({ error: 'Password errata' });
   }
 
   req.tenantId = app.tenant_id;
   req.appId = appId;
-  req.clientPassword = password;
+  req.clientPassword = token;
   next();
 }
 

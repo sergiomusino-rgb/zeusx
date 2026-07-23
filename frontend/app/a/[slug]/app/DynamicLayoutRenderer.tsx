@@ -9,10 +9,13 @@ import {
   BarChart3, Activity, Globe, MapPin, Calendar as CalendarIcon, Clock, CheckCircle,
   XCircle, Tag, Code, BookOpen, HelpCircle, ExternalLink, Copy, RefreshCw
 } from 'lucide-react';
-import { TableDef, fieldName } from './table-definitions';
+import { TableDef, fieldName, sortTablesForSidebar, getDatiAziendaliTable, findDisplayPriceField } from './table-definitions';
 import { DesignLayout, DesignComponent } from './DesignParser';
 import { getDesignTokens, type DesignTokens } from '@/lib/designTokens';
 import { resolveIcon } from './iconResolver';
+import FullscreenToggle from '@/components/FullscreenToggle';
+import { getPlaceholderCategoryForTable, getPlaceholderImageUrl } from '@/lib/recordPlaceholderImages';
+import { renderCellValue } from './cellRenderers';
 
 // ─── Props Interface ───────────────────────────────────────────────────────
 
@@ -104,6 +107,7 @@ export default function DynamicLayoutRenderer({
 
   const activeTable = tables.find((t) => t.name === activeView) || null;
   const activeCustomTableData = customTables.find((t: any) => `custom_${t.name}` === activeView) || null;
+  const datiAziendaliTable = getDatiAziendaliTable(tables);
 
   // Detect mobile
   useEffect(() => {
@@ -316,12 +320,12 @@ export default function DynamicLayoutRenderer({
               primaryColor={primaryColor}
             />
 
-            {/* Tables */}
-            {tables.map((table) => (
+            {/* Tables: di lavoro in cima, tabelle di sistema (Fatture, Dati Azienda) in fondo */}
+            {sortTablesForSidebar(tables).map((table) => (
               <div key={table.name} style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <SidebarItem
-                    icon={resolveIcon(table.icon || '')}
+                    icon={resolveIcon(table.icon || '', table.name)}
                     label={table.labelPlural}
                     active={activeView === table.name}
                     onClick={() => handleTableClick(table.name)}
@@ -483,6 +487,16 @@ export default function DynamicLayoutRenderer({
               colors={colors}
               primaryColor={primaryColor}
             />
+            {datiAziendaliTable && (
+              <SidebarItem
+                icon={resolveIcon(datiAziendaliTable.icon || '', datiAziendaliTable.name)}
+                label={datiAziendaliTable.labelPlural}
+                active={activeView === datiAziendaliTable.name}
+                onClick={() => handleTableClick(datiAziendaliTable.name)}
+                colors={colors}
+                primaryColor={primaryColor}
+              />
+            )}
             <SidebarItem
               icon={<LogOut size={18} />}
               label="Logout"
@@ -526,7 +540,9 @@ export default function DynamicLayoutRenderer({
           <div style={{ color: colors.text, fontSize: '16px', fontWeight: 700 }}>
             {activeView === 'dashboard' ? companyName : activeTable?.labelPlural || activeCustomTable?.labelPlural || (activeView.startsWith('import_') || activeView.startsWith('export_') ? getViewLabel(activeView) : companyName)}
           </div>
-          <div style={{ width: '30px', position: 'absolute', right: '24px' }} />
+          <div style={{ position: 'absolute', right: '24px' }}>
+            <FullscreenToggle color={colors.textSecondary} />
+          </div>
         </header>
 
         {/* Content area */}
@@ -728,7 +744,7 @@ function DocsLayoutContent({
                         background: `${designTokens.colors['primary'] || primaryColor}1A`,
                         color: designTokens.colors['primary'] || primaryColor,
                       }}>
-                        {resolveIcon(table.icon || '')}
+                        {resolveIcon(table.icon || '', table.name)}
                       </div>
                       <span style={{ fontFamily: designTokens.fonts.headline, color: designTokens.colors['text'] || '#18181B', fontSize: '14px', fontWeight: 600 }}>
                         {table.labelPlural || table.label}
@@ -1081,60 +1097,78 @@ function EcommerceLayoutContent({
             </div>
           </div>
 
-          {/* Product Grid */}
+          {/* Product Grid: foto (reale se presente, altrimenti placeholder
+              contestuale) invece di semplici caselle di testo */}
           <div style={{
             display: 'grid',
             gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))',
             gap: '20px',
           }}>
-            {records.slice(0, 12).map((record) => (
-              <div
-                key={record.id}
-                style={{
-                  background: colors.cardBg,
-                  border: `1px solid ${colors.border}`,
-                  borderRadius: '12px',
-                  padding: '16px',
-                  display: 'flex', flexDirection: 'column', gap: '12px',
-                }}
-              >
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <span style={{ color: colors.textSecondary, fontSize: '12px', fontWeight: 600, textTransform: 'uppercase' }}>
-                    {activeTable.color ? (
-                      <span style={{
-                        display: 'inline-block',
-                        width: '8px', height: '8px',
-                        borderRadius: '50%',
-                        background: activeTable.color,
-                        marginRight: '6px',
-                      }} />
-                    ) : null}
-                    {activeTable.labelPlural || activeTable.label}
-                  </span>
-                </div>
-                <h3 style={{ color: colors.text, fontSize: '16px', fontWeight: 600, margin: 0 }}>
-                  {record.data?.[fieldName(activeTable.fields[0])] || record.id}
-                </h3>
-                <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
-                  {activeTable.fields.slice(1, 4).map((field) => {
-                    const val = record.data?.[fieldName(field)];
-                    if (!val) return null;
-                    return (
-                      <span
-                        key={fieldName(field)}
-                        style={{
-                          padding: '2px 8px', borderRadius: '4px',
-                          background: primaryColor + '15', color: primaryColor,
-                          fontSize: '11px', fontWeight: 600,
-                        }}
-                      >
-                        {String(val)}
-                      </span>
-                    );
-                  })}
-                </div>
-              </div>
-            ))}
+            {(() => {
+              const imageField = activeTable.fields.find((f) => f.type === 'image');
+              const priceField = findDisplayPriceField(activeTable.fields);
+              const category = getPlaceholderCategoryForTable(activeTable.name) || 'prodotti';
+
+              return records.slice(0, 12).map((record) => {
+                const realImage = imageField ? (record.data?.[fieldName(imageField)] as string | undefined) : undefined;
+                const imageUrl = realImage || getPlaceholderImageUrl(category, String(record.id));
+                const priceVal = priceField ? record.data?.[fieldName(priceField)] : undefined;
+                const priceNum = priceVal != null && priceVal !== '' ? Number(priceVal) : NaN;
+
+                return (
+                  <div
+                    key={record.id}
+                    style={{
+                      background: colors.cardBg,
+                      border: `1px solid ${colors.border}`,
+                      borderRadius: '12px',
+                      overflow: 'hidden',
+                      display: 'flex', flexDirection: 'column',
+                    }}
+                  >
+                    <div style={{ width: '100%', aspectRatio: '4 / 3', position: 'relative' }}>
+                      <img src={imageUrl} alt="" loading="lazy" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
+                      {activeTable.color && (
+                        <span style={{
+                          position: 'absolute', top: '8px', left: '8px',
+                          width: '8px', height: '8px', borderRadius: '50%',
+                          background: activeTable.color, boxShadow: '0 0 0 2px rgba(255,255,255,0.8)',
+                        }} />
+                      )}
+                    </div>
+                    <div style={{ padding: '16px', display: 'flex', flexDirection: 'column', gap: '10px', flex: 1 }}>
+                      <h3 style={{ color: colors.text, fontSize: '16px', fontWeight: 600, margin: 0 }}>
+                        {record.data?.[fieldName(activeTable.fields[0])] || record.id}
+                      </h3>
+                      <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                        {activeTable.fields.slice(1, 4).map((field) => {
+                          if (field === priceField || field === imageField) return null;
+                          const val = record.data?.[fieldName(field)];
+                          if (!val) return null;
+                          return (
+                            <span
+                              key={fieldName(field)}
+                              style={{
+                                padding: '2px 8px', borderRadius: '4px',
+                                background: primaryColor + '15', color: primaryColor,
+                                fontSize: '11px', fontWeight: 600,
+                              }}
+                            >
+                              {String(val)}
+                            </span>
+                          );
+                        })}
+                      </div>
+                      {!isNaN(priceNum) && (
+                        <div style={{ marginTop: 'auto', paddingTop: '4px', fontSize: '18px', fontWeight: 800, color: primaryColor }}>
+                          {priceNum.toLocaleString('it-IT', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} €
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                );
+              });
+            })()}
           </div>
         </div>
       ) : (
@@ -1288,7 +1322,7 @@ function SaaSLayoutContent({
                         background: `${designTokens.colors['primary'] || primaryColor}1A`,
                         color: designTokens.colors['primary'] || primaryColor,
                       }}>
-                        {resolveIcon(table.icon || '')}
+                        {resolveIcon(table.icon || '', table.name)}
                       </div>
                       <span style={{ fontFamily: designTokens.fonts.headline, color: designTokens.colors['text'] || '#18181B', fontSize: '14px', fontWeight: 600 }}>
                         {table.labelPlural || table.label}
@@ -1701,62 +1735,8 @@ function RestaurantLayoutContent({
 // ─── Helper Functions ───────────────────────────────────────────────────────
 
 // ─── Status Badge (per campi "select" tipo stato ordine/prenotazione) ───────
-const STATUS_STYLES: { keywords: string[]; bg: string; color: string }[] = [
-  { keywords: ['consegnat', 'complet', 'pagat', 'confermat', 'pronto', 'attivo', 'disponibile', 'evaso', 'delivered', 'completed', 'paid', 'confirmed', 'ready', 'done', 'active'], bg: '#DCFCE7', color: '#166534' },
-  { keywords: ['preparazione', 'corso', 'attesa', 'lavorazione', 'sospes', 'pending', 'processing', 'progress', 'in attesa'], bg: '#FEF3C7', color: '#92400E' },
-  { keywords: ['annullat', 'rifiutat', 'scadut', 'bloccat', 'cancellat', 'cancelled', 'canceled', 'rejected', 'expired', 'blocked'], bg: '#FEE2E2', color: '#991B1B' },
-];
-
-function getStatusBadgeStyle(value: string): { bg: string; color: string } {
-  const v = value.toLowerCase();
-  for (const s of STATUS_STYLES) {
-    if (s.keywords.some((k) => v.includes(k))) return { bg: s.bg, color: s.color };
-  }
-  return { bg: '#E0E7FF', color: '#3730A3' }; // neutro/informativo di default
-}
-
-function StatusBadge({ value }: { value: string }) {
-  const { bg, color } = getStatusBadgeStyle(value);
-  return (
-    <span style={{
-      display: 'inline-block', padding: '3px 10px', borderRadius: '999px',
-      background: bg, color, fontSize: '12px', fontWeight: 600,
-      whiteSpace: 'nowrap',
-    }}>
-      {value}
-    </span>
-  );
-}
-
-function renderCellValue(record: Record<string, unknown>, fieldName: string, type: string): React.ReactNode {
-  const val = record[fieldName];
-  if (type === 'checkbox') {
-    return val ? 'Si' : 'No';
-  }
-  if (type === 'select' && val) {
-    return <StatusBadge value={String(val)} />;
-  }
-  if (type === 'currency') {
-    const n = Number(val);
-    return isNaN(n) ? String(val ?? '') : `€ ${n.toFixed(2)}`;
-  }
-  if (type === 'number') {
-    const n = Number(val);
-    const looksLikePrice = fieldName.toLowerCase().includes('prezzo') || fieldName.toLowerCase().includes('totale') || fieldName.toLowerCase().includes('importo');
-    if (!isNaN(n) && looksLikePrice) {
-      return `€ ${n.toFixed(2)}`;
-    }
-    return String(val ?? '');
-  }
-  if (type === 'date' && val) {
-    try {
-      return new Date(val as string).toLocaleDateString('it-IT');
-    } catch {
-      return String(val);
-    }
-  }
-  return String(val ?? '');
-}
+// STATUS_STYLES/getStatusBadgeStyle/StatusBadge/renderCellValue ora in
+// ./cellRenderers.tsx, condivisi con DynamicDataTable e CustomTableRenderer.
 
 // Import Utensils for restaurant layout
 import { Utensils, List } from 'lucide-react';

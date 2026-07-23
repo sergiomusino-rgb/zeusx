@@ -4,6 +4,7 @@ import React, { useState, useMemo, useRef } from 'react';
 import {
   Search, Plus, Pencil, Trash2, X, ChevronDown, Download, Upload
 } from 'lucide-react';
+import { renderCellValue } from './cellRenderers';
 
 interface ColumnDef {
   name: string;
@@ -297,22 +298,5 @@ export default function CustomTableRenderer({
   );
 }
 
-function renderCellValue(data: Record<string, unknown>, colName: string, type: string): React.ReactNode {
-  const val = data[colName];
-  if (type === 'checkbox') {
-    return val ? 'Si' : 'No';
-  }
-  if (type === 'number') {
-    const n = Number(val);
-    if (!isNaN(n)) return n.toLocaleString('it-IT');
-    return String(val ?? '');
-  }
-  if (type === 'date' && val) {
-    try {
-      return new Date(val as string).toLocaleDateString('it-IT');
-    } catch {
-      return String(val);
-    }
-  }
-  return String(val ?? '');
-}
+// renderCellValue ora in ./cellRenderers.tsx, condivisa con DynamicDataTable
+// e DynamicLayoutRenderer (badge di stato, valuta, date, immagini).

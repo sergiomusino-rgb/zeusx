@@ -1,10 +1,13 @@
 'use client';
 
-import React, { useMemo, useRef, useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import {
-  Search, Plus, Pencil, Trash2, X, ChevronDown, Download, Upload
+  Search, Plus, Pencil, Trash2, X, ChevronDown, LayoutGrid, List
 } from 'lucide-react';
 import { TableDef, fieldName, extractDynamicKeys, getDisplayFields, getRecordValue } from './table-definitions';
+import { getPlaceholderCategoryForTable } from '@/lib/recordPlaceholderImages';
+import RecordCardGrid from './RecordCardGrid';
+import { renderCellValue } from './cellRenderers';
 
 interface AppRecord {
   id: string;
@@ -24,8 +27,6 @@ interface DynamicDataTableProps {
   colors: ReturnType<typeof getThemeVars>;
   radius: string;
   shadow: string;
-  appId?: string;
-  password?: string;
 }
 
 /** Helper per tema — copia inline dal page.tsx per non creare dipendenza */
@@ -54,13 +55,20 @@ function getThemeVars(theme: 'dark' | 'light', primaryColor: string) {
 export default function DynamicDataTable({
   table, records, loading, searchQuery, onSearchChange,
   onEdit, onDelete, onAddNew, colors, radius, shadow,
-  appId, password,
 }: DynamicDataTableProps) {
-  const fileInputRef = useRef<HTMLInputElement>(null);
-  const [importing, setImporting] = useState(false);
-  const [importMsg, setImportMsg] = useState('');
-  const [exporting, setExporting] = useState(false);
   const [showDynamicCols, setShowDynamicCols] = useState(false);
+
+  // Tabelle "vetrina" (veicoli, immobili, prodotti, piatti) partono in vista
+  // a griglia fotografica invece della tabella piatta — coerente con la
+  // richiesta di rendere le liste più invitanti, con immagini di esempio.
+  const placeholderCategory = useMemo(() => getPlaceholderCategoryForTable(table.name), [table.name]);
+  const [viewMode, setViewMode] = useState<'grid' | 'table'>(placeholderCategory ? 'grid' : 'table');
+  // DynamicDataTable non viene rimontato al cambio tabella (nessuna `key`
+  // sul chiamante): senza questo effetto la vista resterebbe quella della
+  // tabella precedentemente selezionata.
+  React.useEffect(() => {
+    setViewMode(placeholderCategory ? 'grid' : 'table');
+  }, [table.name, placeholderCategory]);
 
   // Estrae tutte le chiavi dinamiche dai record correnti
   const dynamicKeys = useMemo(() => extractDynamicKeys(records), [records]);
@@ -93,53 +101,6 @@ export default function DynamicDataTable({
     });
   }, [records, searchQuery, table.fields]);
 
-  const handleExport = async () => {
-    if (!appId || !password) return;
-    setExporting(true);
-    try {
-      const res = await fetch(`/api/client/apps/${appId}/export?table=${table.name}`, {
-        headers: { Authorization: `Bearer ${password}` },
-      });
-      if (!res.ok) throw new Error('Errore esportazione');
-      const blob = await res.blob();
-      const url = window.URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `${table.name}-${new Date().toISOString().split('T')[0]}.csv`;
-      a.click();
-      window.URL.revokeObjectURL(url);
-    } catch (err) {
-      alert(err instanceof Error ? err.message : 'Errore esportazione');
-    } finally {
-      setExporting(false);
-    }
-  };
-
-  const handleImport = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file || !appId || !password) return;
-    setImporting(true);
-    setImportMsg('');
-    try {
-      const formData = new FormData();
-      formData.append('file', file);
-      formData.append('table', table.name);
-      const res = await fetch(`/api/client/apps/${appId}/import`, {
-        method: 'POST',
-        headers: { Authorization: `Bearer ${password}` },
-        body: formData,
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || 'Errore importazione');
-      setImportMsg(`${data.imported} record importati`);
-      e.target.value = '';
-    } catch (err) {
-      setImportMsg(err instanceof Error ? err.message : 'Errore importazione');
-    } finally {
-      setImporting(false);
-    }
-  };
-
   // Stile input
   const inputStyle: React.CSSProperties = {
     flex: 1, border: 'none', outline: 'none', background: 'transparent',
@@ -165,39 +126,33 @@ export default function DynamicDataTable({
           )}
         </div>
         <div style={{ display: 'flex', gap: '8px' }}>
-          <button
-            onClick={() => fileInputRef.current?.click()}
-            disabled={importing}
-            style={{
-              display: 'flex', alignItems: 'center', gap: '6px',
-              padding: '10px 16px', borderRadius: '10px',
-              border: `1px solid ${colors.border}`, background: colors.cardBg,
-              color: colors.textSecondary, fontSize: '13px', fontWeight: 500,
-              cursor: 'pointer', transition: 'all 0.2s',
-            }}
-          >
-            <Upload size={15} /> {importing ? 'Importando...' : 'Importa CSV'}
-          </button>
-          <button
-            onClick={handleExport}
-            disabled={exporting}
-            style={{
-              display: 'flex', alignItems: 'center', gap: '6px',
-              padding: '10px 16px', borderRadius: '10px',
-              border: `1px solid ${colors.border}`, background: colors.cardBg,
-              color: colors.textSecondary, fontSize: '13px', fontWeight: 500,
-              cursor: 'pointer', transition: 'all 0.2s',
-            }}
-          >
-            <Download size={15} /> {exporting ? 'Esportando...' : 'Esporta CSV'}
-          </button>
-          <input
-            ref={fileInputRef}
-            type="file"
-            accept=".csv"
-            style={{ display: 'none' }}
-            onChange={handleImport}
-          />
+          {placeholderCategory && (
+            <div style={{ display: 'flex', border: `1px solid ${colors.border}`, borderRadius: '10px', overflow: 'hidden' }}>
+              <button
+                onClick={() => setViewMode('grid')}
+                title="Vista griglia"
+                style={{
+                  display: 'flex', alignItems: 'center', padding: '10px 12px', border: 'none',
+                  background: viewMode === 'grid' ? colors.primary + '20' : colors.cardBg,
+                  color: viewMode === 'grid' ? colors.primary : colors.textSecondary, cursor: 'pointer',
+                }}
+              >
+                <LayoutGrid size={16} />
+              </button>
+              <button
+                onClick={() => setViewMode('table')}
+                title="Vista tabella"
+                style={{
+                  display: 'flex', alignItems: 'center', padding: '10px 12px', border: 'none',
+                  background: viewMode === 'table' ? colors.primary + '20' : colors.cardBg,
+                  color: viewMode === 'table' ? colors.primary : colors.textSecondary, cursor: 'pointer',
+                  borderLeft: `1px solid ${colors.border}`,
+                }}
+              >
+                <List size={16} />
+              </button>
+            </div>
+          )}
           <button
             onClick={onAddNew}
             style={{
@@ -213,16 +168,6 @@ export default function DynamicDataTable({
           </button>
         </div>
       </div>
-
-      {/* Messaggio import */}
-      {importMsg && (
-        <div style={{
-          padding: '10px 16px', borderRadius: '8px', fontSize: '13px', fontWeight: 500,
-          background: colors.primary + '15', color: colors.primary,
-        }}>
-          {importMsg}
-        </div>
-      )}
 
       {/* Search Bar + toggle colonne dinamiche */}
       <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
@@ -273,7 +218,17 @@ export default function DynamicDataTable({
         )}
       </div>
 
-      {/* Tabella */}
+      {/* Griglia fotografica per tabelle vetrina (veicoli/immobili/prodotti/piatti) */}
+      {viewMode === 'grid' && placeholderCategory ? (
+        <RecordCardGrid
+          table={table}
+          records={filteredRecords}
+          category={placeholderCategory}
+          colors={colors}
+          onEdit={onEdit}
+          onDelete={onDelete}
+        />
+      ) : (
       <div
         className={`${radius} ${shadow}`}
         style={{
@@ -453,31 +408,10 @@ export default function DynamicDataTable({
           </span>
         </div>
       </div>
+      )}
     </div>
   );
 }
 
-/**
- * Renderizza una cella in base al tipo di campo
- */
-function renderCellValue(record: Record<string, unknown>, fieldName: string, type: string): React.ReactNode {
-  const val = record[fieldName];
-  if (type === 'checkbox') {
-    return val ? 'Si' : 'No';
-  }
-  if (type === 'number') {
-    const n = Number(val);
-    if (!isNaN(n) && fieldName.toLowerCase().includes('prezzo') || fieldName.toLowerCase().includes('totale')) {
-      return `€ ${n.toFixed(2)}`;
-    }
-    return String(val ?? '');
-  }
-  if (type === 'date' && val) {
-    try {
-      return new Date(val as string).toLocaleDateString('it-IT');
-    } catch {
-      return String(val);
-    }
-  }
-  return String(val ?? '');
-}
+// renderCellValue ora in ./cellRenderers.tsx, condivisa con
+// CustomTableRenderer e DynamicLayoutRenderer.

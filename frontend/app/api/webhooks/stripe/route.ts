@@ -75,6 +75,12 @@ export async function POST(request: NextRequest) {
         await handlePaymentFailed(event, supabase);
         break;
       
+      case 'customer.subscription.updated':
+        // Sync stato app-cliente (past_due/active) sui cambi di stato Stripe
+        // (es. carta scaduta poi rinnovata) per le subscription del paywall trial.
+        await handleAppSubscriptionUpdated(event, supabase);
+        break;
+
       case 'customer.subscription.deleted':
       case 'customer.subscription.paused':
         // User ha cancellato o messo in pausa il proprio abbonamento a ZeusX
@@ -105,18 +111,27 @@ export async function POST(request: NextRequest) {
  */
 async function handleCheckoutSessionCompleted(event: Stripe.Event, supabase: any) {
   const data = event.data.object as any;
-  
+
+  // Caso 0: Abbonamento mensile dell'app-cliente dopo scadenza trial (paywall
+  // TrialPaywallModal / banner trial) — creato da
+  // /api/a/[slug]/create-checkout-session con metadata.app_id = apps.id.
+  const appId: string | null = data.metadata?.app_id ?? null;
+  if (appId) {
+    await activateAppSubscription(appId, data.subscription ?? null, supabase);
+    return;
+  }
+
   // Estrai totalum_app_id dai metadata (pagamento per app cliente)
   let totalum_app_id: string | null = null;
   let planId: string | null = null;
   let tenantId: string | null = null;
-  
+
   if (data.metadata) {
     totalum_app_id = data.metadata.totalum_app_id ?? null;
     planId = data.metadata.plan_id ?? null;
     tenantId = data.metadata.tenant_id ?? null;
   }
-  
+
   // Caso 1: Pagamento per un'app cliente (Stripe Connect)
   if (totalum_app_id) {
     const { error } = await supabase
@@ -138,36 +153,49 @@ async function handleCheckoutSessionCompleted(event: Stripe.Event, supabase: any
   // Caso 2: Pagamento per un piano/utente (aggiungi slot)
   if (planId && tenantId) {
     const slotsToAdd = getSlotsForPlan(planId);
-    
-    if (slotsToAdd > 0) {
-      // Aggiungi gli slot in modo cumulativo
-      const { error } = await supabase
-        .from('tenants')
-        .update({ 
-          app_limit: supabase.raw('app_limit + ?', slotsToAdd),
-          plan: planId,
-          updated_at: new Date().toISOString()
-        })
-        .eq('id', tenantId);
 
-      if (error) {
-        console.error('[Stripe Webhook] Errore aggiunta slot:', error);
+    if (slotsToAdd > 0) {
+      // Aggiungi gli slot in modo cumulativo. supabase-js non ha un .raw()
+      // (idiom Knex/Postgres.js): leggiamo il valore corrente e scriviamo il
+      // nuovo totale esplicitamente, altrimenti l'update falliva silenziosamente.
+      const { data: tenant, error: fetchError } = await supabase
+        .from('tenants')
+        .select('app_limit')
+        .eq('id', tenantId)
+        .single();
+
+      if (fetchError || !tenant) {
+        console.error('[Stripe Webhook] Errore lettura tenant per aggiunta slot:', fetchError);
       } else {
-        console.log(`[Stripe Webhook] Aggiunti ${slotsToAdd} slot al tenant ${tenantId} per piano ${planId}`);
+        const newAppLimit = (tenant.app_limit || 0) + slotsToAdd;
+        const { error } = await supabase
+          .from('tenants')
+          .update({
+            app_limit: newAppLimit,
+            plan: planId,
+            updated_at: new Date().toISOString()
+          })
+          .eq('id', tenantId);
+
+        if (error) {
+          console.error('[Stripe Webhook] Errore aggiunta slot:', error);
+        } else {
+          console.log(`[Stripe Webhook] Aggiunti ${slotsToAdd} slot al tenant ${tenantId} per piano ${planId} (nuovo totale: ${newAppLimit})`);
+        }
       }
     }
-    
+
     // Aggiorna o crea la subscription
     const customerId = data.customer;
     const subscriptionId = data.subscription;
-    
+
     if (customerId) {
       const { data: existingSub } = await supabase
         .from('subscriptions')
-        .select('id')
+        .select('id, stripe_subscription_id')
         .eq('tenant_id', tenantId)
-        .single();
-      
+        .maybeSingle();
+
       if (existingSub) {
         await supabase
           .from('subscriptions')
@@ -198,14 +226,29 @@ async function handleCheckoutSessionCompleted(event: Stripe.Event, supabase: any
  */
 async function handleInvoicePaid(event: Stripe.Event, supabase: any) {
   const data = event.data.object as any;
-  
+
+  // Rinnovo mensile della subscription app-cliente (paywall trial): conferma
+  // status 'active' — copre anche il caso di un ritorno da 'past_due'.
+  const subscriptionId: string | null = data.subscription ?? null;
+  if (subscriptionId) {
+    const { data: app } = await supabase
+      .from('apps')
+      .select('id')
+      .eq('stripe_subscription_id', subscriptionId)
+      .maybeSingle();
+    if (app) {
+      await activateAppSubscription(app.id, subscriptionId, supabase);
+      return;
+    }
+  }
+
   // Estrai totalum_app_id dai metadata
   let totalum_app_id: string | null = null;
-  
+
   if (data.metadata) {
     totalum_app_id = data.metadata.totalum_app_id ?? null;
   }
-  
+
   // Per le fatture, controlla anche le line items
   if (!totalum_app_id && data.lines?.data?.[0]?.price?.metadata) {
     totalum_app_id = data.lines.data[0].price.metadata.totalum_app_id ?? null;
@@ -216,59 +259,135 @@ async function handleInvoicePaid(event: Stripe.Event, supabase: any) {
     return;
   }
 
-  // Trova l'owner del tenant
-  const { data: tenant, error: tenantError } = await supabase
-    .from('tenants')
-    .select('owner_id')
-    .eq('id', subscription.tenant_id)
-    .single();
+  // Legacy: takeover automatico app di un reseller/tenant per mancato
+  // pagamento del proprio abbonamento a ZeusX (non correlato al paywall
+  // trial dell'app-cliente gestito sopra). Questo ramo richiede
+  // subscription.tenant_id da una fonte non presente in questo evento — se
+  // in futuro va ripristinato va prima ricostruito da dove recuperare il
+  // tenant (es. da data.customer via lookup su `subscriptions`).
+  console.log('[Stripe Webhook] invoice.paid non riconducibile a nessuna app cliente, ignorato');
+}
 
-  if (tenantError || !tenant) {
-    console.warn(`[Stripe Webhook] Tenant non trovato per subscription ${subscription.tenant_id}`);
-    return;
+/**
+ * Attiva (o riattiva) l'abbonamento mensile di un'app-cliente dopo un
+ * checkout/rinnovo riuscito: sblocca il TrialPaywallModal.
+ */
+async function activateAppSubscription(appId: string, subscriptionId: string | null, supabase: any) {
+  const update: Record<string, unknown> = { status: 'active', updated_at: new Date().toISOString() };
+  if (subscriptionId) update.stripe_subscription_id = subscriptionId;
+
+  const { error } = await supabase.from('apps').update(update).eq('id', appId);
+
+  if (error) {
+    console.error(`[Stripe Webhook] Errore attivazione app ${appId}:`, error);
+  } else {
+    console.log(`[Stripe Webhook] App ${appId} attivata (subscription ${subscriptionId ?? 'n/d'})`);
   }
+}
 
-  // Ottieni l'email dell'owner
-  const { data: userData } = await supabase.auth.getUser(tenant.owner_id);
-  const userEmail = userData?.user?.email || 'user@unknown.com';
+/**
+ * customer.subscription.updated: sincronizza lo stato dell'app-cliente sui
+ * cambi di stato della subscription Stripe (es. torna 'active' dopo un
+ * pagamento riprovato con successo, o passa a 'past_due').
+ */
+async function handleAppSubscriptionUpdated(event: Stripe.Event, supabase: any) {
+  const sub = event.data.object as Stripe.Subscription;
 
-  // Trova tutte le app del tenant
-  const { data: apps, error: appsError } = await supabase
+  const statusMap: Record<string, 'active' | 'past_due' | 'canceled'> = {
+    active: 'active',
+    trialing: 'active',
+    past_due: 'past_due',
+    unpaid: 'past_due',
+    incomplete: 'past_due',
+    incomplete_expired: 'canceled',
+    canceled: 'canceled',
+  };
+  const newStatus = statusMap[sub.status];
+  if (!newStatus) return;
+
+  const { data: app } = await supabase
     .from('apps')
-    .select('id, name, totalum_app_id, stripe_connect_id, tenant_id')
-    .eq('tenant_id', subscription.tenant_id);
+    .select('id')
+    .eq('stripe_subscription_id', sub.id)
+    .maybeSingle();
 
-  if (appsError) {
-    console.error('[Stripe Webhook] Errore ricerca app:', appsError);
-    return;
-  }
+  // Non è la subscription di un'app cliente (es. abbonamento reseller a
+  // ZeusX): ignorato, non è di competenza di questo handler.
+  if (!app) return;
 
-  if (!apps || apps.length === 0) {
-    console.log(`[Stripe Webhook] Nessuna app trovata per tenant ${subscription.tenant_id}`);
-    return;
-  }
+  const { error } = await supabase
+    .from('apps')
+    .update({ status: newStatus, updated_at: new Date().toISOString() })
+    .eq('id', app.id);
 
-  // Prendi in gestione tutte le app
-  for (const app of apps) {
-    // Imposta is_managed_by_platform = true
-    const { error: updateError } = await supabase
+  if (error) console.error(`[Stripe Webhook] Errore sync stato app ${app.id}:`, error);
+  else console.log(`[Stripe Webhook] App ${app.id} sincronizzata a '${newStatus}'`);
+}
+
+/**
+ * invoice.payment_failed: se riconducibile a un'app cliente, la mette in
+ * 'past_due' (mostra di nuovo il paywall) e notifica l'admin.
+ */
+async function handlePaymentFailed(event: Stripe.Event, supabase: any) {
+  const data = event.data.object as any;
+  const subscriptionId: string | null = data.subscription ?? null;
+
+  if (subscriptionId) {
+    const { data: app } = await supabase
       .from('apps')
-      .update({ 
-        is_managed_by_platform: true,
-        payment_reset_required: true,
-        updated_at: new Date().toISOString()
-      })
-      .eq('id', app.id);
+      .select('id, name')
+      .eq('stripe_subscription_id', subscriptionId)
+      .maybeSingle();
 
-    if (updateError) {
-      console.error(`[Stripe Webhook] Errore takeover app ${app.id}:`, updateError);
-    } else {
-      console.log(`[Stripe Webhook] App ${app.id} (${app.name}) messa in gestione diretta per mancato pagamento User`);
-      
-      // Notifica admin
-      await notifyAdminTakeover(app.totalum_app_id, userEmail, 'mancato pagamento User');
+    if (app) {
+      const { error } = await supabase
+        .from('apps')
+        .update({ status: 'past_due', updated_at: new Date().toISOString() })
+        .eq('id', app.id);
+
+      if (error) console.error(`[Stripe Webhook] Errore impostazione past_due app ${app.id}:`, error);
+      else console.log(`[Stripe Webhook] App ${app.id} (${app.name}) in 'past_due' (pagamento fallito)`);
+      return;
     }
   }
+
+  console.log('[Stripe Webhook] invoice.payment_failed non riconducibile a nessuna app cliente, ignorato');
+}
+
+/**
+ * customer.subscription.deleted / .paused: se è la subscription di un'app
+ * cliente la mette in 'canceled' (ripristina il paywall bloccante).
+ */
+async function handleUserSubscriptionCancelled(event: Stripe.Event, supabase: any) {
+  const sub = event.data.object as Stripe.Subscription;
+
+  const { data: app } = await supabase
+    .from('apps')
+    .select('id')
+    .eq('stripe_subscription_id', sub.id)
+    .maybeSingle();
+
+  if (app) {
+    const { error } = await supabase
+      .from('apps')
+      .update({ status: 'canceled', updated_at: new Date().toISOString() })
+      .eq('id', app.id);
+
+    if (error) console.error(`[Stripe Webhook] Errore cancellazione app ${app.id}:`, error);
+    else console.log(`[Stripe Webhook] App ${app.id} impostata a 'canceled'`);
+    return;
+  }
+
+  console.log('[Stripe Webhook] customer.subscription.deleted/paused non riconducibile a nessuna app cliente, ignorato');
+}
+
+/**
+ * account.application.deauthorized: evento Stripe Connect (reseller ha
+ * revocato l'accesso OAuth). Non correlato al paywall trial dell'app
+ * cliente; nessuna azione automatica implementata, solo log per audit.
+ */
+async function handleOAuthDeauthorized(event: Stripe.Event, supabase: any) {
+  console.log('[Stripe Webhook] account.application.deauthorized ricevuto, nessuna azione automatica implementata');
 }
 
 /**

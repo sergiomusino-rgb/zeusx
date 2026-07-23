@@ -647,6 +647,59 @@ const INDUSTRIAL_DARK_TOKENS: DesignTokens = {
   },
 };
 
+// ─── ClinicLife Design Tokens (Sanità / Healthcare) ────────────────────────
+const CLINICLIFE_TOKENS: DesignTokens = {
+  colors: {
+    'primary': '#0F766E',
+    'primary-hover': '#0B5B54',
+    'secondary': '#0891B2',
+    'tertiary': '#64748B',
+    'bg': '#F0F9F8',
+    'surface': '#FFFFFF',
+    'success': '#16A34A',
+    'warning': '#D97706',
+    'error': '#DC2626',
+    'info': '#0891B2',
+    'text': '#0F172A',
+    'text-secondary': '#475569',
+    'border': '#E2E8F0',
+    'border-light': '#F1F5F9',
+    'sidebar-bg': '#134E4A',
+    'sidebar-text': '#CCFBF1',
+    'sidebar-hover': '#0F766E',
+    'card-bg': '#FFFFFF',
+    'card-bg-alt': '#ECFEFF',
+    'input-bg': '#FFFFFF',
+    'label': '#475569',
+    'label-disabled': '#94A3B8',
+  },
+  fonts: {
+    'headline': "'Plus Jakarta Sans', sans-serif",
+    'body': "'Inter', sans-serif",
+    'mono': "'JetBrains Mono', monospace",
+  },
+  radii: {
+    'none': '0px',
+    'sm': '6px',
+    'md': '10px',
+    'lg': '16px',
+    'xl': '20px',
+    'full': '9999px',
+  },
+  spacing: {
+    'base': '8px',
+    'xs': '4px',
+    'sm': '8px',
+    'md': '16px',
+    'lg': '24px',
+    'xl': '32px',
+    '2xl': '48px',
+    '3xl': '64px',
+    'section': '48px',
+    'page': '64px',
+  },
+};
+
 // ─── Token Map ────────────────────────────────────────────────────────────
 // Maps sector names to design token sets
 const DESIGN_TOKEN_MAP: Record<string, DesignTokens> = {
@@ -658,6 +711,7 @@ const DESIGN_TOKEN_MAP: Record<string, DesignTokens> = {
   volunteerhub: VOLUNTEERHUB_TOKENS,
   wandermap: WANDERMAP_TOKENS,
   recipebook: RECIPEBOOK_TOKENS,
+  cliniclife: CLINICLIFE_TOKENS,
   glassmorphism: GLASSMORPHISM_TOKENS,
   'clean-tech': CLEAN_TECH_TOKENS,
   'warm-editorial': WARM_EDITORIAL_TOKENS,
@@ -724,6 +778,26 @@ const SECTOR_TO_DESIGN_KEY: Record<string, string> = {
   ngo: 'volunteerhub',
   cause: 'volunteerhub',
 
+  // Sanità / Healthcare
+  sanita: 'cliniclife',
+  'sanità': 'cliniclife',
+  clinica: 'cliniclife',
+  clinic: 'cliniclife',
+  ambulatorio: 'cliniclife',
+  ospedale: 'cliniclife',
+  hospital: 'cliniclife',
+  medico: 'cliniclife',
+  medici: 'cliniclife',
+  dentista: 'cliniclife',
+  dentist: 'cliniclife',
+  studio_medico: 'cliniclife',
+  veterinario: 'cliniclife',
+  veterinaria: 'cliniclife',
+  fisioterapia: 'cliniclife',
+  salute: 'cliniclife',
+  health: 'cliniclife',
+  healthcare: 'cliniclife',
+
   // SaaS / Tech / Dashboard
   saas: 'wandermap',
   tech: 'wandermap',
@@ -736,23 +810,108 @@ const SECTOR_TO_DESIGN_KEY: Record<string, string> = {
   prenotazione: 'wandermap',
 };
 
+// ─── Sector Keyword Fallback ───────────────────────────────────────────────
+// Il Creator (form libero, non i pulsanti fissi di dashboard/creator) lascia
+// scrivere/generare settori come "piadineria", "ingrosso-materiale-idraulico"
+// o "ristopub", che non compaiono mai in SECTOR_TO_DESIGN_KEY: senza questo
+// fallback ogni app del genere collassa sulla palette blu generica wandermap,
+// che è esattamente il difetto di landing "piatta e anonima" da correggere.
+// Ordine di priorità: la prima categoria il cui keyword compare come
+// sottostringa del settore normalizzato vince.
+const SECTOR_KEYWORD_FALLBACK: Array<{ keywords: string[]; designKey: string }> = [
+  {
+    designKey: 'cliniclife',
+    keywords: ['sanit', 'clinic', 'ambulator', 'ospedal', 'hospital', 'medic', 'dentist', 'odontoiatr', 'veterinari', 'fisioterap', 'farmac', 'poliambulator', 'dottor'],
+  },
+  {
+    designKey: 'bistromenu',
+    keywords: ['ristor', 'pizz', 'piadin', 'trattor', 'osteria', 'bar', 'caff', 'bistro', 'gastro', 'pub', 'panin', 'gelat', 'pasticc', 'forno', 'kebab', 'sushi', 'burger', 'street-food'],
+  },
+  {
+    designKey: 'recipebook',
+    keywords: ['ricett', 'cooking', 'cucina', 'foodblog'],
+  },
+  {
+    designKey: 'industrial-dark',
+    keywords: ['trasport', 'logistic', 'magazzin', 'spedizion', 'ingrosso', 'idraulic', 'agricol', 'ricambi', 'industrial', 'cantiere', 'edil', 'manifattur', 'officina'],
+  },
+  {
+    designKey: 'urbanloft',
+    keywords: ['realestate', 'real-estate', 'immobil', 'affitt', 'interior', 'arred'],
+  },
+  {
+    designKey: 'coinpulse',
+    keywords: ['crypto', 'financ', 'banking', 'invest', 'trading', 'wallet', 'borsa', 'contabil', 'assicura', 'mutuo', 'fiscal'],
+  },
+  {
+    designKey: 'volunteerhub',
+    keywords: ['volont', 'nonprofit', 'non-profit', 'charity', 'fondazion', 'onlus', 'associazion'],
+  },
+  {
+    designKey: 'docuforge',
+    keywords: ['docs', 'documentation', 'wiki'],
+  },
+  {
+    designKey: 'marketnest',
+    keywords: ['retail', 'ecommerce', 'e-commerce', 'negozio', 'shop', 'store', 'market', 'artigian', 'handmade', 'prodott', 'boutique', 'abbigliamento', 'petshop', 'animali', 'elettr'],
+  },
+  {
+    designKey: 'wandermap',
+    keywords: ['saas', 'software', 'travel', 'viaggi', 'booking', 'prenotaz', 'hotel'],
+  },
+];
+
 // ─── Default Tokens ───────────────────────────────────────────────────────
 const DEFAULT_TOKENS: DesignTokens = WANDERMAP_TOKENS;
 
-// ─── Get Design Tokens by Sector ─────────────────────────────────────────
-export function getDesignTokens(sector?: string): DesignTokens {
-  if (!sector) return DEFAULT_TOKENS;
-  const normalized = sector.toLowerCase().trim();
-  const designKey = SECTOR_TO_DESIGN_KEY[normalized];
-  if (designKey && DESIGN_TOKEN_MAP[designKey]) {
-    return DESIGN_TOKEN_MAP[designKey];
+// Settori "contenitore" scelti dai pulsanti fissi del Creator (o assenti):
+// da soli non dicono nulla sulla vera attività (es. uno studio odontoiatrico
+// viene salvato con sector="saas" perché in dashboard/creator non esiste un
+// pulsante Sanità). Per questi proviamo anche il fallback per keyword su
+// appName/description prima di arrenderci al design generico.
+const GENERIC_SECTOR_VALUES = new Set(['saas', 'tech', 'dashboard', 'software', 'app', 'generale', 'custom', 'general', 'gestionale', '']);
+
+// ─── Resolve Design Key by Sector (match esatto poi keyword fallback) ──────
+// `extraText` (tipicamente appName + description) viene usato come segnale
+// aggiuntivo per riconoscere il vero settore quando `sector` è generico o
+// non compare in nessuna mappa.
+function resolveDesignKey(sector?: string, extraText?: string): string {
+  const normalizedSector = (sector || '').toLowerCase().trim();
+  const isGeneric = !normalizedSector || GENERIC_SECTOR_VALUES.has(normalizedSector);
+
+  if (!isGeneric) {
+    const exact = SECTOR_TO_DESIGN_KEY[normalizedSector];
+    if (exact) return exact;
   }
-  return DEFAULT_TOKENS;
+
+  const combined = `${normalizedSector} ${(extraText || '').toLowerCase()}`.trim();
+  if (combined) {
+    for (const category of SECTOR_KEYWORD_FALLBACK) {
+      if (category.keywords.some((kw) => combined.includes(kw))) {
+        return category.designKey;
+      }
+    }
+  }
+
+  return 'wandermap';
+}
+
+// ─── Get Design Tokens by Sector ─────────────────────────────────────────
+export function getDesignTokens(sector?: string, extraText?: string): DesignTokens {
+  return DESIGN_TOKEN_MAP[resolveDesignKey(sector, extraText)] || DEFAULT_TOKENS;
 }
 
 // ─── Get Design Tokens by Design Key ─────────────────────────────────────
 export function getDesignTokensByKey(key: string): DesignTokens {
   return DESIGN_TOKEN_MAP[key] || DEFAULT_TOKENS;
+}
+
+// ─── Get Design Key by Sector ─────────────────────────────────────────────
+// Espone la stessa risoluzione settore → design key usata internamente da
+// getDesignTokens, utile a chi (es. la landing pubblica) deve scegliere
+// contenuti (immagini, badge, copy) coerenti col design system applicato.
+export function getDesignKeyForSector(sector?: string, extraText?: string): string {
+  return resolveDesignKey(sector, extraText);
 }
 
 // ─── Apply Design Tokens as CSS Custom Properties ────────────────────────
@@ -799,6 +958,7 @@ const DESIGN_KEY_TO_LAYOUT: Record<string, DesignLayoutType> = {
   coinpulse: 'saas',
   urbanloft: 'saas',
   volunteerhub: 'saas',
+  cliniclife: 'saas',
   wandermap: 'saas',
   glassmorphism: 'saas',
   'clean-tech': 'saas',
@@ -807,9 +967,6 @@ const DESIGN_KEY_TO_LAYOUT: Record<string, DesignLayoutType> = {
 };
 
 // ─── Get Layout Type by Sector ────────────────────────────────────────────
-export function getLayoutTypeForSector(sector?: string): DesignLayoutType {
-  if (!sector) return 'saas';
-  const normalized = sector.toLowerCase().trim();
-  const designKey = SECTOR_TO_DESIGN_KEY[normalized];
-  return (designKey && DESIGN_KEY_TO_LAYOUT[designKey]) || 'saas';
+export function getLayoutTypeForSector(sector?: string, extraText?: string): DesignLayoutType {
+  return DESIGN_KEY_TO_LAYOUT[resolveDesignKey(sector, extraText)] || 'saas';
 }

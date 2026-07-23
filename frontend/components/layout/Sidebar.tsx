@@ -94,16 +94,17 @@ export default function Sidebar({
         isPrimary: true,
       },
       {
-        label: t('nav_generator'),
-        href: '/dashboard/generator',
-        icon: <Sparkles size={18} />,
-        isActive: isPathActive(pathname, '/dashboard/generator'),
-      },
-      {
         label: t('nav_creator'),
         href: '/dashboard/creator',
         icon: <Sparkles size={18} />,
         isActive: isPathActive(pathname, '/dashboard/creator'),
+        isPrimary: true,
+      },
+      {
+        label: t('nav_generator'),
+        href: '/dashboard/generator',
+        icon: <Sparkles size={18} />,
+        isActive: isPathActive(pathname, '/dashboard/generator'),
       },
       {
         label: t('nav_projects'),

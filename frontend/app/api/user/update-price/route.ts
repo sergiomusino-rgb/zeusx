@@ -31,11 +31,14 @@ export async function POST(request: NextRequest) {
 
     // Leggi il body della richiesta
     const body = await request.json();
-    const { totalum_app_id, client_subscription_price } = body;
+    const { app_id, totalum_app_id, client_subscription_price } = body;
 
-    // Validazione parametri
-    if (!totalum_app_id) {
-      return NextResponse.json({ error: 'totalum_app_id è obbligatorio' }, { status: 400 });
+    // Validazione parametri: serve un identificativo dell'app. Le app create
+    // con Creator AI non hanno mai totalum_app_id (campo della vecchia
+    // pipeline Totalum), quindi accettiamo anche app_id come identificativo
+    // primario e manteniamo totalum_app_id solo per compatibilità legacy.
+    if (!app_id && !totalum_app_id) {
+      return NextResponse.json({ error: 'app_id o totalum_app_id è obbligatorio' }, { status: 400 });
     }
 
     if (typeof client_subscription_price !== 'number' || client_subscription_price < 0) {
@@ -66,16 +69,23 @@ export async function POST(request: NextRequest) {
       }, { status: 400 });
     }
 
-    // Aggiorna il prezzo nell'app
-    const { data: app, error: updateError } = await supabase
+    // Aggiorna il prezzo nell'app. Filtriamo sempre anche per tenant_id:
+    // senza questo vincolo un utente autenticato potrebbe modificare il
+    // prezzo di un'app di un altro tenant conoscendone/indovinandone l'id.
+    let updateQuery = supabase
       .from('apps')
-      .update({ 
+      .update({
         client_subscription_price: client_subscription_price,
+        client_price: client_subscription_price,
         updated_at: new Date().toISOString()
       })
-      .eq('totalum_app_id', totalum_app_id)
-      .select()
-      .single();
+      .eq('tenant_id', membership.tenant_id);
+
+    updateQuery = app_id
+      ? updateQuery.eq('id', app_id)
+      : updateQuery.eq('totalum_app_id', totalum_app_id);
+
+    const { data: app, error: updateError } = await updateQuery.select().single();
 
     if (updateError) {
       console.error('[update-price] Errore update:', updateError);

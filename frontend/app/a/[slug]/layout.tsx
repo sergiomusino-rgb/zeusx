@@ -1,15 +1,18 @@
 'use client';
 
-import { PropsWithChildren, useEffect, useState } from 'react';
+import { PropsWithChildren, useEffect, useMemo, useState } from 'react';
 import { LanguageProvider } from '@/src/lib/LanguageContext';
 import { AuthProvider } from '@/src/lib/AuthContext';
 import { ThemeProvider } from '@/src/lib/ThemeContext';
 import { useParams, useRouter, usePathname } from 'next/navigation';
 import { supabaseBrowser as supabase } from '@/src/lib/supabase-browser';
-import TrialPaywall from './app/TrialPaywall';
+import TrialPaywallModal from './app/TrialPaywallModal';
+import TrialBanner from './app/TrialBanner';
 import ZeusXBrandingFooter from '@/components/ZeusXBrandingFooter';
 import Link from 'next/link';
 import { AppInfoProvider, type AuthMode } from './AppInfoContext';
+import { getClientSubscriptionPrice } from '@/lib/pricing';
+import { getDesignTokens } from '@/lib/designTokens';
 
 type AppStatus = 'trial' | 'active' | 'expired' | 'past_due' | 'canceled';
 
@@ -20,8 +23,19 @@ interface AppInfo {
   trial_ends_at: string | null;
   stripe_subscription_id: string | null;
   client_subscription_price: number | null;
+  client_price: number | null;
   auth_mode: AuthMode;
   config: Record<string, unknown> | null;
+}
+
+// Estrae il settore dell'app dallo schema salvato (blueprint.sector per la
+// pipeline Totalum, sector diretto per la pipeline Creator) — stessa logica
+// usata da app/page.tsx per guidare getDesignTokens. Serve qui perché questo
+// layout avvolge anche gli stati (loading, gate) che page.tsx non controlla.
+function extractSector(config: Record<string, unknown> | null | undefined): string {
+  if (!config) return '';
+  const cfg = config as { blueprint?: { sector?: string }; sector?: string };
+  return cfg.blueprint?.sector || cfg.sector || '';
 }
 
 export default function AppLayout({ children }: PropsWithChildren) {
@@ -30,10 +44,24 @@ export default function AppLayout({ children }: PropsWithChildren) {
   const pathname = usePathname() || '';
   const slug = params.slug as string;
 
+  // Flag di test per sviluppatori: ?simulate_expired=1 forza il paywall
+  // bloccante senza dover aspettare la scadenza reale del trial. Solo fuori
+  // produzione, per non essere sfruttabile dai clienti finali. Letto da
+  // window.location invece di useSearchParams per evitare il vincolo di
+  // Suspense boundary (qui non serve il valore durante il prerendering).
+  const [devSimulateExpired, setDevSimulateExpired] = useState(false);
+  useEffect(() => {
+    if (process.env.NODE_ENV !== 'production' && typeof window !== 'undefined') {
+      setDevSimulateExpired(new URLSearchParams(window.location.search).get('simulate_expired') === '1');
+    }
+  }, []);
+
   const [appInfo, setAppInfo] = useState<AppInfo | null>(null);
   const [loading, setLoading] = useState(true);
   const [userRole, setUserRole] = useState<'admin' | 'reseller' | null>(null);
   const [gateDenied, setGateDenied] = useState(false);
+
+  const designTokens = useMemo(() => getDesignTokens(extractSector(appInfo?.config)), [appInfo?.config]);
 
   // ─── Classificazione della route corrente ───────────────────────────────
   const isRootLanding = pathname === `/a/${slug}`;
@@ -51,7 +79,7 @@ export default function AppLayout({ children }: PropsWithChildren) {
       const [{ data: rawApp }, { data: { user } }] = await Promise.all([
         supabase
           .from('apps')
-          .select('id, name, status, trial_ends_at, stripe_subscription_id, client_subscription_price, auth_mode, config')
+          .select('id, name, status, trial_ends_at, stripe_subscription_id, client_subscription_price, client_price, auth_mode, config')
           .eq('slug', slug)
           .single(),
         supabase.auth.getUser(),
@@ -60,6 +88,29 @@ export default function AppLayout({ children }: PropsWithChildren) {
 
       if (cancelled) return;
       setAppInfo(app);
+
+      // Ritorno da Stripe Checkout: verifica subito la sessione e sblocca
+      // l'abbonamento senza aspettare il webhook (in locale il webhook non
+      // arriva mai senza `stripe listen`, e anche in produzione questo evita
+      // di mostrare per qualche secondo il pulsante "Abbonati" già pagato).
+      if (app && typeof window !== 'undefined') {
+        const searchParams = new URLSearchParams(window.location.search);
+        if (searchParams.get('checkout') === 'success' && searchParams.get('session_id')) {
+          const sessionId = searchParams.get('session_id')!;
+          try {
+            const res = await fetch(`/api/a/${slug}/verify-checkout-session?session_id=${encodeURIComponent(sessionId)}`);
+            const data = await res.json();
+            if (data.status === 'active' && !cancelled) {
+              setAppInfo((prev) => (prev ? { ...prev, status: 'active' } : prev));
+            }
+          } catch {
+            // Se la verifica fallisce il webhook rimane comunque la fonte di
+            // verità: l'abbonamento risulterà attivo appena arriva l'evento.
+          }
+          // Rimuove i parametri dall'URL per non ri-verificare ad ogni refresh.
+          window.history.replaceState(null, '', window.location.pathname);
+        }
+      }
 
       // ─── Gate owner-only (/settings, /admin): invariato, richiede sessione
       // Supabase Auth della piattaforma + ruolo admin/reseller su `profiles`.
@@ -130,6 +181,7 @@ export default function AppLayout({ children }: PropsWithChildren) {
   // 3. Lo status è 'trial' E la data di trial è scaduta E non c'è subscription_id attivo
   const isAppBlocked = (() => {
     if (!appInfo) return false;
+    if (devSimulateExpired) return true;
     if (appInfo.status === 'active') return false;
     if (appInfo.status === 'past_due' || appInfo.status === 'canceled') return true;
     if (appInfo.status === 'expired') return true;
@@ -142,10 +194,16 @@ export default function AppLayout({ children }: PropsWithChildren) {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-slate-950 flex items-center justify-center">
+      <div
+        className="min-h-screen flex items-center justify-center"
+        style={{ background: designTokens.colors.bg, fontFamily: designTokens.fonts.body }}
+      >
         <div className="text-center">
-          <div className="w-16 h-16 border-4 border-violet-600 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
-          <p className="text-gray-400">Caricamento...</p>
+          <div
+            className="w-16 h-16 border-4 border-t-transparent rounded-full animate-spin mx-auto mb-4"
+            style={{ borderColor: designTokens.colors.primary, borderTopColor: 'transparent' }}
+          ></div>
+          <p style={{ color: designTokens.colors['text-secondary'] }}>Caricamento...</p>
         </div>
       </div>
     );
@@ -155,15 +213,29 @@ export default function AppLayout({ children }: PropsWithChildren) {
   // "Accedi o Registrati" verso il login della piattaforma.
   if (gateDenied) {
     return (
-      <div className="min-h-screen bg-slate-950 flex items-center justify-center p-4">
-        <div className="max-w-md w-full bg-slate-900/40 border border-slate-800/80 backdrop-blur-md rounded-2xl p-8">
-          <h1 className="text-2xl font-bold text-white mb-6 text-center">Accedi o Registrati</h1>
-          <p className="text-gray-400 mb-6 text-center">
+      <div
+        className="min-h-screen flex items-center justify-center p-4"
+        style={{ background: designTokens.colors.bg, fontFamily: designTokens.fonts.body }}
+      >
+        <div
+          className="max-w-md w-full backdrop-blur-md rounded-2xl p-8"
+          style={{ background: designTokens.colors.surface, border: `1px solid ${designTokens.colors.border}` }}
+        >
+          <h1
+            className="text-2xl font-bold mb-6 text-center"
+            style={{ color: designTokens.colors.text, fontFamily: designTokens.fonts.headline }}
+          >
+            Accedi o Registrati
+          </h1>
+          <p className="mb-6 text-center" style={{ color: designTokens.colors['text-secondary'] }}>
             Accedi per utilizzare questa applicazione
           </p>
           <button
             onClick={() => router.push('/login')}
-            className="w-full bg-violet-600 hover:bg-violet-500 text-white py-3 px-6 rounded-xl font-semibold transition-colors"
+            className="w-full py-3 px-6 rounded-xl font-semibold transition-colors"
+            style={{ background: designTokens.colors.primary, color: '#fff' }}
+            onMouseEnter={(e) => { e.currentTarget.style.background = designTokens.colors['primary-hover']; }}
+            onMouseLeave={(e) => { e.currentTarget.style.background = designTokens.colors.primary; }}
           >
             Accedi / Registrati
           </button>
@@ -173,11 +245,19 @@ export default function AppLayout({ children }: PropsWithChildren) {
     );
   }
 
+  // Prezzo mensile reale pagato dal cliente finale: deciso dal reseller per
+  // questa app in Management (non fisso a 25€, vedi lib/pricing.ts).
+  const clientPrice = appInfo ? getClientSubscriptionPrice(appInfo) : 25;
+
   // Paywall: si applica a tutte le route tranne la landing pubblica e la
   // pagina "app sospesa" (che deve restare visibile per spiegare il blocco).
   if (isAppBlocked && appInfo && !isRootLanding && !isBlockedPage) {
-    return <TrialPaywall appName={appInfo.name} trialEndsAt={appInfo.trial_ends_at!} appId={appInfo.id} />;
+    return <TrialPaywallModal appName={appInfo.name} slug={slug} trialEndsAt={appInfo.trial_ends_at || new Date().toISOString()} price={clientPrice} />;
   }
+
+  // Banner trial: discreto, solo nelle route cliente (dashboard/app/fatture)
+  // mentre il trial è ancora attivo e non ancora scaduto.
+  const showTrialBanner = isClientProtected && appInfo?.status === 'trial' && !!appInfo.trial_ends_at && new Date(appInfo.trial_ends_at) >= new Date();
 
   return (
     <LanguageProvider>
@@ -190,16 +270,29 @@ export default function AppLayout({ children }: PropsWithChildren) {
               authMode: appInfo?.auth_mode || 'legacy',
               appName: appInfo?.name || '',
               config: appInfo?.config || null,
+              status: appInfo?.status || null,
+              trialEndsAt: appInfo?.trial_ends_at || null,
+              stripeSubscriptionId: appInfo?.stripe_subscription_id || null,
+              clientPrice,
             }}
           >
-            <div className="flex flex-col min-h-screen bg-slate-950">
+            <div
+              className="flex flex-col min-h-screen"
+              style={{ background: designTokens.colors.bg, fontFamily: designTokens.fonts.body }}
+            >
+              {showTrialBanner && appInfo?.trial_ends_at && (
+                <TrialBanner slug={slug} trialEndsAt={appInfo.trial_ends_at} price={clientPrice} />
+              )}
               {userRole && appInfo && (
                 <div className="p-4">
                   <Link
                     href={`/dashboard/projects/${appInfo.id}`}
-                    className="inline-flex items-center gap-2 text-sm text-slate-400 hover:text-violet-400 transition-colors"
+                    className="inline-flex items-center gap-2 text-sm transition-colors"
+                    style={{ color: designTokens.colors['text-secondary'] }}
+                    onMouseEnter={(e) => { e.currentTarget.style.color = designTokens.colors.primary; }}
+                    onMouseLeave={(e) => { e.currentTarget.style.color = designTokens.colors['text-secondary']; }}
                   >
-                    <span className="text-violet-500">←</span>
+                    <span style={{ color: designTokens.colors.primary }}>←</span>
                     <span>Torna alla Dashboard</span>
                   </Link>
                 </div>
